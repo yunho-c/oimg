@@ -1,17 +1,30 @@
 # oimg
 
-A new Flutter project.
+Flutter desktop app scaffolded with `flutter_rust_bridge`.
 
-## Getting Started
+## Structure
 
-This project is a starting point for a Flutter application.
+- Flutter app: `lib/`
+- Rust crate: `rust/`
+- Native build helper plugin: `rust_builder/`
+- FRB config: `flutter_rust_bridge.yaml`
 
-A few resources to get you started if this is your first Flutter project:
+## Development
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Run the app:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+flutter run -d macos
+```
+
+Regenerate FRB bindings after changing Rust APIs:
+
+```bash
+flutter_rust_bridge_codegen generate
+```
+
+Check the Rust crate directly:
+
+```bash
+cargo check --manifest-path rust/Cargo.toml
+```
