@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 
 typedef OpenFilesHandler = Future<void> Function(List<String> paths);
@@ -30,10 +32,17 @@ class MethodChannelFileOpenChannel implements FileOpenChannel {
       await onOpenFiles(paths);
     });
 
-    try {
-      await _channel.invokeMethod<void>('ready');
-    } on MissingPluginException {
-      // Tests and unsupported platforms do not have a native counterpart.
+    unawaited(_waitForNativeChannel());
+  }
+
+  Future<void> _waitForNativeChannel() async {
+    for (var attempt = 0; attempt < 50; attempt += 1) {
+      try {
+        await _channel.invokeMethod<void>('ready');
+        return;
+      } on MissingPluginException {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
     }
   }
 }

@@ -48,6 +48,19 @@ class AppDelegate: FlutterAppDelegate {
     sender.reply(toOpenOrPrint: .success)
   }
 
+  override func application(_ application: NSApplication, open urls: [URL]) {
+    let filePaths = urls.filter(\.isFileURL).map(\.path)
+    if !filePaths.isEmpty {
+      queueOpenRequest(filePaths)
+      attachIfPossible()
+    }
+
+    let nonFileUrls = urls.filter { !$0.isFileURL }
+    if !nonFileUrls.isEmpty {
+      super.application(application, open: nonFileUrls)
+    }
+  }
+
   override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
     true
   }
