@@ -22,22 +22,31 @@ void CreateAndAttachConsole() {
 }
 
 std::vector<std::string> GetCommandLineArguments() {
+  std::vector<std::wstring> wide_arguments = GetCommandLineArgumentsW();
+  std::vector<std::string> command_line_arguments;
+  command_line_arguments.reserve(wide_arguments.size());
+  for (const auto& argument : wide_arguments) {
+    command_line_arguments.push_back(Utf8FromUtf16(argument.c_str()));
+  }
+  return command_line_arguments;
+}
+
+std::vector<std::wstring> GetCommandLineArgumentsW() {
   // Convert the UTF-16 command line arguments to UTF-8 for the Engine to use.
   int argc;
   wchar_t** argv = ::CommandLineToArgvW(::GetCommandLineW(), &argc);
   if (argv == nullptr) {
-    return std::vector<std::string>();
+    return std::vector<std::wstring>();
   }
 
-  std::vector<std::string> command_line_arguments;
+  std::vector<std::wstring> command_line_arguments;
 
   // Skip the first argument as it's the binary name.
   for (int i = 1; i < argc; i++) {
-    command_line_arguments.push_back(Utf8FromUtf16(argv[i]));
+    command_line_arguments.push_back(argv[i]);
   }
 
   ::LocalFree(argv);
-
   return command_line_arguments;
 }
 
@@ -62,4 +71,29 @@ std::string Utf8FromUtf16(const wchar_t* utf16_string) {
     return std::string();
   }
   return utf8_string;
+}
+
+std::wstring Utf16FromUtf8(const std::string& utf8_string) {
+  if (utf8_string.empty()) {
+    return std::wstring();
+  }
+
+  int target_length = ::MultiByteToWideChar(
+      CP_UTF8, MB_ERR_INVALID_CHARS, utf8_string.data(),
+      static_cast<int>(utf8_string.length()), nullptr, 0);
+  if (target_length == 0) {
+    return std::wstring();
+  }
+
+  std::wstring utf16_string;
+  utf16_string.resize(target_length);
+  int converted_length = ::MultiByteToWideChar(
+      CP_UTF8, MB_ERR_INVALID_CHARS, utf8_string.data(),
+      static_cast<int>(utf8_string.length()), utf16_string.data(),
+      target_length);
+  if (converted_length == 0) {
+    return std::wstring();
+  }
+
+  return utf16_string;
 }

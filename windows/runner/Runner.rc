@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "oimg" "\0"
+            VALUE "CompanyName", "yunho-c" "\0"
+            VALUE "FileDescription", "OIMG" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "oimg" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
+            VALUE "InternalName", "OIMG" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 yunho-c. All rights reserved." "\0"
             VALUE "OriginalFilename", "oimg.exe" "\0"
-            VALUE "ProductName", "oimg" "\0"
+            VALUE "ProductName", "OIMG" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

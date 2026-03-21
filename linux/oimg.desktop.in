@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=OIMG
+Exec=@BINARY_NAME@ %F
+StartupWMClass=@APPLICATION_ID@
+MimeType=image/png;image/jpeg;image/gif;image/bmp;image/webp;image/tiff;
+Categories=Graphics;Viewer;
+Terminal=false
