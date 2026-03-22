@@ -1,9 +1,9 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
 import 'package:oimg/src/file_open/file_open_channel.dart';
 import 'package:oimg/src/file_open/file_open_controller.dart';
 import 'package:oimg/src/rust/frb_generated.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,11 +25,22 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return ShadcnApp(
       title: 'OIMG',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+      debugShowCheckedModeBanner: false,
+      theme: const ThemeData(
+        colorScheme: ColorSchemes.lightSlate,
+        radius: 0.9,
+        surfaceOpacity: 0.92,
+        surfaceBlur: 8,
       ),
+      darkTheme: const ThemeData.dark(
+        colorScheme: ColorSchemes.darkSlate,
+        radius: 0.9,
+        surfaceOpacity: 0.88,
+        surfaceBlur: 12,
+      ),
+      themeMode: ThemeMode.system,
       home: OimgHomePage(controller: controller),
     );
   }
@@ -68,10 +79,50 @@ class _OimgHomePageState extends State<OimgHomePage> {
         return;
       }
 
-      final messenger = ScaffoldMessenger.of(context);
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(notice)));
+      showToast(
+        context: context,
+        location: ToastLocation.topRight,
+        builder: (context, overlay) {
+          final theme = Theme.of(context);
+          return Card(
+            borderRadius: theme.borderRadiusLg,
+            child: Row(
+              children: [
+                Icon(
+                  LucideIcons.triangleAlert,
+                  color: theme.colorScheme.primary,
+                  size: 18,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Unsupported files',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        notice,
+                        style: TextStyle(
+                          color: theme.colorScheme.mutedForeground,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                GhostButton(
+                  onPressed: overlay.close,
+                  density: ButtonDensity.icon,
+                  child: const Icon(LucideIcons.x),
+                ),
+              ],
+            ),
+          );
+        },
+      );
     });
   }
 
@@ -80,10 +131,33 @@ class _OimgHomePageState extends State<OimgHomePage> {
     return AnimatedBuilder(
       animation: widget.controller,
       builder: (context, _) {
+        final title =
+            widget.controller.currentFileName ??
+            'Open images from your desktop';
+        final subtitle = widget.controller.hasSession
+            ? 'Single-window viewer with session navigation'
+            : 'Finder, File Explorer, and Linux file-manager friendly';
+
         return Scaffold(
-          appBar: AppBar(title: const Text('OIMG')),
-          body: widget.controller.hasSession
-              ? _ImageSessionView(controller: widget.controller)
+          headers: [
+            AppBar(
+              title: const Text('OIMG'),
+              subtitle: Text(subtitle),
+              trailing: [
+                if (widget.controller.currentPositionLabel case final position?)
+                  Card(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    child: Text(position),
+                  ),
+              ],
+            ),
+            const Divider(),
+          ],
+          child: widget.controller.hasSession
+              ? _ImageSessionView(controller: widget.controller, title: title)
               : const _EmptyState(),
         );
       },
@@ -92,9 +166,10 @@ class _OimgHomePageState extends State<OimgHomePage> {
 }
 
 class _ImageSessionView extends StatelessWidget {
-  const _ImageSessionView({required this.controller});
+  const _ImageSessionView({required this.controller, required this.title});
 
   final FileOpenController controller;
+  final String title;
 
   @override
   Widget build(BuildContext context) {
@@ -106,76 +181,244 @@ class _ImageSessionView extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.all(24),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final wideLayout = constraints.maxWidth >= 980;
+          final sidebar = _SessionSidebar(controller: controller);
+          final stage = _ImageStage(
+            title: title,
+            currentPath: currentPath,
+            currentFileName: currentFileName,
+          );
+
+          if (wideLayout) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(flex: 5, child: stage),
+                const SizedBox(width: 20),
+                SizedBox(width: 320, child: sidebar),
+              ],
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: stage),
+              const SizedBox(height: 20),
+              sidebar,
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ImageStage extends StatelessWidget {
+  const _ImageStage({
+    required this.title,
+    required this.currentPath,
+    required this.currentFileName,
+  });
+
+  final String title;
+  final String currentPath;
+  final String currentFileName;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      padding: EdgeInsets.zero,
+      borderRadius: theme.borderRadiusXl,
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            currentFileName,
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 4),
-          Text(currentPath, style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 24),
-          Expanded(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outlineVariant,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: InteractiveViewer(
-                  minScale: 0.5,
-                  maxScale: 6,
-                  child: Container(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
-                    alignment: Alignment.center,
-                    child: Image.file(
-                      File(currentPath),
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Text(
-                            'Unable to load $currentFileName.',
-                            style: Theme.of(context).textTheme.bodyLarge,
-                            textAlign: TextAlign.center,
-                          ),
-                        );
-                      },
-                    ),
+                const SizedBox(height: 4),
+                Text(
+                  currentPath,
+                  style: TextStyle(color: theme.colorScheme.mutedForeground),
+                ),
+              ],
+            ),
+          ),
+          const Divider(),
+          Expanded(
+            child: Container(
+              color: theme.colorScheme.background,
+              padding: const EdgeInsets.all(20),
+              child: InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 6,
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: theme.colorScheme.border),
+                    borderRadius: theme.borderRadiusLg,
+                    color: theme.colorScheme.card,
+                  ),
+                  alignment: Alignment.center,
+                  child: Image.file(
+                    File(currentPath),
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              LucideIcons.imageOff,
+                              size: 32,
+                              color: theme.colorScheme.mutedForeground,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Unable to load $currentFileName.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: theme.colorScheme.mutedForeground,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          Row(
+        ],
+      ),
+    );
+  }
+}
+
+class _SessionSidebar extends StatelessWidget {
+  const _SessionSidebar({required this.controller});
+
+  final FileOpenController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final currentPath = controller.currentPath ?? '';
+    final fileType = currentPath.contains('.')
+        ? currentPath.split('.').last.toUpperCase()
+        : 'IMAGE';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              FilledButton.tonalIcon(
+              Text(
+                'Session',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              _MetaRow(
+                label: 'Current file',
+                value: controller.currentFileName ?? '',
+              ),
+              const SizedBox(height: 10),
+              _MetaRow(label: 'Format', value: fileType),
+              const SizedBox(height: 10),
+              _MetaRow(
+                label: 'Session size',
+                value:
+                    '${controller.sessionLength} image${controller.sessionLength == 1 ? '' : 's'}',
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Navigation',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              PrimaryButton(
+                onPressed: controller.canGoNext ? controller.showNext : null,
+                leading: const Icon(LucideIcons.arrowRight),
+                child: const Text('Next'),
+              ),
+              const SizedBox(height: 10),
+              GhostButton(
                 onPressed: controller.canGoPrevious
                     ? controller.showPrevious
                     : null,
-                icon: const Icon(Icons.arrow_back),
-                label: const Text('Previous'),
+                leading: const Icon(LucideIcons.arrowLeft),
+                alignment: Alignment.centerLeft,
+                child: const Text('Previous'),
               ),
-              const SizedBox(width: 12),
-              FilledButton.tonalIcon(
-                onPressed: controller.canGoNext ? controller.showNext : null,
-                icon: const Icon(Icons.arrow_forward),
-                label: const Text('Next'),
-              ),
-              const Spacer(),
-              if (controller.currentPositionLabel case final position?)
-                Text(position, style: Theme.of(context).textTheme.titleMedium),
+              if (controller.currentPositionLabel case final position?) ...[
+                const SizedBox(height: 12),
+                Text(
+                  position,
+                  style: TextStyle(color: theme.colorScheme.mutedForeground),
+                ),
+              ],
             ],
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 16),
+        Card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Open With behavior',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'New files from Finder, File Explorer, or your Linux file manager replace the current session in this window.',
+                style: TextStyle(color: theme.colorScheme.mutedForeground),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MetaRow extends StatelessWidget {
+  const _MetaRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(color: theme.colorScheme.mutedForeground)),
+        const SizedBox(height: 4),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+      ],
     );
   }
 }
@@ -185,29 +428,104 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.photo_library_outlined,
-              size: 56,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Open an image with OIMG',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Use Finder, File Explorer, or your Linux file manager to open PNG, JPEG, GIF, BMP, WebP, or TIFF files with OIMG.',
-              style: Theme.of(context).textTheme.bodyLarge,
-              textAlign: TextAlign.center,
-            ),
-          ],
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 920),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Card(
+                borderRadius: theme.borderRadiusXxl,
+                child: Padding(
+                  padding: const EdgeInsets.all(28),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: theme.colorScheme.border),
+                          borderRadius: theme.borderRadiusLg,
+                        ),
+                        child: Icon(
+                          LucideIcons.image,
+                          size: 28,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      const Text(
+                        'Open an image with OIMG',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'A desktop image viewer built around shell-level open-file flows. Use Open With from Finder, File Explorer, or your Linux file manager to drop a session into this window.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: theme.colorScheme.mutedForeground,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Card(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Supported formats',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'PNG, JPEG, GIF, BMP, WebP, TIFF',
+                            style: TextStyle(
+                              color: theme.colorScheme.mutedForeground,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Card(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Session model',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'One window, one active session. Multi-select launches become a navigable sequence.',
+                            style: TextStyle(
+                              color: theme.colorScheme.mutedForeground,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

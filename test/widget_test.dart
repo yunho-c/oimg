@@ -23,15 +23,15 @@ void main() {
 
     await tester.pumpWidget(MyApp(controller: controller));
 
-    expect(find.text('first.png'), findsOneWidget);
+    expect(find.text('first.png'), findsNWidgets(2));
     expect(find.text('Previous'), findsOneWidget);
-    expect(find.text('1 / 2'), findsOneWidget);
+    expect(find.text('1 / 2'), findsNWidgets(2));
 
     await tester.tap(find.text('Next'));
     await tester.pump();
 
-    expect(find.text('second.jpg'), findsOneWidget);
-    expect(find.text('2 / 2'), findsOneWidget);
+    expect(find.text('second.jpg'), findsNWidgets(2));
+    expect(find.text('2 / 2'), findsNWidgets(2));
   });
 
   testWidgets('later openFiles event replaces the session', (tester) async {
@@ -44,13 +44,13 @@ void main() {
 
     await tester.pumpWidget(MyApp(controller: controller));
 
-    expect(find.text('original.png'), findsOneWidget);
+    expect(find.text('original.png'), findsNWidgets(2));
 
     await channel.emit(const ['/tmp/new-one.webp', '/tmp/new-two.bmp']);
     await tester.pump();
 
-    expect(find.text('new-one.webp'), findsOneWidget);
-    expect(find.text('1 / 2'), findsOneWidget);
+    expect(find.text('new-one.webp'), findsNWidgets(2));
+    expect(find.text('1 / 2'), findsNWidgets(2));
   });
 }
 

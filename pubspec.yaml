@@ -37,6 +37,7 @@ dependencies:
   flutter_rust_bridge: 2.11.1
   oimg_rust:
     path: rust_builder
+  shadcn_flutter: ^0.0.52
 
 dev_dependencies:
   flutter_test:
