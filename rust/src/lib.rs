@@ -5,4 +5,5 @@ mod error;
 mod frb_generated;
 mod fs;
 mod preview;
+mod service_ffi;
 mod types;

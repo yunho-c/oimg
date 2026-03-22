@@ -7,6 +7,7 @@ class AppDelegate: FlutterAppDelegate {
   private var fileOpenChannel: FlutterMethodChannel?
   private var pendingOpenRequests: [[String]] = []
   private var fileOpenChannelReady = false
+  private let compressionServiceProvider = CompressionServiceProvider()
 
   func attachFileOpenChannel(to controller: FlutterViewController) {
     guard fileOpenChannel == nil else {
@@ -39,6 +40,8 @@ class AppDelegate: FlutterAppDelegate {
 
   override func applicationDidFinishLaunching(_ notification: Notification) {
     super.applicationDidFinishLaunching(notification)
+    NSApp.servicesProvider = compressionServiceProvider
+    NSUpdateDynamicServices()
     attachIfPossible()
   }
 
