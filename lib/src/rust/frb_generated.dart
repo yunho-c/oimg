@@ -3,13 +3,15 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
-import 'api/simple.dart';
+import 'api/bridge.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'error.dart';
 import 'frb_generated.dart';
 import 'frb_generated.io.dart'
     if (dart.library.js_interop) 'frb_generated.web.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'types.dart';
 
 /// Main entrypoint of the Rust API
 class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
@@ -55,7 +57,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 
   @override
   Future<void> executeRustInitializers() async {
-    await api.crateApiSimpleInitApp();
+    await api.crateApiBridgeInitApp();
   }
 
   @override
@@ -66,7 +68,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -1918914929;
+  int get rustContentHash => 861731066;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -77,9 +79,31 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
-  String crateApiSimpleGreet({required String name});
+  Future<void> crateApiBridgeInitApp();
 
-  Future<void> crateApiSimpleInitApp();
+  Future<ImageMetadata> crateApiBridgeInspectBytes({required List<int> data});
+
+  Future<ImageMetadata> crateApiBridgeInspectFile({required String inputPath});
+
+  Future<PreviewResult> crateApiBridgePreviewFile({
+    required PreviewFileRequest request,
+  });
+
+  Future<EncodedImageResult> crateApiBridgeProcessBytes({
+    required ProcessBytesRequest request,
+  });
+
+  Future<ProcessResult> crateApiBridgeProcessFile({
+    required ProcessFileRequest request,
+  });
+
+  Future<List<BatchItemResult>> crateApiBridgeProcessFiles({
+    required BatchProcessRequest request,
+  });
+
+  List<FormatInfo> crateApiBridgeSupportedFormats();
+
+  String crateApiBridgeVersion();
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -91,34 +115,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
-  String crateApiSimpleGreet({required String name}) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
+  Future<void> crateApiBridgeInitApp() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(name, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1)!;
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_String,
+          decodeSuccessData: sse_decode_unit,
           decodeErrorData: null,
         ),
-        constMeta: kCrateApiSimpleGreetConstMeta,
-        argValues: [name],
+        constMeta: kCrateApiBridgeInitAppConstMeta,
+        argValues: [],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiSimpleGreetConstMeta =>
-      const TaskConstMeta(debugName: "greet", argNames: ["name"]);
+  TaskConstMeta get kCrateApiBridgeInitAppConstMeta =>
+      const TaskConstMeta(debugName: "init_app", argNames: []);
 
   @override
-  Future<void> crateApiSimpleInitApp() {
+  Future<ImageMetadata> crateApiBridgeInspectBytes({required List<int> data}) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(data, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
@@ -127,18 +156,216 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_unit,
+          decodeSuccessData: sse_decode_image_metadata,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiBridgeInspectBytesConstMeta,
+        argValues: [data],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeInspectBytesConstMeta =>
+      const TaskConstMeta(debugName: "inspect_bytes", argNames: ["data"]);
+
+  @override
+  Future<ImageMetadata> crateApiBridgeInspectFile({required String inputPath}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(inputPath, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_image_metadata,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiBridgeInspectFileConstMeta,
+        argValues: [inputPath],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeInspectFileConstMeta =>
+      const TaskConstMeta(debugName: "inspect_file", argNames: ["inputPath"]);
+
+  @override
+  Future<PreviewResult> crateApiBridgePreviewFile({
+    required PreviewFileRequest request,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_preview_file_request(request, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 4,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_preview_result,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiBridgePreviewFileConstMeta,
+        argValues: [request],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgePreviewFileConstMeta =>
+      const TaskConstMeta(debugName: "preview_file", argNames: ["request"]);
+
+  @override
+  Future<EncodedImageResult> crateApiBridgeProcessBytes({
+    required ProcessBytesRequest request,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_process_bytes_request(request, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 5,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_encoded_image_result,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiBridgeProcessBytesConstMeta,
+        argValues: [request],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeProcessBytesConstMeta =>
+      const TaskConstMeta(debugName: "process_bytes", argNames: ["request"]);
+
+  @override
+  Future<ProcessResult> crateApiBridgeProcessFile({
+    required ProcessFileRequest request,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_process_file_request(request, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 6,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_process_result,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiBridgeProcessFileConstMeta,
+        argValues: [request],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeProcessFileConstMeta =>
+      const TaskConstMeta(debugName: "process_file", argNames: ["request"]);
+
+  @override
+  Future<List<BatchItemResult>> crateApiBridgeProcessFiles({
+    required BatchProcessRequest request,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_batch_process_request(request, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 7,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_batch_item_result,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiBridgeProcessFilesConstMeta,
+        argValues: [request],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeProcessFilesConstMeta =>
+      const TaskConstMeta(debugName: "process_files", argNames: ["request"]);
+
+  @override
+  List<FormatInfo> crateApiBridgeSupportedFormats() {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_format_info,
           decodeErrorData: null,
         ),
-        constMeta: kCrateApiSimpleInitAppConstMeta,
+        constMeta: kCrateApiBridgeSupportedFormatsConstMeta,
         argValues: [],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiSimpleInitAppConstMeta =>
-      const TaskConstMeta(debugName: "init_app", argNames: []);
+  TaskConstMeta get kCrateApiBridgeSupportedFormatsConstMeta =>
+      const TaskConstMeta(debugName: "supported_formats", argNames: []);
+
+  @override
+  String crateApiBridgeVersion() {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiBridgeVersionConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeVersionConstMeta =>
+      const TaskConstMeta(debugName: "version", argNames: []);
+
+  @protected
+  AnyhowException dco_decode_AnyhowException(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return AnyhowException(raw as String);
+  }
 
   @protected
   String dco_decode_String(dynamic raw) {
@@ -147,9 +374,523 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BatchItemResult dco_decode_batch_item_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return BatchItemResult(
+      inputPath: dco_decode_String(arr[0]),
+      success: dco_decode_bool(arr[1]),
+      result: dco_decode_opt_box_autoadd_process_result(arr[2]),
+      error: dco_decode_opt_box_autoadd_slimg_bridge_error(arr[3]),
+    );
+  }
+
+  @protected
+  BatchProcessRequest dco_decode_batch_process_request(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return BatchProcessRequest(
+      inputPaths: dco_decode_list_String(arr[0]),
+      outputDir: dco_decode_opt_String(arr[1]),
+      overwrite: dco_decode_bool(arr[2]),
+      operation: dco_decode_image_operation(arr[3]),
+      continueOnError: dco_decode_bool(arr[4]),
+    );
+  }
+
+  @protected
+  bool dco_decode_bool(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as bool;
+  }
+
+  @protected
+  BatchProcessRequest dco_decode_box_autoadd_batch_process_request(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_batch_process_request(raw);
+  }
+
+  @protected
+  ConvertOptions dco_decode_box_autoadd_convert_options(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_convert_options(raw);
+  }
+
+  @protected
+  CropOptions dco_decode_box_autoadd_crop_options(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_crop_options(raw);
+  }
+
+  @protected
+  ExtendOptions dco_decode_box_autoadd_extend_options(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_extend_options(raw);
+  }
+
+  @protected
+  FillSpec dco_decode_box_autoadd_fill_spec(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_fill_spec(raw);
+  }
+
+  @protected
+  OptimizeOptions dco_decode_box_autoadd_optimize_options(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_optimize_options(raw);
+  }
+
+  @protected
+  PreviewFileRequest dco_decode_box_autoadd_preview_file_request(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_preview_file_request(raw);
+  }
+
+  @protected
+  ProcessBytesRequest dco_decode_box_autoadd_process_bytes_request(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_process_bytes_request(raw);
+  }
+
+  @protected
+  ProcessFileRequest dco_decode_box_autoadd_process_file_request(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_process_file_request(raw);
+  }
+
+  @protected
+  ProcessResult dco_decode_box_autoadd_process_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_process_result(raw);
+  }
+
+  @protected
+  ResizeOptions dco_decode_box_autoadd_resize_options(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_resize_options(raw);
+  }
+
+  @protected
+  SlimgBridgeError dco_decode_box_autoadd_slimg_bridge_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_slimg_bridge_error(raw);
+  }
+
+  @protected
+  BigInt dco_decode_box_autoadd_u_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_u_64(raw);
+  }
+
+  @protected
+  ConvertOptions dco_decode_convert_options(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return ConvertOptions(
+      targetFormat: dco_decode_String(arr[0]),
+      quality: dco_decode_u_8(arr[1]),
+    );
+  }
+
+  @protected
+  CropOptions dco_decode_crop_options(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return CropOptions(
+      crop: dco_decode_crop_spec(arr[0]),
+      targetFormat: dco_decode_opt_String(arr[1]),
+      quality: dco_decode_u_8(arr[2]),
+    );
+  }
+
+  @protected
+  CropSpec dco_decode_crop_spec(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return CropSpec_Region(
+          x: dco_decode_u_32(raw[1]),
+          y: dco_decode_u_32(raw[2]),
+          width: dco_decode_u_32(raw[3]),
+          height: dco_decode_u_32(raw[4]),
+        );
+      case 1:
+        return CropSpec_AspectRatio(
+          width: dco_decode_u_32(raw[1]),
+          height: dco_decode_u_32(raw[2]),
+        );
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  EncodedImageResult dco_decode_encoded_image_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return EncodedImageResult(
+      encodedBytes: dco_decode_list_prim_u_8_strict(arr[0]),
+      format: dco_decode_String(arr[1]),
+      width: dco_decode_u_32(arr[2]),
+      height: dco_decode_u_32(arr[3]),
+      sizeBytes: dco_decode_u_64(arr[4]),
+    );
+  }
+
+  @protected
+  ExtendOptions dco_decode_extend_options(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return ExtendOptions(
+      extend: dco_decode_extend_spec(arr[0]),
+      fill: dco_decode_opt_box_autoadd_fill_spec(arr[1]),
+      targetFormat: dco_decode_opt_String(arr[2]),
+      quality: dco_decode_u_8(arr[3]),
+    );
+  }
+
+  @protected
+  ExtendSpec dco_decode_extend_spec(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return ExtendSpec_AspectRatio(
+          width: dco_decode_u_32(raw[1]),
+          height: dco_decode_u_32(raw[2]),
+        );
+      case 1:
+        return ExtendSpec_Size(
+          width: dco_decode_u_32(raw[1]),
+          height: dco_decode_u_32(raw[2]),
+        );
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  double dco_decode_f_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as double;
+  }
+
+  @protected
+  FillSpec dco_decode_fill_spec(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return FillSpec_Solid(
+          r: dco_decode_u_8(raw[1]),
+          g: dco_decode_u_8(raw[2]),
+          b: dco_decode_u_8(raw[3]),
+          a: dco_decode_u_8(raw[4]),
+        );
+      case 1:
+        return FillSpec_Transparent();
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  FormatInfo dco_decode_format_info(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return FormatInfo(
+      id: dco_decode_String(arr[0]),
+      extension_: dco_decode_String(arr[1]),
+      canEncode: dco_decode_bool(arr[2]),
+    );
+  }
+
+  @protected
+  ImageMetadata dco_decode_image_metadata(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return ImageMetadata(
+      width: dco_decode_u_32(arr[0]),
+      height: dco_decode_u_32(arr[1]),
+      format: dco_decode_String(arr[2]),
+      fileSize: dco_decode_opt_box_autoadd_u_64(arr[3]),
+    );
+  }
+
+  @protected
+  ImageOperation dco_decode_image_operation(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return ImageOperation_Convert(
+          dco_decode_box_autoadd_convert_options(raw[1]),
+        );
+      case 1:
+        return ImageOperation_Optimize(
+          dco_decode_box_autoadd_optimize_options(raw[1]),
+        );
+      case 2:
+        return ImageOperation_Resize(
+          dco_decode_box_autoadd_resize_options(raw[1]),
+        );
+      case 3:
+        return ImageOperation_Crop(dco_decode_box_autoadd_crop_options(raw[1]));
+      case 4:
+        return ImageOperation_Extend(
+          dco_decode_box_autoadd_extend_options(raw[1]),
+        );
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  List<String> dco_decode_list_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_String).toList();
+  }
+
+  @protected
+  List<BatchItemResult> dco_decode_list_batch_item_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_batch_item_result).toList();
+  }
+
+  @protected
+  List<FormatInfo> dco_decode_list_format_info(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_format_info).toList();
+  }
+
+  @protected
+  List<int> dco_decode_list_prim_u_8_loose(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as List<int>;
+  }
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
+  }
+
+  @protected
+  String? dco_decode_opt_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_String(raw);
+  }
+
+  @protected
+  FillSpec? dco_decode_opt_box_autoadd_fill_spec(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_fill_spec(raw);
+  }
+
+  @protected
+  ProcessResult? dco_decode_opt_box_autoadd_process_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_process_result(raw);
+  }
+
+  @protected
+  SlimgBridgeError? dco_decode_opt_box_autoadd_slimg_bridge_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_slimg_bridge_error(raw);
+  }
+
+  @protected
+  BigInt? dco_decode_opt_box_autoadd_u_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_u_64(raw);
+  }
+
+  @protected
+  OptimizeOptions dco_decode_optimize_options(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return OptimizeOptions(
+      quality: dco_decode_u_8(arr[0]),
+      writeOnlyIfSmaller: dco_decode_bool(arr[1]),
+    );
+  }
+
+  @protected
+  PreviewFileRequest dco_decode_preview_file_request(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return PreviewFileRequest(
+      inputPath: dco_decode_String(arr[0]),
+      operation: dco_decode_image_operation(arr[1]),
+    );
+  }
+
+  @protected
+  PreviewResult dco_decode_preview_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return PreviewResult(
+      encodedBytes: dco_decode_list_prim_u_8_strict(arr[0]),
+      format: dco_decode_String(arr[1]),
+      width: dco_decode_u_32(arr[2]),
+      height: dco_decode_u_32(arr[3]),
+      sizeBytes: dco_decode_u_64(arr[4]),
+    );
+  }
+
+  @protected
+  ProcessBytesRequest dco_decode_process_bytes_request(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return ProcessBytesRequest(
+      data: dco_decode_list_prim_u_8_strict(arr[0]),
+      operation: dco_decode_image_operation(arr[1]),
+    );
+  }
+
+  @protected
+  ProcessFileRequest dco_decode_process_file_request(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return ProcessFileRequest(
+      inputPath: dco_decode_String(arr[0]),
+      outputPath: dco_decode_opt_String(arr[1]),
+      overwrite: dco_decode_bool(arr[2]),
+      operation: dco_decode_image_operation(arr[3]),
+    );
+  }
+
+  @protected
+  ProcessResult dco_decode_process_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    return ProcessResult(
+      outputPath: dco_decode_String(arr[0]),
+      format: dco_decode_String(arr[1]),
+      width: dco_decode_u_32(arr[2]),
+      height: dco_decode_u_32(arr[3]),
+      originalSize: dco_decode_u_64(arr[4]),
+      newSize: dco_decode_u_64(arr[5]),
+    );
+  }
+
+  @protected
+  ResizeOptions dco_decode_resize_options(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return ResizeOptions(
+      resize: dco_decode_resize_spec(arr[0]),
+      targetFormat: dco_decode_opt_String(arr[1]),
+      quality: dco_decode_u_8(arr[2]),
+    );
+  }
+
+  @protected
+  ResizeSpec dco_decode_resize_spec(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return ResizeSpec_Width(value: dco_decode_u_32(raw[1]));
+      case 1:
+        return ResizeSpec_Height(value: dco_decode_u_32(raw[1]));
+      case 2:
+        return ResizeSpec_Exact(
+          width: dco_decode_u_32(raw[1]),
+          height: dco_decode_u_32(raw[2]),
+        );
+      case 3:
+        return ResizeSpec_Fit(
+          maxWidth: dco_decode_u_32(raw[1]),
+          maxHeight: dco_decode_u_32(raw[2]),
+        );
+      case 4:
+        return ResizeSpec_Scale(factor: dco_decode_f_64(raw[1]));
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  SlimgBridgeError dco_decode_slimg_bridge_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return SlimgBridgeError_InvalidRequest(
+          message: dco_decode_String(raw[1]),
+        );
+      case 1:
+        return SlimgBridgeError_InvalidPath(
+          path: dco_decode_String(raw[1]),
+          message: dco_decode_String(raw[2]),
+        );
+      case 2:
+        return SlimgBridgeError_UnsupportedFormat(
+          format: dco_decode_String(raw[1]),
+        );
+      case 3:
+        return SlimgBridgeError_UnknownFormat(
+          detail: dco_decode_String(raw[1]),
+        );
+      case 4:
+        return SlimgBridgeError_Decode(message: dco_decode_String(raw[1]));
+      case 5:
+        return SlimgBridgeError_Encode(message: dco_decode_String(raw[1]));
+      case 6:
+        return SlimgBridgeError_Resize(message: dco_decode_String(raw[1]));
+      case 7:
+        return SlimgBridgeError_Crop(message: dco_decode_String(raw[1]));
+      case 8:
+        return SlimgBridgeError_Extend(message: dco_decode_String(raw[1]));
+      case 9:
+        return SlimgBridgeError_Io(message: dco_decode_String(raw[1]));
+      case 10:
+        return SlimgBridgeError_Internal(message: dco_decode_String(raw[1]));
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  int dco_decode_u_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
+  BigInt dco_decode_u_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeU64(raw);
   }
 
   @protected
@@ -165,6 +906,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_String(deserializer);
+    return AnyhowException(inner);
+  }
+
+  @protected
   String sse_decode_String(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_list_prim_u_8_strict(deserializer);
@@ -172,10 +920,621 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BatchItemResult sse_decode_batch_item_result(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_inputPath = sse_decode_String(deserializer);
+    var var_success = sse_decode_bool(deserializer);
+    var var_result = sse_decode_opt_box_autoadd_process_result(deserializer);
+    var var_error = sse_decode_opt_box_autoadd_slimg_bridge_error(deserializer);
+    return BatchItemResult(
+      inputPath: var_inputPath,
+      success: var_success,
+      result: var_result,
+      error: var_error,
+    );
+  }
+
+  @protected
+  BatchProcessRequest sse_decode_batch_process_request(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_inputPaths = sse_decode_list_String(deserializer);
+    var var_outputDir = sse_decode_opt_String(deserializer);
+    var var_overwrite = sse_decode_bool(deserializer);
+    var var_operation = sse_decode_image_operation(deserializer);
+    var var_continueOnError = sse_decode_bool(deserializer);
+    return BatchProcessRequest(
+      inputPaths: var_inputPaths,
+      outputDir: var_outputDir,
+      overwrite: var_overwrite,
+      operation: var_operation,
+      continueOnError: var_continueOnError,
+    );
+  }
+
+  @protected
+  bool sse_decode_bool(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint8() != 0;
+  }
+
+  @protected
+  BatchProcessRequest sse_decode_box_autoadd_batch_process_request(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_batch_process_request(deserializer));
+  }
+
+  @protected
+  ConvertOptions sse_decode_box_autoadd_convert_options(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_convert_options(deserializer));
+  }
+
+  @protected
+  CropOptions sse_decode_box_autoadd_crop_options(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_crop_options(deserializer));
+  }
+
+  @protected
+  ExtendOptions sse_decode_box_autoadd_extend_options(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_extend_options(deserializer));
+  }
+
+  @protected
+  FillSpec sse_decode_box_autoadd_fill_spec(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_fill_spec(deserializer));
+  }
+
+  @protected
+  OptimizeOptions sse_decode_box_autoadd_optimize_options(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_optimize_options(deserializer));
+  }
+
+  @protected
+  PreviewFileRequest sse_decode_box_autoadd_preview_file_request(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_preview_file_request(deserializer));
+  }
+
+  @protected
+  ProcessBytesRequest sse_decode_box_autoadd_process_bytes_request(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_process_bytes_request(deserializer));
+  }
+
+  @protected
+  ProcessFileRequest sse_decode_box_autoadd_process_file_request(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_process_file_request(deserializer));
+  }
+
+  @protected
+  ProcessResult sse_decode_box_autoadd_process_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_process_result(deserializer));
+  }
+
+  @protected
+  ResizeOptions sse_decode_box_autoadd_resize_options(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_resize_options(deserializer));
+  }
+
+  @protected
+  SlimgBridgeError sse_decode_box_autoadd_slimg_bridge_error(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_slimg_bridge_error(deserializer));
+  }
+
+  @protected
+  BigInt sse_decode_box_autoadd_u_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_u_64(deserializer));
+  }
+
+  @protected
+  ConvertOptions sse_decode_convert_options(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_targetFormat = sse_decode_String(deserializer);
+    var var_quality = sse_decode_u_8(deserializer);
+    return ConvertOptions(targetFormat: var_targetFormat, quality: var_quality);
+  }
+
+  @protected
+  CropOptions sse_decode_crop_options(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_crop = sse_decode_crop_spec(deserializer);
+    var var_targetFormat = sse_decode_opt_String(deserializer);
+    var var_quality = sse_decode_u_8(deserializer);
+    return CropOptions(
+      crop: var_crop,
+      targetFormat: var_targetFormat,
+      quality: var_quality,
+    );
+  }
+
+  @protected
+  CropSpec sse_decode_crop_spec(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_x = sse_decode_u_32(deserializer);
+        var var_y = sse_decode_u_32(deserializer);
+        var var_width = sse_decode_u_32(deserializer);
+        var var_height = sse_decode_u_32(deserializer);
+        return CropSpec_Region(
+          x: var_x,
+          y: var_y,
+          width: var_width,
+          height: var_height,
+        );
+      case 1:
+        var var_width = sse_decode_u_32(deserializer);
+        var var_height = sse_decode_u_32(deserializer);
+        return CropSpec_AspectRatio(width: var_width, height: var_height);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  EncodedImageResult sse_decode_encoded_image_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_encodedBytes = sse_decode_list_prim_u_8_strict(deserializer);
+    var var_format = sse_decode_String(deserializer);
+    var var_width = sse_decode_u_32(deserializer);
+    var var_height = sse_decode_u_32(deserializer);
+    var var_sizeBytes = sse_decode_u_64(deserializer);
+    return EncodedImageResult(
+      encodedBytes: var_encodedBytes,
+      format: var_format,
+      width: var_width,
+      height: var_height,
+      sizeBytes: var_sizeBytes,
+    );
+  }
+
+  @protected
+  ExtendOptions sse_decode_extend_options(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_extend = sse_decode_extend_spec(deserializer);
+    var var_fill = sse_decode_opt_box_autoadd_fill_spec(deserializer);
+    var var_targetFormat = sse_decode_opt_String(deserializer);
+    var var_quality = sse_decode_u_8(deserializer);
+    return ExtendOptions(
+      extend: var_extend,
+      fill: var_fill,
+      targetFormat: var_targetFormat,
+      quality: var_quality,
+    );
+  }
+
+  @protected
+  ExtendSpec sse_decode_extend_spec(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_width = sse_decode_u_32(deserializer);
+        var var_height = sse_decode_u_32(deserializer);
+        return ExtendSpec_AspectRatio(width: var_width, height: var_height);
+      case 1:
+        var var_width = sse_decode_u_32(deserializer);
+        var var_height = sse_decode_u_32(deserializer);
+        return ExtendSpec_Size(width: var_width, height: var_height);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  double sse_decode_f_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getFloat64();
+  }
+
+  @protected
+  FillSpec sse_decode_fill_spec(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_r = sse_decode_u_8(deserializer);
+        var var_g = sse_decode_u_8(deserializer);
+        var var_b = sse_decode_u_8(deserializer);
+        var var_a = sse_decode_u_8(deserializer);
+        return FillSpec_Solid(r: var_r, g: var_g, b: var_b, a: var_a);
+      case 1:
+        return FillSpec_Transparent();
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  FormatInfo sse_decode_format_info(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_extension_ = sse_decode_String(deserializer);
+    var var_canEncode = sse_decode_bool(deserializer);
+    return FormatInfo(
+      id: var_id,
+      extension_: var_extension_,
+      canEncode: var_canEncode,
+    );
+  }
+
+  @protected
+  ImageMetadata sse_decode_image_metadata(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_width = sse_decode_u_32(deserializer);
+    var var_height = sse_decode_u_32(deserializer);
+    var var_format = sse_decode_String(deserializer);
+    var var_fileSize = sse_decode_opt_box_autoadd_u_64(deserializer);
+    return ImageMetadata(
+      width: var_width,
+      height: var_height,
+      format: var_format,
+      fileSize: var_fileSize,
+    );
+  }
+
+  @protected
+  ImageOperation sse_decode_image_operation(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 = sse_decode_box_autoadd_convert_options(deserializer);
+        return ImageOperation_Convert(var_field0);
+      case 1:
+        var var_field0 = sse_decode_box_autoadd_optimize_options(deserializer);
+        return ImageOperation_Optimize(var_field0);
+      case 2:
+        var var_field0 = sse_decode_box_autoadd_resize_options(deserializer);
+        return ImageOperation_Resize(var_field0);
+      case 3:
+        var var_field0 = sse_decode_box_autoadd_crop_options(deserializer);
+        return ImageOperation_Crop(var_field0);
+      case 4:
+        var var_field0 = sse_decode_box_autoadd_extend_options(deserializer);
+        return ImageOperation_Extend(var_field0);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <String>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_String(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<BatchItemResult> sse_decode_list_batch_item_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <BatchItemResult>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_batch_item_result(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<FormatInfo> sse_decode_list_format_info(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <FormatInfo>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_format_info(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var len_ = sse_decode_i_32(deserializer);
+    return deserializer.buffer.getUint8List(len_);
+  }
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getUint8List(len_);
+  }
+
+  @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_String(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  FillSpec? sse_decode_opt_box_autoadd_fill_spec(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_fill_spec(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  ProcessResult? sse_decode_opt_box_autoadd_process_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_process_result(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  SlimgBridgeError? sse_decode_opt_box_autoadd_slimg_bridge_error(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_slimg_bridge_error(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  BigInt? sse_decode_opt_box_autoadd_u_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_u_64(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  OptimizeOptions sse_decode_optimize_options(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_quality = sse_decode_u_8(deserializer);
+    var var_writeOnlyIfSmaller = sse_decode_bool(deserializer);
+    return OptimizeOptions(
+      quality: var_quality,
+      writeOnlyIfSmaller: var_writeOnlyIfSmaller,
+    );
+  }
+
+  @protected
+  PreviewFileRequest sse_decode_preview_file_request(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_inputPath = sse_decode_String(deserializer);
+    var var_operation = sse_decode_image_operation(deserializer);
+    return PreviewFileRequest(
+      inputPath: var_inputPath,
+      operation: var_operation,
+    );
+  }
+
+  @protected
+  PreviewResult sse_decode_preview_result(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_encodedBytes = sse_decode_list_prim_u_8_strict(deserializer);
+    var var_format = sse_decode_String(deserializer);
+    var var_width = sse_decode_u_32(deserializer);
+    var var_height = sse_decode_u_32(deserializer);
+    var var_sizeBytes = sse_decode_u_64(deserializer);
+    return PreviewResult(
+      encodedBytes: var_encodedBytes,
+      format: var_format,
+      width: var_width,
+      height: var_height,
+      sizeBytes: var_sizeBytes,
+    );
+  }
+
+  @protected
+  ProcessBytesRequest sse_decode_process_bytes_request(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_data = sse_decode_list_prim_u_8_strict(deserializer);
+    var var_operation = sse_decode_image_operation(deserializer);
+    return ProcessBytesRequest(data: var_data, operation: var_operation);
+  }
+
+  @protected
+  ProcessFileRequest sse_decode_process_file_request(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_inputPath = sse_decode_String(deserializer);
+    var var_outputPath = sse_decode_opt_String(deserializer);
+    var var_overwrite = sse_decode_bool(deserializer);
+    var var_operation = sse_decode_image_operation(deserializer);
+    return ProcessFileRequest(
+      inputPath: var_inputPath,
+      outputPath: var_outputPath,
+      overwrite: var_overwrite,
+      operation: var_operation,
+    );
+  }
+
+  @protected
+  ProcessResult sse_decode_process_result(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_outputPath = sse_decode_String(deserializer);
+    var var_format = sse_decode_String(deserializer);
+    var var_width = sse_decode_u_32(deserializer);
+    var var_height = sse_decode_u_32(deserializer);
+    var var_originalSize = sse_decode_u_64(deserializer);
+    var var_newSize = sse_decode_u_64(deserializer);
+    return ProcessResult(
+      outputPath: var_outputPath,
+      format: var_format,
+      width: var_width,
+      height: var_height,
+      originalSize: var_originalSize,
+      newSize: var_newSize,
+    );
+  }
+
+  @protected
+  ResizeOptions sse_decode_resize_options(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_resize = sse_decode_resize_spec(deserializer);
+    var var_targetFormat = sse_decode_opt_String(deserializer);
+    var var_quality = sse_decode_u_8(deserializer);
+    return ResizeOptions(
+      resize: var_resize,
+      targetFormat: var_targetFormat,
+      quality: var_quality,
+    );
+  }
+
+  @protected
+  ResizeSpec sse_decode_resize_spec(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_value = sse_decode_u_32(deserializer);
+        return ResizeSpec_Width(value: var_value);
+      case 1:
+        var var_value = sse_decode_u_32(deserializer);
+        return ResizeSpec_Height(value: var_value);
+      case 2:
+        var var_width = sse_decode_u_32(deserializer);
+        var var_height = sse_decode_u_32(deserializer);
+        return ResizeSpec_Exact(width: var_width, height: var_height);
+      case 3:
+        var var_maxWidth = sse_decode_u_32(deserializer);
+        var var_maxHeight = sse_decode_u_32(deserializer);
+        return ResizeSpec_Fit(maxWidth: var_maxWidth, maxHeight: var_maxHeight);
+      case 4:
+        var var_factor = sse_decode_f_64(deserializer);
+        return ResizeSpec_Scale(factor: var_factor);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  SlimgBridgeError sse_decode_slimg_bridge_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_message = sse_decode_String(deserializer);
+        return SlimgBridgeError_InvalidRequest(message: var_message);
+      case 1:
+        var var_path = sse_decode_String(deserializer);
+        var var_message = sse_decode_String(deserializer);
+        return SlimgBridgeError_InvalidPath(
+          path: var_path,
+          message: var_message,
+        );
+      case 2:
+        var var_format = sse_decode_String(deserializer);
+        return SlimgBridgeError_UnsupportedFormat(format: var_format);
+      case 3:
+        var var_detail = sse_decode_String(deserializer);
+        return SlimgBridgeError_UnknownFormat(detail: var_detail);
+      case 4:
+        var var_message = sse_decode_String(deserializer);
+        return SlimgBridgeError_Decode(message: var_message);
+      case 5:
+        var var_message = sse_decode_String(deserializer);
+        return SlimgBridgeError_Encode(message: var_message);
+      case 6:
+        var var_message = sse_decode_String(deserializer);
+        return SlimgBridgeError_Resize(message: var_message);
+      case 7:
+        var var_message = sse_decode_String(deserializer);
+        return SlimgBridgeError_Crop(message: var_message);
+      case 8:
+        var var_message = sse_decode_String(deserializer);
+        return SlimgBridgeError_Extend(message: var_message);
+      case 9:
+        var var_message = sse_decode_String(deserializer);
+        return SlimgBridgeError_Io(message: var_message);
+      case 10:
+        var var_message = sse_decode_String(deserializer);
+        return SlimgBridgeError_Internal(message: var_message);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  int sse_decode_u_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint32();
+  }
+
+  @protected
+  BigInt sse_decode_u_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getBigUint64();
   }
 
   @protected
@@ -196,15 +1555,348 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  bool sse_decode_bool(SseDeserializer deserializer) {
+  void sse_encode_AnyhowException(
+    AnyhowException self,
+    SseSerializer serializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getUint8() != 0;
+    sse_encode_String(self.message, serializer);
   }
 
   @protected
   void sse_encode_String(String self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
+  }
+
+  @protected
+  void sse_encode_batch_item_result(
+    BatchItemResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.inputPath, serializer);
+    sse_encode_bool(self.success, serializer);
+    sse_encode_opt_box_autoadd_process_result(self.result, serializer);
+    sse_encode_opt_box_autoadd_slimg_bridge_error(self.error, serializer);
+  }
+
+  @protected
+  void sse_encode_batch_process_request(
+    BatchProcessRequest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_String(self.inputPaths, serializer);
+    sse_encode_opt_String(self.outputDir, serializer);
+    sse_encode_bool(self.overwrite, serializer);
+    sse_encode_image_operation(self.operation, serializer);
+    sse_encode_bool(self.continueOnError, serializer);
+  }
+
+  @protected
+  void sse_encode_bool(bool self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint8(self ? 1 : 0);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_batch_process_request(
+    BatchProcessRequest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_batch_process_request(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_convert_options(
+    ConvertOptions self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_convert_options(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_crop_options(
+    CropOptions self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_crop_options(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_extend_options(
+    ExtendOptions self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_extend_options(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_fill_spec(
+    FillSpec self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_fill_spec(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_optimize_options(
+    OptimizeOptions self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_optimize_options(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_preview_file_request(
+    PreviewFileRequest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_preview_file_request(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_process_bytes_request(
+    ProcessBytesRequest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_process_bytes_request(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_process_file_request(
+    ProcessFileRequest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_process_file_request(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_process_result(
+    ProcessResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_process_result(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_resize_options(
+    ResizeOptions self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_resize_options(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_slimg_bridge_error(
+    SlimgBridgeError self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_slimg_bridge_error(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_u_64(BigInt self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_64(self, serializer);
+  }
+
+  @protected
+  void sse_encode_convert_options(
+    ConvertOptions self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.targetFormat, serializer);
+    sse_encode_u_8(self.quality, serializer);
+  }
+
+  @protected
+  void sse_encode_crop_options(CropOptions self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_crop_spec(self.crop, serializer);
+    sse_encode_opt_String(self.targetFormat, serializer);
+    sse_encode_u_8(self.quality, serializer);
+  }
+
+  @protected
+  void sse_encode_crop_spec(CropSpec self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case CropSpec_Region(
+        x: final x,
+        y: final y,
+        width: final width,
+        height: final height,
+      ):
+        sse_encode_i_32(0, serializer);
+        sse_encode_u_32(x, serializer);
+        sse_encode_u_32(y, serializer);
+        sse_encode_u_32(width, serializer);
+        sse_encode_u_32(height, serializer);
+      case CropSpec_AspectRatio(width: final width, height: final height):
+        sse_encode_i_32(1, serializer);
+        sse_encode_u_32(width, serializer);
+        sse_encode_u_32(height, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_encoded_image_result(
+    EncodedImageResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_prim_u_8_strict(self.encodedBytes, serializer);
+    sse_encode_String(self.format, serializer);
+    sse_encode_u_32(self.width, serializer);
+    sse_encode_u_32(self.height, serializer);
+    sse_encode_u_64(self.sizeBytes, serializer);
+  }
+
+  @protected
+  void sse_encode_extend_options(ExtendOptions self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_extend_spec(self.extend, serializer);
+    sse_encode_opt_box_autoadd_fill_spec(self.fill, serializer);
+    sse_encode_opt_String(self.targetFormat, serializer);
+    sse_encode_u_8(self.quality, serializer);
+  }
+
+  @protected
+  void sse_encode_extend_spec(ExtendSpec self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case ExtendSpec_AspectRatio(width: final width, height: final height):
+        sse_encode_i_32(0, serializer);
+        sse_encode_u_32(width, serializer);
+        sse_encode_u_32(height, serializer);
+      case ExtendSpec_Size(width: final width, height: final height):
+        sse_encode_i_32(1, serializer);
+        sse_encode_u_32(width, serializer);
+        sse_encode_u_32(height, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_f_64(double self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putFloat64(self);
+  }
+
+  @protected
+  void sse_encode_fill_spec(FillSpec self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case FillSpec_Solid(r: final r, g: final g, b: final b, a: final a):
+        sse_encode_i_32(0, serializer);
+        sse_encode_u_8(r, serializer);
+        sse_encode_u_8(g, serializer);
+        sse_encode_u_8(b, serializer);
+        sse_encode_u_8(a, serializer);
+      case FillSpec_Transparent():
+        sse_encode_i_32(1, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_format_info(FormatInfo self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.extension_, serializer);
+    sse_encode_bool(self.canEncode, serializer);
+  }
+
+  @protected
+  void sse_encode_image_metadata(ImageMetadata self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_32(self.width, serializer);
+    sse_encode_u_32(self.height, serializer);
+    sse_encode_String(self.format, serializer);
+    sse_encode_opt_box_autoadd_u_64(self.fileSize, serializer);
+  }
+
+  @protected
+  void sse_encode_image_operation(
+    ImageOperation self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case ImageOperation_Convert(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_box_autoadd_convert_options(field0, serializer);
+      case ImageOperation_Optimize(field0: final field0):
+        sse_encode_i_32(1, serializer);
+        sse_encode_box_autoadd_optimize_options(field0, serializer);
+      case ImageOperation_Resize(field0: final field0):
+        sse_encode_i_32(2, serializer);
+        sse_encode_box_autoadd_resize_options(field0, serializer);
+      case ImageOperation_Crop(field0: final field0):
+        sse_encode_i_32(3, serializer);
+        sse_encode_box_autoadd_crop_options(field0, serializer);
+      case ImageOperation_Extend(field0: final field0):
+        sse_encode_i_32(4, serializer);
+        sse_encode_box_autoadd_extend_options(field0, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_String(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_batch_item_result(
+    List<BatchItemResult> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_batch_item_result(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_format_info(
+    List<FormatInfo> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_format_info(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_prim_u_8_loose(
+    List<int> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    serializer.buffer.putUint8List(
+      self is Uint8List ? self : Uint8List.fromList(self),
+    );
   }
 
   @protected
@@ -215,6 +1907,219 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     serializer.buffer.putUint8List(self);
+  }
+
+  @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_String(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_fill_spec(
+    FillSpec? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_fill_spec(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_process_result(
+    ProcessResult? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_process_result(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_slimg_bridge_error(
+    SlimgBridgeError? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_slimg_bridge_error(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_u_64(BigInt? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_u_64(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_optimize_options(
+    OptimizeOptions self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_8(self.quality, serializer);
+    sse_encode_bool(self.writeOnlyIfSmaller, serializer);
+  }
+
+  @protected
+  void sse_encode_preview_file_request(
+    PreviewFileRequest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.inputPath, serializer);
+    sse_encode_image_operation(self.operation, serializer);
+  }
+
+  @protected
+  void sse_encode_preview_result(PreviewResult self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_prim_u_8_strict(self.encodedBytes, serializer);
+    sse_encode_String(self.format, serializer);
+    sse_encode_u_32(self.width, serializer);
+    sse_encode_u_32(self.height, serializer);
+    sse_encode_u_64(self.sizeBytes, serializer);
+  }
+
+  @protected
+  void sse_encode_process_bytes_request(
+    ProcessBytesRequest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_prim_u_8_strict(self.data, serializer);
+    sse_encode_image_operation(self.operation, serializer);
+  }
+
+  @protected
+  void sse_encode_process_file_request(
+    ProcessFileRequest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.inputPath, serializer);
+    sse_encode_opt_String(self.outputPath, serializer);
+    sse_encode_bool(self.overwrite, serializer);
+    sse_encode_image_operation(self.operation, serializer);
+  }
+
+  @protected
+  void sse_encode_process_result(ProcessResult self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.outputPath, serializer);
+    sse_encode_String(self.format, serializer);
+    sse_encode_u_32(self.width, serializer);
+    sse_encode_u_32(self.height, serializer);
+    sse_encode_u_64(self.originalSize, serializer);
+    sse_encode_u_64(self.newSize, serializer);
+  }
+
+  @protected
+  void sse_encode_resize_options(ResizeOptions self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_resize_spec(self.resize, serializer);
+    sse_encode_opt_String(self.targetFormat, serializer);
+    sse_encode_u_8(self.quality, serializer);
+  }
+
+  @protected
+  void sse_encode_resize_spec(ResizeSpec self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case ResizeSpec_Width(value: final value):
+        sse_encode_i_32(0, serializer);
+        sse_encode_u_32(value, serializer);
+      case ResizeSpec_Height(value: final value):
+        sse_encode_i_32(1, serializer);
+        sse_encode_u_32(value, serializer);
+      case ResizeSpec_Exact(width: final width, height: final height):
+        sse_encode_i_32(2, serializer);
+        sse_encode_u_32(width, serializer);
+        sse_encode_u_32(height, serializer);
+      case ResizeSpec_Fit(maxWidth: final maxWidth, maxHeight: final maxHeight):
+        sse_encode_i_32(3, serializer);
+        sse_encode_u_32(maxWidth, serializer);
+        sse_encode_u_32(maxHeight, serializer);
+      case ResizeSpec_Scale(factor: final factor):
+        sse_encode_i_32(4, serializer);
+        sse_encode_f_64(factor, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_slimg_bridge_error(
+    SlimgBridgeError self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case SlimgBridgeError_InvalidRequest(message: final message):
+        sse_encode_i_32(0, serializer);
+        sse_encode_String(message, serializer);
+      case SlimgBridgeError_InvalidPath(
+        path: final path,
+        message: final message,
+      ):
+        sse_encode_i_32(1, serializer);
+        sse_encode_String(path, serializer);
+        sse_encode_String(message, serializer);
+      case SlimgBridgeError_UnsupportedFormat(format: final format):
+        sse_encode_i_32(2, serializer);
+        sse_encode_String(format, serializer);
+      case SlimgBridgeError_UnknownFormat(detail: final detail):
+        sse_encode_i_32(3, serializer);
+        sse_encode_String(detail, serializer);
+      case SlimgBridgeError_Decode(message: final message):
+        sse_encode_i_32(4, serializer);
+        sse_encode_String(message, serializer);
+      case SlimgBridgeError_Encode(message: final message):
+        sse_encode_i_32(5, serializer);
+        sse_encode_String(message, serializer);
+      case SlimgBridgeError_Resize(message: final message):
+        sse_encode_i_32(6, serializer);
+        sse_encode_String(message, serializer);
+      case SlimgBridgeError_Crop(message: final message):
+        sse_encode_i_32(7, serializer);
+        sse_encode_String(message, serializer);
+      case SlimgBridgeError_Extend(message: final message):
+        sse_encode_i_32(8, serializer);
+        sse_encode_String(message, serializer);
+      case SlimgBridgeError_Io(message: final message):
+        sse_encode_i_32(9, serializer);
+        sse_encode_String(message, serializer);
+      case SlimgBridgeError_Internal(message: final message):
+        sse_encode_i_32(10, serializer);
+        sse_encode_String(message, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_u_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint32(self);
+  }
+
+  @protected
+  void sse_encode_u_64(BigInt self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putBigUint64(self);
   }
 
   @protected
@@ -232,11 +2137,5 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_i_32(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putInt32(self);
-  }
-
-  @protected
-  void sse_encode_bool(bool self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putUint8(self ? 1 : 0);
   }
 }

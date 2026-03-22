@@ -3,12 +3,14 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
-import 'api/simple.dart';
+import 'api/bridge.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' as ffi;
+import 'error.dart';
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
+import 'types.dart';
 
 abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RustLibApiImplPlatform({
@@ -19,10 +21,154 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   });
 
   @protected
+  AnyhowException dco_decode_AnyhowException(dynamic raw);
+
+  @protected
   String dco_decode_String(dynamic raw);
 
   @protected
+  BatchItemResult dco_decode_batch_item_result(dynamic raw);
+
+  @protected
+  BatchProcessRequest dco_decode_batch_process_request(dynamic raw);
+
+  @protected
+  bool dco_decode_bool(dynamic raw);
+
+  @protected
+  BatchProcessRequest dco_decode_box_autoadd_batch_process_request(dynamic raw);
+
+  @protected
+  ConvertOptions dco_decode_box_autoadd_convert_options(dynamic raw);
+
+  @protected
+  CropOptions dco_decode_box_autoadd_crop_options(dynamic raw);
+
+  @protected
+  ExtendOptions dco_decode_box_autoadd_extend_options(dynamic raw);
+
+  @protected
+  FillSpec dco_decode_box_autoadd_fill_spec(dynamic raw);
+
+  @protected
+  OptimizeOptions dco_decode_box_autoadd_optimize_options(dynamic raw);
+
+  @protected
+  PreviewFileRequest dco_decode_box_autoadd_preview_file_request(dynamic raw);
+
+  @protected
+  ProcessBytesRequest dco_decode_box_autoadd_process_bytes_request(dynamic raw);
+
+  @protected
+  ProcessFileRequest dco_decode_box_autoadd_process_file_request(dynamic raw);
+
+  @protected
+  ProcessResult dco_decode_box_autoadd_process_result(dynamic raw);
+
+  @protected
+  ResizeOptions dco_decode_box_autoadd_resize_options(dynamic raw);
+
+  @protected
+  SlimgBridgeError dco_decode_box_autoadd_slimg_bridge_error(dynamic raw);
+
+  @protected
+  BigInt dco_decode_box_autoadd_u_64(dynamic raw);
+
+  @protected
+  ConvertOptions dco_decode_convert_options(dynamic raw);
+
+  @protected
+  CropOptions dco_decode_crop_options(dynamic raw);
+
+  @protected
+  CropSpec dco_decode_crop_spec(dynamic raw);
+
+  @protected
+  EncodedImageResult dco_decode_encoded_image_result(dynamic raw);
+
+  @protected
+  ExtendOptions dco_decode_extend_options(dynamic raw);
+
+  @protected
+  ExtendSpec dco_decode_extend_spec(dynamic raw);
+
+  @protected
+  double dco_decode_f_64(dynamic raw);
+
+  @protected
+  FillSpec dco_decode_fill_spec(dynamic raw);
+
+  @protected
+  FormatInfo dco_decode_format_info(dynamic raw);
+
+  @protected
+  ImageMetadata dco_decode_image_metadata(dynamic raw);
+
+  @protected
+  ImageOperation dco_decode_image_operation(dynamic raw);
+
+  @protected
+  List<String> dco_decode_list_String(dynamic raw);
+
+  @protected
+  List<BatchItemResult> dco_decode_list_batch_item_result(dynamic raw);
+
+  @protected
+  List<FormatInfo> dco_decode_list_format_info(dynamic raw);
+
+  @protected
+  List<int> dco_decode_list_prim_u_8_loose(dynamic raw);
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  FillSpec? dco_decode_opt_box_autoadd_fill_spec(dynamic raw);
+
+  @protected
+  ProcessResult? dco_decode_opt_box_autoadd_process_result(dynamic raw);
+
+  @protected
+  SlimgBridgeError? dco_decode_opt_box_autoadd_slimg_bridge_error(dynamic raw);
+
+  @protected
+  BigInt? dco_decode_opt_box_autoadd_u_64(dynamic raw);
+
+  @protected
+  OptimizeOptions dco_decode_optimize_options(dynamic raw);
+
+  @protected
+  PreviewFileRequest dco_decode_preview_file_request(dynamic raw);
+
+  @protected
+  PreviewResult dco_decode_preview_result(dynamic raw);
+
+  @protected
+  ProcessBytesRequest dco_decode_process_bytes_request(dynamic raw);
+
+  @protected
+  ProcessFileRequest dco_decode_process_file_request(dynamic raw);
+
+  @protected
+  ProcessResult dco_decode_process_result(dynamic raw);
+
+  @protected
+  ResizeOptions dco_decode_resize_options(dynamic raw);
+
+  @protected
+  ResizeSpec dco_decode_resize_spec(dynamic raw);
+
+  @protected
+  SlimgBridgeError dco_decode_slimg_bridge_error(dynamic raw);
+
+  @protected
+  int dco_decode_u_32(dynamic raw);
+
+  @protected
+  BigInt dco_decode_u_64(dynamic raw);
 
   @protected
   int dco_decode_u_8(dynamic raw);
@@ -31,10 +177,190 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void dco_decode_unit(dynamic raw);
 
   @protected
+  AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
+
+  @protected
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
+  BatchItemResult sse_decode_batch_item_result(SseDeserializer deserializer);
+
+  @protected
+  BatchProcessRequest sse_decode_batch_process_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  bool sse_decode_bool(SseDeserializer deserializer);
+
+  @protected
+  BatchProcessRequest sse_decode_box_autoadd_batch_process_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ConvertOptions sse_decode_box_autoadd_convert_options(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  CropOptions sse_decode_box_autoadd_crop_options(SseDeserializer deserializer);
+
+  @protected
+  ExtendOptions sse_decode_box_autoadd_extend_options(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FillSpec sse_decode_box_autoadd_fill_spec(SseDeserializer deserializer);
+
+  @protected
+  OptimizeOptions sse_decode_box_autoadd_optimize_options(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PreviewFileRequest sse_decode_box_autoadd_preview_file_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ProcessBytesRequest sse_decode_box_autoadd_process_bytes_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ProcessFileRequest sse_decode_box_autoadd_process_file_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ProcessResult sse_decode_box_autoadd_process_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ResizeOptions sse_decode_box_autoadd_resize_options(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SlimgBridgeError sse_decode_box_autoadd_slimg_bridge_error(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  BigInt sse_decode_box_autoadd_u_64(SseDeserializer deserializer);
+
+  @protected
+  ConvertOptions sse_decode_convert_options(SseDeserializer deserializer);
+
+  @protected
+  CropOptions sse_decode_crop_options(SseDeserializer deserializer);
+
+  @protected
+  CropSpec sse_decode_crop_spec(SseDeserializer deserializer);
+
+  @protected
+  EncodedImageResult sse_decode_encoded_image_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ExtendOptions sse_decode_extend_options(SseDeserializer deserializer);
+
+  @protected
+  ExtendSpec sse_decode_extend_spec(SseDeserializer deserializer);
+
+  @protected
+  double sse_decode_f_64(SseDeserializer deserializer);
+
+  @protected
+  FillSpec sse_decode_fill_spec(SseDeserializer deserializer);
+
+  @protected
+  FormatInfo sse_decode_format_info(SseDeserializer deserializer);
+
+  @protected
+  ImageMetadata sse_decode_image_metadata(SseDeserializer deserializer);
+
+  @protected
+  ImageOperation sse_decode_image_operation(SseDeserializer deserializer);
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<BatchItemResult> sse_decode_list_batch_item_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<FormatInfo> sse_decode_list_format_info(SseDeserializer deserializer);
+
+  @protected
+  List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer);
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
+  FillSpec? sse_decode_opt_box_autoadd_fill_spec(SseDeserializer deserializer);
+
+  @protected
+  ProcessResult? sse_decode_opt_box_autoadd_process_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SlimgBridgeError? sse_decode_opt_box_autoadd_slimg_bridge_error(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  BigInt? sse_decode_opt_box_autoadd_u_64(SseDeserializer deserializer);
+
+  @protected
+  OptimizeOptions sse_decode_optimize_options(SseDeserializer deserializer);
+
+  @protected
+  PreviewFileRequest sse_decode_preview_file_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PreviewResult sse_decode_preview_result(SseDeserializer deserializer);
+
+  @protected
+  ProcessBytesRequest sse_decode_process_bytes_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ProcessFileRequest sse_decode_process_file_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ProcessResult sse_decode_process_result(SseDeserializer deserializer);
+
+  @protected
+  ResizeOptions sse_decode_resize_options(SseDeserializer deserializer);
+
+  @protected
+  ResizeSpec sse_decode_resize_spec(SseDeserializer deserializer);
+
+  @protected
+  SlimgBridgeError sse_decode_slimg_bridge_error(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_u_32(SseDeserializer deserializer);
+
+  @protected
+  BigInt sse_decode_u_64(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_8(SseDeserializer deserializer);
@@ -46,16 +372,241 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
-  bool sse_decode_bool(SseDeserializer deserializer);
+  void sse_encode_AnyhowException(
+    AnyhowException self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_String(String self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_batch_item_result(
+    BatchItemResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_batch_process_request(
+    BatchProcessRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_batch_process_request(
+    BatchProcessRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_convert_options(
+    ConvertOptions self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_crop_options(
+    CropOptions self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_extend_options(
+    ExtendOptions self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_fill_spec(
+    FillSpec self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_optimize_options(
+    OptimizeOptions self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_preview_file_request(
+    PreviewFileRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_process_bytes_request(
+    ProcessBytesRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_process_file_request(
+    ProcessFileRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_process_result(
+    ProcessResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_resize_options(
+    ResizeOptions self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_slimg_bridge_error(
+    SlimgBridgeError self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_u_64(BigInt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_convert_options(
+    ConvertOptions self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_crop_options(CropOptions self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_crop_spec(CropSpec self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_encoded_image_result(
+    EncodedImageResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_extend_options(ExtendOptions self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_extend_spec(ExtendSpec self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_f_64(double self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_fill_spec(FillSpec self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_format_info(FormatInfo self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_image_metadata(ImageMetadata self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_image_operation(
+    ImageOperation self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_batch_item_result(
+    List<BatchItemResult> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_format_info(
+    List<FormatInfo> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_fill_spec(
+    FillSpec? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_process_result(
+    ProcessResult? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_slimg_bridge_error(
+    SlimgBridgeError? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_u_64(BigInt? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_optimize_options(
+    OptimizeOptions self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_preview_file_request(
+    PreviewFileRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_preview_result(PreviewResult self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_process_bytes_request(
+    ProcessBytesRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_process_file_request(
+    ProcessFileRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_process_result(ProcessResult self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_resize_options(ResizeOptions self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_resize_spec(ResizeSpec self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_slimg_bridge_error(
+    SlimgBridgeError self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_u_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_64(BigInt self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_8(int self, SseSerializer serializer);
@@ -65,9 +616,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_bool(bool self, SseSerializer serializer);
 }
 
 // Section: wire_class

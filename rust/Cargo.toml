@@ -4,10 +4,18 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-crate-type = ["cdylib", "staticlib"]
+crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
+anyhow = "1.0.100"
 flutter_rust_bridge = "=2.11.1"
+rayon = "1.11.0"
+slimg-core = "0.5.1"
+tempfile = "3.23.0"
+thiserror = "2.0.17"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
+
+[dev-dependencies]
+tempfile = "3.23.0"
