@@ -134,15 +134,11 @@ class _OimgHomePageState extends State<OimgHomePage> {
         final title =
             widget.controller.currentFileName ??
             'Open images from your desktop';
-        final subtitle = widget.controller.hasSession
-            ? 'Single-window viewer with session navigation'
-            : 'Finder, File Explorer, and Linux file-manager friendly';
 
         return Scaffold(
           headers: [
             AppBar(
               title: const Text('OIMG'),
-              subtitle: Text(subtitle),
               trailing: [
                 if (widget.controller.currentPositionLabel case final position?)
                   Card(
@@ -382,22 +378,6 @@ class _SessionSidebar extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        Card(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Open With behavior',
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'New files from Finder, File Explorer, or your Linux file manager replace the current session in this window.',
-                style: TextStyle(color: theme.colorScheme.mutedForeground),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }
@@ -465,64 +445,9 @@ class _EmptyState extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'A desktop image viewer built around shell-level open-file flows. Use Open With from Finder, File Explorer, or your Linux file manager to drop a session into this window.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: theme.colorScheme.mutedForeground,
-                        ),
-                      ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Card(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Supported formats',
-                            style: TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            'PNG, JPEG, GIF, BMP, WebP, TIFF',
-                            style: TextStyle(
-                              color: theme.colorScheme.mutedForeground,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Card(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Session model',
-                            style: TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            'One window, one active session. Multi-select launches become a navigable sequence.',
-                            style: TextStyle(
-                              color: theme.colorScheme.mutedForeground,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
               ),
             ],
           ),
