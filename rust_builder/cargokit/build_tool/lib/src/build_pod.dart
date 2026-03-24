@@ -57,8 +57,12 @@ class BuildPod {
 
     final libName = environment.crateInfo.packageName;
 
-    // If there is static lib, use it and link it with pod
-    if (staticLibs.isNotEmpty) {
+    final preferDynamicLib =
+        Environment.darwinPlatformName == 'macosx' && dynamicLibs.isNotEmpty;
+
+    // On macOS, prefer the Rust dylib so its transitive native dependencies are
+    // tracked by the framework instead of being lost behind a static archive.
+    if (!preferDynamicLib && staticLibs.isNotEmpty) {
       final finalTargetFile = path.join(outputDir, "lib$libName.a");
       performLipo(finalTargetFile, staticLibs.map((e) => e.path));
     } else {

@@ -11,10 +11,15 @@ NEW_PATH=`echo $PATH | tr ":" "\n" | grep -v "Contents/Developer/" | tr "\n" ":"
 
 export PATH=${NEW_PATH%?} # remove trailing :
 
-env
-
 # Platform name (macosx, iphoneos, iphonesimulator)
 export CARGOKIT_DARWIN_PLATFORM_NAME=$PLATFORM_NAME
+
+# slimg-core enables AVIF decode through dav1d-sys. On macOS, force dav1d-sys
+# to build dav1d from source as a static library so the app does not depend on
+# a Homebrew dylib at runtime.
+if [ "$CARGOKIT_DARWIN_PLATFORM_NAME" = "macosx" ]; then
+  export SYSTEM_DEPS_DAV1D_BUILD_INTERNAL=${SYSTEM_DEPS_DAV1D_BUILD_INTERNAL:-always}
+fi
 
 # Arctive architectures (arm64, armv7, x86_64), space separated.
 export CARGOKIT_DARWIN_ARCHS=$ARCHS
