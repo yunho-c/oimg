@@ -21,6 +21,7 @@ void main() {
       );
 
       expect(plan.usesSourceCodec, isTrue);
+      expect(plan.useSourceImageForPreview, isFalse);
       expect(plan.processRequest.outputPath, isNull);
       plan.processRequest.operation.when(
         convert: (_) => fail('expected optimize'),
@@ -49,6 +50,7 @@ void main() {
       );
 
       expect(plan.usesSourceCodec, isFalse);
+      expect(plan.useSourceImageForPreview, isFalse);
       expect(plan.processRequest.outputPath, '/tmp/photo.optimized.jpeg');
       plan.processRequest.operation.when(
         convert: (options) {
@@ -60,6 +62,53 @@ void main() {
         crop: (_) => fail('unexpected crop'),
         extend: (_) => fail('unexpected extend'),
       );
+    });
+
+    test('uses source image for lossless preview targets', () {
+      final losslessPngPlan = buildOptimizationPlan(
+        file: OpenedImageFile(
+          path: '/tmp/photo.jpeg',
+          metadata: ImageMetadata(
+            width: 48,
+            height: 32,
+            format: 'jpeg',
+            fileSize: BigInt.from(2000),
+          ),
+        ),
+        settings: const AppSettings(
+          compressionMethod: CompressionMethod.lossless,
+          compressionPriority: CompressionPriority.compatibility,
+          advancedMode: false,
+          preferredCodec: PreferredCodec.jpeg,
+          quality: 80,
+          developerModeEnabled: false,
+          timingLogsEnabled: false,
+        ),
+      );
+
+      final losslessWebpPlan = buildOptimizationPlan(
+        file: OpenedImageFile(
+          path: '/tmp/photo.jpeg',
+          metadata: ImageMetadata(
+            width: 48,
+            height: 32,
+            format: 'jpeg',
+            fileSize: BigInt.from(2000),
+          ),
+        ),
+        settings: const AppSettings(
+          compressionMethod: CompressionMethod.lossy,
+          compressionPriority: CompressionPriority.compatibility,
+          advancedMode: true,
+          preferredCodec: PreferredCodec.webp,
+          quality: 100,
+          developerModeEnabled: false,
+          timingLogsEnabled: false,
+        ),
+      );
+
+      expect(losslessPngPlan.useSourceImageForPreview, isTrue);
+      expect(losslessWebpPlan.useSourceImageForPreview, isTrue);
     });
   });
 }

@@ -8,12 +8,14 @@ class OptimizationPlan {
     required this.targetCodec,
     required this.processRequest,
     required this.previewRequest,
+    required this.useSourceImageForPreview,
   });
 
   final OpenedImageFile sourceFile;
   final PreferredCodec targetCodec;
   final ProcessFileRequest processRequest;
   final PreviewFileRequest previewRequest;
+  final bool useSourceImageForPreview;
 
   bool get usesSourceCodec => sourceFile.metadata.format == codecIdOf(targetCodec);
 }
@@ -25,6 +27,12 @@ OptimizationPlan buildOptimizationPlan({
   final targetCodec = settings.effectiveCodec;
   final targetFormat = codecIdOf(targetCodec);
   final usesSourceCodec = file.metadata.format == targetFormat;
+  final useSourceImageForPreview = switch (targetCodec) {
+    PreferredCodec.png => true,
+    PreferredCodec.webp => settings.quality == 100,
+    PreferredCodec.jxl => settings.quality == 100,
+    _ => false,
+  };
   final operation = usesSourceCodec
       ? ImageOperation.optimize(
           OptimizeOptions(
@@ -39,6 +47,7 @@ OptimizationPlan buildOptimizationPlan({
   return OptimizationPlan(
     sourceFile: file,
     targetCodec: targetCodec,
+    useSourceImageForPreview: useSourceImageForPreview,
     processRequest: ProcessFileRequest(
       inputPath: file.path,
       outputPath: usesSourceCodec

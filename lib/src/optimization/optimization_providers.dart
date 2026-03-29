@@ -11,6 +11,18 @@ import 'optimization_plan.dart';
 final slimgApiProvider = Provider<SlimgApi>((ref) => const FrbSlimgApi());
 int _previewRequestSequence = 0;
 
+final currentOptimizationPlanProvider =
+    FutureProvider.autoDispose<OptimizationPlan?>((ref) async {
+      final controller = ref.watch(fileOpenControllerProvider);
+      final currentFile = controller.currentFile;
+      if (currentFile == null) {
+        return null;
+      }
+
+      final settings = await ref.watch(appSettingsProvider.future);
+      return buildOptimizationPlan(file: currentFile, settings: settings);
+    });
+
 class OptimizationPreview {
   const OptimizationPreview({
     required this.sourceFile,
@@ -54,21 +66,18 @@ final currentPreviewProvider = FutureProvider.autoDispose<OptimizationPreview?>(
     );
   });
 
-  final controller = ref.watch(fileOpenControllerProvider);
-  final currentFile = controller.currentFile;
-  if (currentFile == null) {
-    return null;
-  }
-
   try {
-    final settingsStopwatch = Stopwatch()..start();
-    final settings = await ref.watch(appSettingsProvider.future);
-    settingsStopwatch.stop();
+    final planStopwatch = Stopwatch()..start();
+    final plan = await ref.watch(currentOptimizationPlanProvider.future);
+    planStopwatch.stop();
+    if (plan == null) {
+      return null;
+    }
+
     DeveloperDiagnostics.logTiming(
       'preview:$requestId',
-      'settings=${settingsStopwatch.elapsedMilliseconds}ms path=${currentFile.path} codec=${settings.effectiveCodec.name} quality=${settings.quality}',
+      'plan=${planStopwatch.elapsedMilliseconds}ms path=${plan.sourceFile.path} codec=${plan.targetCodec.name} useSource=${plan.useSourceImageForPreview}',
     );
-    final plan = buildOptimizationPlan(file: currentFile, settings: settings);
 
     final debounceStopwatch = Stopwatch()..start();
     await Future<void>.delayed(const Duration(milliseconds: 150));
@@ -90,7 +99,7 @@ final currentPreviewProvider = FutureProvider.autoDispose<OptimizationPreview?>(
     );
 
     return OptimizationPreview(
-      sourceFile: currentFile,
+      sourceFile: plan.sourceFile,
       plan: plan,
       result: result,
     );

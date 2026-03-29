@@ -364,6 +364,7 @@ class _ImageStage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final plan = ref.watch(currentOptimizationPlanProvider);
     final preview = ref.watch(currentPreviewProvider);
 
     return Card(
@@ -388,36 +389,73 @@ class _ImageStage extends ConsumerWidget {
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 10),
-                preview.when(
-                  data: (preview) {
-                    if (preview == null) {
+                plan.when(
+                  data: (plan) {
+                    if (plan == null) {
                       return const SizedBox.shrink();
                     }
-                    return Wrap(
-                      spacing: 12,
-                      runSpacing: 4,
-                      children: [
-                        _PreviewMetaItem(
-                          label: 'Codec',
-                          value: formatLabel(preview.result.format),
-                        ),
-                        if (preview.originalSize case final original?)
+                    return preview.when(
+                      data: (preview) {
+                        final estimatedSize = preview?.result.sizeBytes.toInt();
+                        return Wrap(
+                          spacing: 12,
+                          runSpacing: 4,
+                          children: [
+                            _PreviewMetaItem(
+                              label: 'Codec',
+                              value: preview == null
+                                  ? codecLabel(plan.targetCodec)
+                                  : formatLabel(preview.result.format),
+                            ),
+                            if (preview?.originalSize case final original?)
+                              _PreviewMetaItem(
+                                label: 'Size',
+                                value:
+                                    '${_formatBytes(original)} -> ${_formatBytes(estimatedSize!)}',
+                              ),
+                            if (preview?.savingsPercent case final savings?)
+                              _PreviewMetaItem(
+                                label: 'Savings',
+                                value: '${savings.toStringAsFixed(0)}%',
+                              )
+                            else if (plan.useSourceImageForPreview)
+                              const _PreviewMetaItem(
+                                label: 'Size',
+                                value: 'Estimating',
+                              ),
+                          ],
+                        );
+                      },
+                      loading: () => Wrap(
+                        spacing: 12,
+                        runSpacing: 4,
+                        children: [
                           _PreviewMetaItem(
-                            label: 'Size',
-                            value:
-                                '${_formatBytes(original)} -> ${_formatBytes(preview.result.sizeBytes.toInt())}',
+                            label: 'Codec',
+                            value: codecLabel(plan.targetCodec),
                           ),
-                        if (preview.savingsPercent case final savings?)
+                          Text(
+                            plan.useSourceImageForPreview
+                                ? 'Estimating'
+                                : 'Loading preview',
+                          ).xSmall().muted(),
+                        ],
+                      ),
+                      error: (_, _) => Wrap(
+                        spacing: 12,
+                        runSpacing: 4,
+                        children: [
                           _PreviewMetaItem(
-                            label: 'Savings',
-                            value: '${savings.toStringAsFixed(0)}%',
+                            label: 'Codec',
+                            value: codecLabel(plan.targetCodec),
                           ),
-                      ],
+                          Text('Preview unavailable').xSmall().muted(),
+                        ],
+                      ),
                     );
                   },
                   loading: () => Text('Loading preview').xSmall().muted(),
-                  error: (_, _) =>
-                      Text('Preview unavailable').xSmall().muted(),
+                  error: (_, _) => Text('Preview unavailable').xSmall().muted(),
                 ),
               ],
             ),
@@ -427,12 +465,31 @@ class _ImageStage extends ConsumerWidget {
             child: Container(
               color: theme.colorScheme.background,
               padding: const EdgeInsets.all(10),
-              child: preview.when(
-                data: (preview) => _PreviewCanvas(
-                  path: currentFile.path,
-                  fileName: FileOpenController.fileNameOf(currentFile.path),
-                  preview: preview,
-                ),
+              child: plan.when(
+                data: (plan) {
+                  final useSourceImage = plan?.useSourceImageForPreview ?? false;
+                  return preview.when(
+                    data: (preview) => _PreviewCanvas(
+                      path: currentFile.path,
+                      fileName: FileOpenController.fileNameOf(currentFile.path),
+                      preview: useSourceImage ? null : preview,
+                    ),
+                    loading: () => useSourceImage
+                        ? _PreviewCanvas(
+                            path: currentFile.path,
+                            fileName: FileOpenController.fileNameOf(
+                              currentFile.path,
+                            ),
+                            preview: null,
+                          )
+                        : const Center(child: CircularProgressIndicator()),
+                    error: (_, _) => _PreviewCanvas(
+                      path: currentFile.path,
+                      fileName: FileOpenController.fileNameOf(currentFile.path),
+                      preview: null,
+                    ),
+                  );
+                },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (_, _) => _PreviewCanvas(
                   path: currentFile.path,

@@ -10,6 +10,7 @@ import 'package:oimg/src/file_open/file_open_providers.dart';
 import 'package:oimg/src/optimization/optimization_providers.dart';
 import 'package:oimg/src/rust/slimg_api.dart';
 import 'package:oimg/src/rust/types.dart';
+import 'package:oimg/src/settings/app_settings.dart';
 import 'package:oimg/src/settings/app_settings_controller.dart';
 import 'package:oimg/src/settings/app_settings_repository.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -226,6 +227,48 @@ void main() {
     expect(store.value, contains('"developerModeEnabled":true'));
     expect(store.value, contains('"timingLogsEnabled":true'));
   });
+
+  testWidgets(
+    'lossless preview shows the source image while estimating in background',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final store = _FakeAppSettingsStore()
+        ..value = const AppSettings(
+          compressionMethod: CompressionMethod.lossless,
+          compressionPriority: CompressionPriority.compatibility,
+          advancedMode: false,
+          preferredCodec: PreferredCodec.jpeg,
+          quality: 80,
+          developerModeEnabled: false,
+          timingLogsEnabled: false,
+        ).toJsonString();
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.jpg': _metadata('jpeg', 2400)},
+        previewDelay: const Duration(seconds: 5),
+      );
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.jpg'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(
+        _buildApp(controller: controller, slimg: slimg, store: store),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text('Estimating'), findsWidgets);
+      expect(slimg.previewCallCount, 1);
+
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pump();
+    },
+  );
 }
 
 Widget _buildApp({
@@ -280,12 +323,16 @@ class _FakeAppSettingsStore implements AppSettingsStore {
 }
 
 class _FakeSlimgApi implements SlimgApi {
-  _FakeSlimgApi({Map<String, ImageMetadata>? inspectResults})
-    : inspectResults = inspectResults ?? {};
+  _FakeSlimgApi({
+    Map<String, ImageMetadata>? inspectResults,
+    this.previewDelay = Duration.zero,
+  }) : inspectResults = inspectResults ?? {};
 
   final Map<String, ImageMetadata> inspectResults;
+  final Duration previewDelay;
   ProcessFileBatchRequest? lastBatchRequest;
   bool lastTimingLogsEnabled = false;
+  int previewCallCount = 0;
 
   static final Uint8List _previewBytes = base64Decode(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==',
@@ -307,6 +354,10 @@ class _FakeSlimgApi implements SlimgApi {
 
   @override
   Future<PreviewResult> previewFile({required PreviewFileRequest request}) async {
+    previewCallCount += 1;
+    if (previewDelay > Duration.zero) {
+      await Future<void>.delayed(previewDelay);
+    }
     return PreviewResult(
       encodedBytes: _previewBytes,
       format: 'jpeg',
