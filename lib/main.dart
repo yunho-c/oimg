@@ -439,13 +439,13 @@ class _ExplorerSidebar extends StatelessWidget {
               builder: (context, node) {
                 final entry = node.data;
                 return TreeItemView(
-                  leading: Icon(
-                    entry.isDirectory ? LucideIcons.folder : LucideIcons.image,
-                    size: 16,
-                    color: entry.isDirectory
-                        ? theme.colorScheme.mutedForeground
-                        : theme.colorScheme.foreground,
-                  ),
+                  leading: entry.isDirectory
+                      ? Icon(
+                          LucideIcons.folder,
+                          size: 16,
+                          color: theme.colorScheme.mutedForeground,
+                        )
+                      : null,
                   trailing: entry.sizeLabel == null
                       ? null
                       : Text(entry.sizeLabel!).small().muted(),
