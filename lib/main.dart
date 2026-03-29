@@ -564,14 +564,42 @@ class _SettingsSidebar extends ConsumerWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-            child: Text(
-              'Settings',
-              style: TextStyle(
-                color: theme.colorScheme.mutedForeground,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.6,
-              ),
-            ).xSmall(),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Settings',
+                    style: TextStyle(
+                      color: theme.colorScheme.mutedForeground,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.6,
+                    ),
+                  ).xSmall(),
+                ),
+                settings.when(
+                  data: (settings) {
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Advanced',
+                          style: TextStyle(
+                            color: theme.colorScheme.mutedForeground,
+                          ),
+                        ).xSmall(),
+                        const SizedBox(width: 8),
+                        Switch(
+                          value: settings.advancedMode,
+                          onChanged: notifier.setAdvancedMode,
+                        ),
+                      ],
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, _) => const SizedBox.shrink(),
+                ),
+              ],
+            ),
           ),
           const Divider(),
           Expanded(
@@ -583,18 +611,6 @@ class _SettingsSidebar extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _SettingsLabel('Advanced'),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(child: const Text('Advanced mode').small()),
-                          Switch(
-                            value: settings.advancedMode,
-                            onChanged: notifier.setAdvancedMode,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
                       if (settings.advancedMode) ...[
                         _SettingsLabel('Codec'),
                         const SizedBox(height: 8),
