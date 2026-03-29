@@ -782,7 +782,6 @@ class _SettingsSidebar extends ConsumerWidget {
     final settings = ref.watch(appSettingsProvider);
     final notifier = ref.read(appSettingsProvider.notifier);
     final runState = ref.watch(optimizationRunControllerProvider);
-    final runController = ref.read(optimizationRunControllerProvider.notifier);
     final fileController = ref.watch(fileOpenControllerProvider);
 
     return Card(
@@ -962,33 +961,9 @@ class _SettingsSidebar extends ConsumerWidget {
                       _SettingsLabel('Current codec'),
                       const SizedBox(height: 8),
                       Text(codecLabel(settings.effectiveCodec)).small().medium(),
-                      const SizedBox(height: 16),
-                      _SettingsLabel('Actions'),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: PrimaryButton(
-                              onPressed: runState.isRunning
-                                  ? null
-                                  : runController.optimizeSelected,
-                              child: const Text('Optimize selected'),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: OutlineButton(
-                              onPressed: runState.isRunning
-                                  ? null
-                                  : runController.optimizeAll,
-                              child: const Text('Optimize all'),
-                            ),
-                          ),
-                        ],
-                      ),
                       if (runState.globalError case final error?)
                         Padding(
-                          padding: const EdgeInsets.only(top: 10),
+                          padding: const EdgeInsets.only(top: 16),
                           child: Text(error).xSmall().muted(),
                         ),
                       const SizedBox(height: 16),
@@ -1204,15 +1179,17 @@ class _StatusRow extends StatelessWidget {
   }
 }
 
-class _BottomSidebar extends StatelessWidget {
+class _BottomSidebar extends ConsumerWidget {
   const _BottomSidebar({required this.currentFile});
 
   final OpenedImageFile currentFile;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final metadata = currentFile.metadata;
+    final runState = ref.watch(optimizationRunControllerProvider);
+    final runController = ref.read(optimizationRunControllerProvider.notifier);
 
     return Card(
       padding: EdgeInsets.zero,
@@ -1239,31 +1216,50 @@ class _BottomSidebar extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    flex: 2,
-                    child: _BottomDetail(
-                      label: 'File',
-                      value: FileOpenController.fileNameOf(currentFile.path),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: _BottomDetail(
+                            label: 'File',
+                            value: FileOpenController.fileNameOf(currentFile.path),
+                          ),
+                        ),
+                        Expanded(
+                          child: _BottomDetail(
+                            label: 'Format',
+                            value: formatLabel(metadata.format),
+                          ),
+                        ),
+                        Expanded(
+                          child: _BottomDetail(
+                            label: 'Dimensions',
+                            value: '${metadata.width} x ${metadata.height}',
+                          ),
+                        ),
+                        Expanded(
+                          child: _BottomDetail(
+                            label: 'Size',
+                            value: metadata.fileSize == null
+                                ? 'Unknown'
+                                : _formatBytes(metadata.fileSize!.toInt()),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Expanded(
-                    child: _BottomDetail(
-                      label: 'Format',
-                      value: formatLabel(metadata.format),
-                    ),
-                  ),
-                  Expanded(
-                    child: _BottomDetail(
-                      label: 'Dimensions',
-                      value: '${metadata.width} x ${metadata.height}',
-                    ),
-                  ),
-                  Expanded(
-                    child: _BottomDetail(
-                      label: 'Size',
-                      value: metadata.fileSize == null
-                          ? 'Unknown'
-                          : _formatBytes(metadata.fileSize!.toInt()),
-                    ),
+                  const SizedBox(width: 16),
+                  SizedBox(
+                    width: 220,
+                    child: runState.isRunning
+                        ? Button.destructive(
+                            onPressed: runController.cancelCurrentRun,
+                            child: const Text('Cancel'),
+                          )
+                        : PrimaryButton(
+                            onPressed: runController.optimizeAll,
+                            child: const Text('Optimize'),
+                          ),
                   ),
                 ],
               ),

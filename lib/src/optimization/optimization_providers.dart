@@ -154,6 +154,8 @@ final optimizationRunControllerProvider =
     );
 
 class OptimizationRunController extends Notifier<OptimizationRunState> {
+  int _activeRunToken = 0;
+
   @override
   OptimizationRunState build() => const OptimizationRunState();
 
@@ -173,12 +175,26 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
     await _run(files);
   }
 
+  void cancelCurrentRun() {
+    if (!state.isRunning) {
+      return;
+    }
+
+    _activeRunToken += 1;
+    state = const OptimizationRunState();
+  }
+
   Future<void> _run(List<OpenedImageFile> files) async {
     if (state.isRunning) {
       return;
     }
 
+    final runToken = ++_activeRunToken;
+
     final settings = await ref.read(appSettingsProvider.future);
+    if (runToken != _activeRunToken) {
+      return;
+    }
     final requests = files
         .map((file) => buildOptimizationPlan(file: file, settings: settings))
         .map((plan) => plan.processRequest)
@@ -203,8 +219,14 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
               continueOnError: true,
             ),
           );
+      if (runToken != _activeRunToken) {
+        return;
+      }
 
       await ref.read(fileOpenControllerProvider).applyProcessResults(results);
+      if (runToken != _activeRunToken) {
+        return;
+      }
 
       final nextItems = <String, OptimizationItemState>{};
       for (final item in results) {
@@ -228,6 +250,9 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
 
       state = OptimizationRunState(isRunning: false, items: nextItems);
     } on Object catch (error) {
+      if (runToken != _activeRunToken) {
+        return;
+      }
       state = OptimizationRunState(
         isRunning: false,
         items: state.items,

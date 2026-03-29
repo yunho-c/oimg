@@ -57,8 +57,9 @@ void main() {
     expect(find.text('Files'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
     expect(find.text('Details'), findsOneWidget);
-    expect(find.text('Optimize selected'), findsOneWidget);
-    expect(find.text('Optimize all'), findsOneWidget);
+    expect(find.text('Optimize'), findsOneWidget);
+    expect(find.text('Optimize selected'), findsNothing);
+    expect(find.text('Optimize all'), findsNothing);
     expect(find.text('first.png'), findsWidgets);
     expect(find.text('second.jpg'), findsWidgets);
     expect(find.text('JPEG'), findsWidgets);
@@ -165,7 +166,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    await tester.tap(find.text('Optimize all'));
+    await tester.tap(find.text('Optimize'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pumpAndSettle();
@@ -189,6 +190,45 @@ void main() {
 
     expect(find.text('first.optimized.jpeg'), findsWidgets);
     expect(find.text('Saved'), findsWidgets);
+  });
+
+  testWidgets('cancel replaces optimize during an active run and ignores late results', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      batchDelay: const Duration(seconds: 5),
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.tap(find.text('Optimize'));
+    await tester.pump();
+
+    expect(find.text('Cancel'), findsOneWidget);
+    expect(find.text('Optimize'), findsNothing);
+
+    await tester.tap(find.text('Cancel'));
+    await tester.pump();
+
+    expect(find.text('Optimize'), findsOneWidget);
+    expect(find.text('Cancel'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump();
+
+    expect(find.text('Saved'), findsNothing);
   });
 
   testWidgets('developer dialog toggles persisted timing logs', (tester) async {
@@ -327,10 +367,12 @@ class _FakeSlimgApi implements SlimgApi {
   _FakeSlimgApi({
     Map<String, ImageMetadata>? inspectResults,
     this.previewDelay = Duration.zero,
+    this.batchDelay = Duration.zero,
   }) : inspectResults = inspectResults ?? {};
 
   final Map<String, ImageMetadata> inspectResults;
   final Duration previewDelay;
+  final Duration batchDelay;
   ProcessFileBatchRequest? lastBatchRequest;
   bool lastTimingLogsEnabled = false;
   int previewCallCount = 0;
@@ -378,6 +420,9 @@ class _FakeSlimgApi implements SlimgApi {
     required ProcessFileBatchRequest request,
   }) async {
     lastBatchRequest = request;
+    if (batchDelay > Duration.zero) {
+      await Future<void>.delayed(batchDelay);
+    }
     return request.requests
         .map((item) {
           final outputPath = item.outputPath ?? item.inputPath;
