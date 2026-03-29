@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oimg/src/file_open/file_open_channel.dart';
 import 'package:oimg/src/file_open/file_open_controller.dart';
 import 'package:oimg/src/rust/frb_generated.dart';
@@ -25,7 +26,7 @@ Future<void> main(List<String> args) async {
   );
   await controller.initialize();
 
-  runApp(MyApp(controller: controller));
+  runApp(ProviderScope(child: MyApp(controller: controller)));
 }
 
 Future<void> _configureWindow() async {
