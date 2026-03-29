@@ -12,18 +12,21 @@ class AppSettings {
     required this.compressionPriority,
     required this.advancedMode,
     required this.preferredCodec,
+    required this.quality,
   });
 
   final CompressionMethod compressionMethod;
   final CompressionPriority compressionPriority;
   final bool advancedMode;
   final PreferredCodec preferredCodec;
+  final int quality;
 
   static const defaults = AppSettings(
     compressionMethod: CompressionMethod.lossy,
     compressionPriority: CompressionPriority.compatibility,
     advancedMode: false,
     preferredCodec: PreferredCodec.jpeg,
+    quality: 80,
   );
 
   PreferredCodec get effectiveCodec {
@@ -43,17 +46,45 @@ class AppSettings {
     };
   }
 
+  bool get showsQualityControl {
+    if (!advancedMode) {
+      return compressionMethod == CompressionMethod.lossy;
+    }
+
+    return switch (preferredCodec) {
+      PreferredCodec.png => false,
+      PreferredCodec.jpeg => true,
+      PreferredCodec.webp => true,
+      PreferredCodec.avif => true,
+      PreferredCodec.jxl => true,
+    };
+  }
+
+  bool get qualitySupportsLosslessAtMax {
+    if (!showsQualityControl) {
+      return false;
+    }
+
+    return switch (advancedMode ? preferredCodec : effectiveCodec) {
+      PreferredCodec.webp => true,
+      PreferredCodec.jxl => true,
+      _ => false,
+    };
+  }
+
   AppSettings copyWith({
     CompressionMethod? compressionMethod,
     CompressionPriority? compressionPriority,
     bool? advancedMode,
     PreferredCodec? preferredCodec,
+    int? quality,
   }) {
     return AppSettings(
       compressionMethod: compressionMethod ?? this.compressionMethod,
       compressionPriority: compressionPriority ?? this.compressionPriority,
       advancedMode: advancedMode ?? this.advancedMode,
       preferredCodec: preferredCodec ?? this.preferredCodec,
+      quality: quality ?? this.quality,
     );
   }
 
@@ -63,6 +94,7 @@ class AppSettings {
       'compressionPriority': compressionPriority.name,
       'advancedMode': advancedMode,
       'preferredCodec': preferredCodec.name,
+      'quality': quality,
     };
   }
 
@@ -88,6 +120,7 @@ class AppSettings {
       preferredCodec: PreferredCodec.values.byName(
         json['preferredCodec'] as String,
       ),
+      quality: json['quality'] as int? ?? defaults.quality,
     );
   }
 
@@ -97,7 +130,8 @@ class AppSettings {
         other.compressionMethod == compressionMethod &&
         other.compressionPriority == compressionPriority &&
         other.advancedMode == advancedMode &&
-        other.preferredCodec == preferredCodec;
+        other.preferredCodec == preferredCodec &&
+        other.quality == quality;
   }
 
   @override
@@ -106,5 +140,6 @@ class AppSettings {
     compressionPriority,
     advancedMode,
     preferredCodec,
+    quality,
   );
 }

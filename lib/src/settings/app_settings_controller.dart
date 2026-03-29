@@ -45,6 +45,10 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     );
   }
 
+  Future<void> setQuality(int quality) async {
+    await _update((settings) => settings.copyWith(quality: quality));
+  }
+
   Future<void> _update(
     AppSettings Function(AppSettings settings) transform,
   ) async {

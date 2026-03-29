@@ -78,6 +78,8 @@ void main() {
     expect(find.text('Lossy'), findsOneWidget);
     expect(find.text('Compatibility'), findsOneWidget);
     expect(find.text('Efficiency'), findsOneWidget);
+    expect(find.text('Quality'), findsOneWidget);
+    expect(find.text('80'), findsOneWidget);
 
     await tester.tap(find.byType(Switch));
     await tester.pumpAndSettle();
@@ -86,7 +88,13 @@ void main() {
     expect(find.text('WebP'), findsOneWidget);
     expect(find.text('AVIF'), findsOneWidget);
     expect(find.text('JPEG XL'), findsOneWidget);
+    expect(find.text('Quality'), findsOneWidget);
     expect(find.text('Lossless'), findsNothing);
+
+    await tester.tap(find.text('PNG'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Quality'), findsNothing);
   });
 }
 

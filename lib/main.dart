@@ -694,6 +694,31 @@ class _SettingsSidebar extends ConsumerWidget {
                         ),
                       ],
                       const SizedBox(height: 12),
+                      if (settings.showsQualityControl) ...[
+                        _SettingsLabel('Quality'),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Text('0').xSmall().muted(),
+                            const Spacer(),
+                            Text(_qualityValueLabel(settings))
+                                .xSmall()
+                                .medium()
+                                .muted(),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Slider(
+                          value: SliderValue.single(settings.quality.toDouble()),
+                          min: 0,
+                          max: 100,
+                          divisions: 100,
+                          onChanged: (value) {
+                            notifier.setQuality(value.value.round());
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                       _SettingsLabel('Current codec'),
                       const SizedBox(height: 8),
                       Text(_codecLabel(settings.effectiveCodec)).small().medium(),
@@ -786,6 +811,14 @@ String _codecLabel(PreferredCodec codec) {
     PreferredCodec.avif => 'AVIF',
     PreferredCodec.jxl => 'JPEG XL',
   };
+}
+
+String _qualityValueLabel(AppSettings settings) {
+  if (settings.quality == 100 && settings.qualitySupportsLosslessAtMax) {
+    return 'Lossless';
+  }
+
+  return '${settings.quality}';
 }
 
 class _EmptyState extends StatelessWidget {

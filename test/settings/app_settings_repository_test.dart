@@ -20,6 +20,7 @@ void main() {
         compressionPriority: CompressionPriority.efficiency,
         advancedMode: true,
         preferredCodec: PreferredCodec.webp,
+        quality: 90,
       );
 
       await repository.save(settings);

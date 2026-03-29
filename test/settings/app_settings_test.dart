@@ -10,6 +10,7 @@ void main() {
           compressionPriority: CompressionPriority.compatibility,
           advancedMode: false,
           preferredCodec: PreferredCodec.avif,
+          quality: 80,
         ).effectiveCodec,
         PreferredCodec.png,
       );
@@ -20,6 +21,7 @@ void main() {
           compressionPriority: CompressionPriority.efficiency,
           advancedMode: false,
           preferredCodec: PreferredCodec.png,
+          quality: 80,
         ).effectiveCodec,
         PreferredCodec.jxl,
       );
@@ -30,6 +32,7 @@ void main() {
           compressionPriority: CompressionPriority.compatibility,
           advancedMode: false,
           preferredCodec: PreferredCodec.avif,
+          quality: 80,
         ).effectiveCodec,
         PreferredCodec.jpeg,
       );
@@ -40,6 +43,7 @@ void main() {
           compressionPriority: CompressionPriority.efficiency,
           advancedMode: false,
           preferredCodec: PreferredCodec.jpeg,
+          quality: 80,
         ).effectiveCodec,
         PreferredCodec.avif,
       );
@@ -52,8 +56,81 @@ void main() {
           compressionPriority: CompressionPriority.compatibility,
           advancedMode: true,
           preferredCodec: PreferredCodec.webp,
+          quality: 80,
         ).effectiveCodec,
         PreferredCodec.webp,
+      );
+    });
+  });
+
+  group('AppSettings quality helpers', () {
+    test('shows quality control only for lossy selections', () {
+      expect(
+        const AppSettings(
+          compressionMethod: CompressionMethod.lossless,
+          compressionPriority: CompressionPriority.compatibility,
+          advancedMode: false,
+          preferredCodec: PreferredCodec.jpeg,
+          quality: 80,
+        ).showsQualityControl,
+        isFalse,
+      );
+
+      expect(
+        const AppSettings(
+          compressionMethod: CompressionMethod.lossy,
+          compressionPriority: CompressionPriority.compatibility,
+          advancedMode: false,
+          preferredCodec: PreferredCodec.png,
+          quality: 80,
+        ).showsQualityControl,
+        isTrue,
+      );
+
+      expect(
+        const AppSettings(
+          compressionMethod: CompressionMethod.lossy,
+          compressionPriority: CompressionPriority.compatibility,
+          advancedMode: true,
+          preferredCodec: PreferredCodec.png,
+          quality: 80,
+        ).showsQualityControl,
+        isFalse,
+      );
+    });
+
+    test('only webp and jpeg xl support lossless at max quality', () {
+      expect(
+        const AppSettings(
+          compressionMethod: CompressionMethod.lossy,
+          compressionPriority: CompressionPriority.compatibility,
+          advancedMode: true,
+          preferredCodec: PreferredCodec.webp,
+          quality: 100,
+        ).qualitySupportsLosslessAtMax,
+        isTrue,
+      );
+
+      expect(
+        const AppSettings(
+          compressionMethod: CompressionMethod.lossy,
+          compressionPriority: CompressionPriority.compatibility,
+          advancedMode: true,
+          preferredCodec: PreferredCodec.jxl,
+          quality: 100,
+        ).qualitySupportsLosslessAtMax,
+        isTrue,
+      );
+
+      expect(
+        const AppSettings(
+          compressionMethod: CompressionMethod.lossy,
+          compressionPriority: CompressionPriority.compatibility,
+          advancedMode: true,
+          preferredCodec: PreferredCodec.jpeg,
+          quality: 100,
+        ).qualitySupportsLosslessAtMax,
+        isFalse,
       );
     });
   });

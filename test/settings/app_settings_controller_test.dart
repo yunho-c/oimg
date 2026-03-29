@@ -39,6 +39,7 @@ void main() {
       await notifier.setCompressionPriority(CompressionPriority.efficiency);
       await notifier.setAdvancedMode(true);
       await notifier.setPreferredCodec(PreferredCodec.webp);
+      await notifier.setQuality(92);
 
       final settings = container.read(appSettingsProvider).requireValue;
       expect(
@@ -48,6 +49,7 @@ void main() {
           compressionPriority: CompressionPriority.efficiency,
           advancedMode: true,
           preferredCodec: PreferredCodec.webp,
+          quality: 92,
         ),
       );
       expect(await store.read(), settings.toJsonString());
