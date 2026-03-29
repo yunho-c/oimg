@@ -7,6 +7,9 @@ import 'package:oimg/src/rust/frb_generated.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
+const _uiScale = 0.8;
+const _titleBarHeight = 24.0;
+
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   await _configureWindow();
@@ -48,18 +51,24 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final baseTypography = const Typography.geist().scale(_uiScale);
+
     return ShadcnApp(
       title: 'OIMG',
       debugShowCheckedModeBanner: false,
-      theme: const ThemeData(
+      theme: ThemeData(
         colorScheme: ColorSchemes.lightSlate,
         radius: 0.9,
+        scaling: _uiScale,
+        typography: baseTypography,
         surfaceOpacity: 0.92,
         surfaceBlur: 8,
       ),
-      darkTheme: const ThemeData.dark(
+      darkTheme: ThemeData.dark(
         colorScheme: ColorSchemes.darkSlate,
         radius: 0.9,
+        scaling: _uiScale,
+        typography: baseTypography,
         surfaceOpacity: 0.88,
         surfaceBlur: 12,
       ),
@@ -161,23 +170,22 @@ class _OimgHomePageState extends State<OimgHomePage> {
         return Scaffold(
           headers: [
             AppBar(
+              height: _titleBarHeight,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               child: Stack(
                 alignment: Alignment.center,
                 children: [
                   const Positioned.fill(
-                    child: DragToMoveArea(
-                      child: Center(
-                        child: Text('OIMG'),
-                      ),
-                    ),
+                    child: DragToMoveArea(child: Center(child: Text('OIMG'))),
                   ),
-                  if (widget.controller.currentPositionLabel case final position?)
+                  if (widget.controller.currentPositionLabel
+                      case final position?)
                     Align(
                       alignment: Alignment.centerRight,
                       child: Card(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+                          horizontal: 10,
+                          vertical: 4,
                         ),
                         child: Text(position),
                       ),
@@ -476,7 +484,7 @@ class _EmptyState extends StatelessWidget {
                         'Open an image with OIMG',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 28,
+                          fontSize: 22.4,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
