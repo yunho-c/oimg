@@ -1,15 +1,20 @@
 use std::fs;
+use std::thread;
+use std::time::{Duration, Instant};
 
 use oimg_rust::api::bridge::{
-    self, BatchProcessRequest, ConvertOptions, CropOptions, CropSpec, ImageOperation,
-    OptimizeOptions, PreviewFileRequest, ProcessBytesRequest, ProcessFileBatchRequest,
-    ProcessFileRequest, ResizeOptions, ResizeSpec,
+    self, BatchJobState, BatchProcessRequest, ConvertOptions, CropOptions, CropSpec,
+    ImageOperation, OptimizeOptions, PreviewFileRequest, ProcessBytesRequest,
+    ProcessFileBatchRequest, ProcessFileRequest, ResizeOptions, ResizeSpec,
 };
 use slimg_core::{convert, decode, Format, ImageData, PipelineOptions};
 use tempfile::tempdir;
 
 fn test_image() -> ImageData {
-    let (width, height) = (48, 32);
+    gradient_image(48, 32)
+}
+
+fn gradient_image(width: u32, height: u32) -> ImageData {
     let mut data = vec![0_u8; (width * height * 4) as usize];
     for y in 0..height {
         for x in 0..width {
@@ -37,6 +42,38 @@ fn png_bytes() -> Vec<u8> {
     )
     .unwrap()
     .data
+}
+
+fn png_bytes_with_size(width: u32, height: u32) -> Vec<u8> {
+    convert(
+        &gradient_image(width, height),
+        &PipelineOptions {
+            format: Format::Png,
+            quality: 80,
+            resize: None,
+            crop: None,
+            extend: None,
+            fill_color: None,
+        },
+    )
+    .unwrap()
+    .data
+}
+
+fn wait_for_job(job_id: &str) -> oimg_rust::api::bridge::BatchJobSnapshot {
+    let deadline = Instant::now() + Duration::from_secs(20);
+    loop {
+        let snapshot = bridge::get_process_file_batch_job(job_id.to_string()).unwrap();
+        if matches!(
+            snapshot.state,
+            BatchJobState::Completed | BatchJobState::Canceled | BatchJobState::Failed
+        ) {
+            return snapshot;
+        }
+
+        assert!(Instant::now() < deadline, "timed out waiting for batch job");
+        thread::sleep(Duration::from_millis(20));
+    }
 }
 
 #[test]
@@ -217,4 +254,97 @@ fn process_file_batch_supports_mixed_operations() {
         second_output.to_string_lossy()
     );
     assert!(results[1].result.as_ref().unwrap().did_write);
+}
+
+#[test]
+fn process_file_batch_job_reports_progress_and_can_be_disposed() {
+    let dir = tempdir().unwrap();
+    let first_path = dir.path().join("first.png");
+    let second_path = dir.path().join("second.png");
+    let first_output = dir.path().join("first.optimized.jpeg");
+    let second_output = dir.path().join("second.optimized.jpeg");
+
+    fs::write(&first_path, png_bytes()).unwrap();
+    fs::write(&second_path, png_bytes()).unwrap();
+
+    let handle = bridge::start_process_file_batch_job(ProcessFileBatchRequest {
+        requests: vec![
+            ProcessFileRequest {
+                input_path: first_path.to_string_lossy().into_owned(),
+                output_path: Some(first_output.to_string_lossy().into_owned()),
+                overwrite: true,
+                operation: ImageOperation::Convert(ConvertOptions {
+                    target_format: "jpeg".to_string(),
+                    quality: 80,
+                }),
+            },
+            ProcessFileRequest {
+                input_path: second_path.to_string_lossy().into_owned(),
+                output_path: Some(second_output.to_string_lossy().into_owned()),
+                overwrite: true,
+                operation: ImageOperation::Convert(ConvertOptions {
+                    target_format: "jpeg".to_string(),
+                    quality: 80,
+                }),
+            },
+        ],
+        continue_on_error: true,
+    })
+    .unwrap();
+
+    let initial = bridge::get_process_file_batch_job(handle.job_id.clone()).unwrap();
+    assert_eq!(initial.total_count, 2);
+    assert!(initial.completed_count <= 2);
+
+    let snapshot = wait_for_job(&handle.job_id);
+    assert_eq!(snapshot.state, BatchJobState::Completed);
+    assert_eq!(snapshot.completed_count, 2);
+    assert_eq!(snapshot.results.len(), 2);
+    assert_eq!(snapshot.results[0].input_path, first_path.to_string_lossy());
+    assert_eq!(snapshot.results[1].input_path, second_path.to_string_lossy());
+
+    bridge::dispose_process_file_batch_job(handle.job_id.clone()).unwrap();
+    let error = bridge::get_process_file_batch_job(handle.job_id).unwrap_err();
+    assert!(error.to_string().contains("unknown batch job"));
+}
+
+#[test]
+fn cancel_process_file_batch_job_stops_remaining_files() {
+    let dir = tempdir().unwrap();
+    let mut requests = Vec::new();
+
+    for index in 0..100 {
+        let input_path = dir.path().join(format!("input-{index}.png"));
+        let output_path = dir.path().join(format!("output-{index}.jpeg"));
+        fs::write(&input_path, png_bytes_with_size(48, 32)).unwrap();
+        requests.push(ProcessFileRequest {
+            input_path: input_path.to_string_lossy().into_owned(),
+            output_path: Some(output_path.to_string_lossy().into_owned()),
+            overwrite: true,
+            operation: ImageOperation::Convert(ConvertOptions {
+                target_format: "jpeg".to_string(),
+                quality: 90,
+            }),
+        });
+    }
+
+    let handle = bridge::start_process_file_batch_job(ProcessFileBatchRequest {
+        requests,
+        continue_on_error: true,
+    })
+    .unwrap();
+
+    bridge::cancel_process_file_batch_job(handle.job_id.clone()).unwrap();
+    let snapshot = wait_for_job(&handle.job_id);
+    assert_eq!(snapshot.state, BatchJobState::Canceled);
+    assert!(snapshot.completed_count < snapshot.total_count);
+    assert_eq!(snapshot.results.len() as u32, snapshot.completed_count);
+
+    for item in &snapshot.results {
+        assert!(item.success);
+        assert!(item.result.as_ref().unwrap().did_write);
+        assert!(fs::metadata(&item.result.as_ref().unwrap().output_path).is_ok());
+    }
+
+    bridge::dispose_process_file_batch_job(handle.job_id).unwrap();
 }

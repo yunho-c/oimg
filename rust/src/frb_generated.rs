@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1415710246;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 881589054;
 
 // Section: executor
 
@@ -45,6 +45,113 @@ flutter_rust_bridge::frb_generated_default_handler!();
 
 // Section: wire_funcs
 
+fn wire__crate__api__bridge__cancel_process_file_batch_job_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "cancel_process_file_batch_job",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_job_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let output_ok =
+                            crate::api::bridge::cancel_process_file_batch_job(api_job_id)?;
+                        Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__bridge__dispose_process_file_batch_job_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "dispose_process_file_batch_job",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_job_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let output_ok =
+                            crate::api::bridge::dispose_process_file_batch_job(api_job_id)?;
+                        Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__bridge__get_process_file_batch_job_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "get_process_file_batch_job",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_job_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let output_ok = crate::api::bridge::get_process_file_batch_job(api_job_id)?;
+                        Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__bridge__init_app_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -357,6 +464,43 @@ fn wire__crate__api__bridge__set_timing_logs_enabled_impl(
         },
     )
 }
+fn wire__crate__api__bridge__start_process_file_batch_job_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "start_process_file_batch_job",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_request =
+                <crate::types::ProcessFileBatchRequest>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let output_ok =
+                            crate::api::bridge::start_process_file_batch_job(api_request)?;
+                        Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__bridge__supported_formats_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -446,6 +590,51 @@ impl SseDecode for crate::types::BatchItemResult {
             success: var_success,
             result: var_result,
             error: var_error,
+        };
+    }
+}
+
+impl SseDecode for crate::types::BatchJobHandle {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_jobId = <String>::sse_decode(deserializer);
+        return crate::types::BatchJobHandle { job_id: var_jobId };
+    }
+}
+
+impl SseDecode for crate::types::BatchJobSnapshot {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_jobId = <String>::sse_decode(deserializer);
+        let mut var_state = <crate::types::BatchJobState>::sse_decode(deserializer);
+        let mut var_totalCount = <u32>::sse_decode(deserializer);
+        let mut var_completedCount = <u32>::sse_decode(deserializer);
+        let mut var_currentInputPath = <Option<String>>::sse_decode(deserializer);
+        let mut var_results = <Vec<crate::types::BatchItemResult>>::sse_decode(deserializer);
+        let mut var_error = <Option<crate::error::SlimgBridgeError>>::sse_decode(deserializer);
+        return crate::types::BatchJobSnapshot {
+            job_id: var_jobId,
+            state: var_state,
+            total_count: var_totalCount,
+            completed_count: var_completedCount,
+            current_input_path: var_currentInputPath,
+            results: var_results,
+            error: var_error,
+        };
+    }
+}
+
+impl SseDecode for crate::types::BatchJobState {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::types::BatchJobState::Running,
+            1 => crate::types::BatchJobState::CancelRequested,
+            2 => crate::types::BatchJobState::Completed,
+            3 => crate::types::BatchJobState::Canceled,
+            4 => crate::types::BatchJobState::Failed,
+            _ => unreachable!("Invalid variant for BatchJobState: {}", inner),
         };
     }
 }
@@ -640,6 +829,13 @@ impl SseDecode for crate::types::FormatInfo {
             extension: var_extension_,
             can_encode: var_canEncode,
         };
+    }
+}
+
+impl SseDecode for i32 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_i32::<NativeEndian>().unwrap()
     }
 }
 
@@ -1066,13 +1262,6 @@ impl SseDecode for () {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {}
 }
 
-impl SseDecode for i32 {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        deserializer.cursor.read_i32::<NativeEndian>().unwrap()
-    }
-}
-
 fn pde_ffi_dispatcher_primary_impl(
     func_id: i32,
     port: flutter_rust_bridge::for_generated::MessagePort,
@@ -1082,14 +1271,38 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        1 => wire__crate__api__bridge__init_app_impl(port, ptr, rust_vec_len, data_len),
-        2 => wire__crate__api__bridge__inspect_bytes_impl(port, ptr, rust_vec_len, data_len),
-        3 => wire__crate__api__bridge__inspect_file_impl(port, ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__bridge__preview_file_impl(port, ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__bridge__process_bytes_impl(port, ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__bridge__process_file_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__bridge__process_file_batch_impl(port, ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__bridge__process_files_impl(port, ptr, rust_vec_len, data_len),
+        1 => wire__crate__api__bridge__cancel_process_file_batch_job_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        2 => wire__crate__api__bridge__dispose_process_file_batch_job_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        3 => wire__crate__api__bridge__get_process_file_batch_job_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        4 => wire__crate__api__bridge__init_app_impl(port, ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__bridge__inspect_bytes_impl(port, ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__bridge__inspect_file_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__bridge__preview_file_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__bridge__process_bytes_impl(port, ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__bridge__process_file_impl(port, ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__bridge__process_file_batch_impl(port, ptr, rust_vec_len, data_len),
+        11 => wire__crate__api__bridge__process_files_impl(port, ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__bridge__start_process_file_batch_job_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
         _ => unreachable!(),
     }
 }
@@ -1102,9 +1315,9 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        9 => wire__crate__api__bridge__set_timing_logs_enabled_impl(ptr, rust_vec_len, data_len),
-        10 => wire__crate__api__bridge__supported_formats_impl(ptr, rust_vec_len, data_len),
-        11 => wire__crate__api__bridge__version_impl(ptr, rust_vec_len, data_len),
+        12 => wire__crate__api__bridge__set_timing_logs_enabled_impl(ptr, rust_vec_len, data_len),
+        14 => wire__crate__api__bridge__supported_formats_impl(ptr, rust_vec_len, data_len),
+        15 => wire__crate__api__bridge__version_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1128,6 +1341,67 @@ impl flutter_rust_bridge::IntoIntoDart<crate::types::BatchItemResult>
     for crate::types::BatchItemResult
 {
     fn into_into_dart(self) -> crate::types::BatchItemResult {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::types::BatchJobHandle {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [self.job_id.into_into_dart().into_dart()].into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::types::BatchJobHandle {}
+impl flutter_rust_bridge::IntoIntoDart<crate::types::BatchJobHandle>
+    for crate::types::BatchJobHandle
+{
+    fn into_into_dart(self) -> crate::types::BatchJobHandle {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::types::BatchJobSnapshot {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.job_id.into_into_dart().into_dart(),
+            self.state.into_into_dart().into_dart(),
+            self.total_count.into_into_dart().into_dart(),
+            self.completed_count.into_into_dart().into_dart(),
+            self.current_input_path.into_into_dart().into_dart(),
+            self.results.into_into_dart().into_dart(),
+            self.error.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::types::BatchJobSnapshot
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::types::BatchJobSnapshot>
+    for crate::types::BatchJobSnapshot
+{
+    fn into_into_dart(self) -> crate::types::BatchJobSnapshot {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::types::BatchJobState {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Running => 0.into_dart(),
+            Self::CancelRequested => 1.into_dart(),
+            Self::Completed => 2.into_dart(),
+            Self::Canceled => 3.into_dart(),
+            Self::Failed => 4.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::types::BatchJobState {}
+impl flutter_rust_bridge::IntoIntoDart<crate::types::BatchJobState>
+    for crate::types::BatchJobState
+{
+    fn into_into_dart(self) -> crate::types::BatchJobState {
         self
     }
 }
@@ -1681,6 +1955,45 @@ impl SseEncode for crate::types::BatchItemResult {
     }
 }
 
+impl SseEncode for crate::types::BatchJobHandle {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.job_id, serializer);
+    }
+}
+
+impl SseEncode for crate::types::BatchJobSnapshot {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.job_id, serializer);
+        <crate::types::BatchJobState>::sse_encode(self.state, serializer);
+        <u32>::sse_encode(self.total_count, serializer);
+        <u32>::sse_encode(self.completed_count, serializer);
+        <Option<String>>::sse_encode(self.current_input_path, serializer);
+        <Vec<crate::types::BatchItemResult>>::sse_encode(self.results, serializer);
+        <Option<crate::error::SlimgBridgeError>>::sse_encode(self.error, serializer);
+    }
+}
+
+impl SseEncode for crate::types::BatchJobState {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::types::BatchJobState::Running => 0,
+                crate::types::BatchJobState::CancelRequested => 1,
+                crate::types::BatchJobState::Completed => 2,
+                crate::types::BatchJobState::Canceled => 3,
+                crate::types::BatchJobState::Failed => 4,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
 impl SseEncode for crate::types::BatchProcessRequest {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1820,6 +2133,13 @@ impl SseEncode for crate::types::FormatInfo {
         <String>::sse_encode(self.id, serializer);
         <String>::sse_encode(self.extension, serializer);
         <bool>::sse_encode(self.can_encode, serializer);
+    }
+}
+
+impl SseEncode for i32 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_i32::<NativeEndian>(self).unwrap();
     }
 }
 
@@ -2155,13 +2475,6 @@ impl SseEncode for u8 {
 impl SseEncode for () {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {}
-}
-
-impl SseEncode for i32 {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        serializer.cursor.write_i32::<NativeEndian>(self).unwrap();
-    }
 }
 
 #[cfg(not(target_family = "wasm"))]

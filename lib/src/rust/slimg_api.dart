@@ -16,6 +16,16 @@ abstract class SlimgApi {
   Future<List<BatchItemResult>> processFileBatch({
     required ProcessFileBatchRequest request,
   });
+
+  Future<BatchJobHandle> startProcessFileBatchJob({
+    required ProcessFileBatchRequest request,
+  });
+
+  Future<BatchJobSnapshot> getProcessFileBatchJob({required String jobId});
+
+  Future<void> cancelProcessFileBatchJob({required String jobId});
+
+  Future<void> disposeProcessFileBatchJob({required String jobId});
 }
 
 class FrbSlimgApi implements SlimgApi {
@@ -70,5 +80,27 @@ class FrbSlimgApi implements SlimgApi {
     required ProcessFileBatchRequest request,
   }) {
     return _bridge.processFileBatch(request: request);
+  }
+
+  @override
+  Future<BatchJobHandle> startProcessFileBatchJob({
+    required ProcessFileBatchRequest request,
+  }) {
+    return _bridge.startProcessFileBatchJob(request: request);
+  }
+
+  @override
+  Future<BatchJobSnapshot> getProcessFileBatchJob({required String jobId}) {
+    return _bridge.getProcessFileBatchJob(jobId: jobId);
+  }
+
+  @override
+  Future<void> cancelProcessFileBatchJob({required String jobId}) {
+    return _bridge.cancelProcessFileBatchJob(jobId: jobId);
+  }
+
+  @override
+  Future<void> disposeProcessFileBatchJob({required String jobId}) {
+    return _bridge.disposeProcessFileBatchJob(jobId: jobId);
   }
 }

@@ -2,10 +2,11 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 
 pub use crate::error::SlimgBridgeError;
 pub use crate::types::{
-    BatchItemResult, BatchProcessRequest, ConvertOptions, CropOptions, CropSpec,
-    EncodedImageResult, ExtendOptions, ExtendSpec, FillSpec, FormatInfo, ImageMetadata,
-    ImageOperation, OptimizeOptions, PreviewFileRequest, PreviewResult, ProcessBytesRequest,
-    ProcessFileBatchRequest, ProcessFileRequest, ProcessResult, ResizeOptions, ResizeSpec,
+    BatchItemResult, BatchJobHandle, BatchJobSnapshot, BatchJobState, BatchProcessRequest,
+    ConvertOptions, CropOptions, CropSpec, EncodedImageResult, ExtendOptions, ExtendSpec,
+    FillSpec, FormatInfo, ImageMetadata, ImageOperation, OptimizeOptions, PreviewFileRequest,
+    PreviewResult, ProcessBytesRequest, ProcessFileBatchRequest, ProcessFileRequest, ProcessResult,
+    ResizeOptions, ResizeSpec,
 };
 
 use crate::error::{panic_message, Result};
@@ -56,6 +57,22 @@ pub fn process_files(request: BatchProcessRequest) -> Result<Vec<BatchItemResult
 
 pub fn process_file_batch(request: ProcessFileBatchRequest) -> Result<Vec<BatchItemResult>> {
     with_internal(|| crate::convert::process_file_batch(request))
+}
+
+pub fn start_process_file_batch_job(request: ProcessFileBatchRequest) -> Result<BatchJobHandle> {
+    with_internal(|| crate::batch_jobs::start_process_file_batch_job(request))
+}
+
+pub fn get_process_file_batch_job(job_id: String) -> Result<BatchJobSnapshot> {
+    with_internal(|| crate::batch_jobs::get_process_file_batch_job(job_id))
+}
+
+pub fn cancel_process_file_batch_job(job_id: String) -> Result<()> {
+    with_internal(|| crate::batch_jobs::cancel_process_file_batch_job(job_id))
+}
+
+pub fn dispose_process_file_batch_job(job_id: String) -> Result<()> {
+    with_internal(|| crate::batch_jobs::dispose_process_file_batch_job(job_id))
 }
 
 fn with_internal<T, F>(func: F) -> Result<T>

@@ -37,6 +37,67 @@ class BatchItemResult {
           error == other.error;
 }
 
+class BatchJobHandle {
+  final String jobId;
+
+  const BatchJobHandle({required this.jobId});
+
+  @override
+  int get hashCode => jobId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BatchJobHandle &&
+          runtimeType == other.runtimeType &&
+          jobId == other.jobId;
+}
+
+class BatchJobSnapshot {
+  final String jobId;
+  final BatchJobState state;
+  final int totalCount;
+  final int completedCount;
+  final String? currentInputPath;
+  final List<BatchItemResult> results;
+  final SlimgBridgeError? error;
+
+  const BatchJobSnapshot({
+    required this.jobId,
+    required this.state,
+    required this.totalCount,
+    required this.completedCount,
+    this.currentInputPath,
+    required this.results,
+    this.error,
+  });
+
+  @override
+  int get hashCode =>
+      jobId.hashCode ^
+      state.hashCode ^
+      totalCount.hashCode ^
+      completedCount.hashCode ^
+      currentInputPath.hashCode ^
+      results.hashCode ^
+      error.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BatchJobSnapshot &&
+          runtimeType == other.runtimeType &&
+          jobId == other.jobId &&
+          state == other.state &&
+          totalCount == other.totalCount &&
+          completedCount == other.completedCount &&
+          currentInputPath == other.currentInputPath &&
+          results == other.results &&
+          error == other.error;
+}
+
+enum BatchJobState { running, cancelRequested, completed, canceled, failed }
+
 class BatchProcessRequest {
   final List<String> inputPaths;
   final String? outputDir;

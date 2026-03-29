@@ -41,3 +41,18 @@ Future<List<BatchItemResult>> processFiles({
 Future<List<BatchItemResult>> processFileBatch({
   required ProcessFileBatchRequest request,
 }) => RustLib.instance.api.crateApiBridgeProcessFileBatch(request: request);
+
+Future<BatchJobHandle> startProcessFileBatchJob({
+  required ProcessFileBatchRequest request,
+}) => RustLib.instance.api.crateApiBridgeStartProcessFileBatchJob(
+  request: request,
+);
+
+Future<BatchJobSnapshot> getProcessFileBatchJob({required String jobId}) =>
+    RustLib.instance.api.crateApiBridgeGetProcessFileBatchJob(jobId: jobId);
+
+Future<void> cancelProcessFileBatchJob({required String jobId}) =>
+    RustLib.instance.api.crateApiBridgeCancelProcessFileBatchJob(jobId: jobId);
+
+Future<void> disposeProcessFileBatchJob({required String jobId}) =>
+    RustLib.instance.api.crateApiBridgeDisposeProcessFileBatchJob(jobId: jobId);

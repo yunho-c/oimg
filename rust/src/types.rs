@@ -52,6 +52,31 @@ pub struct BatchItemResult {
     pub error: Option<SlimgBridgeError>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BatchJobHandle {
+    pub job_id: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BatchJobState {
+    Running,
+    CancelRequested,
+    Completed,
+    Canceled,
+    Failed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BatchJobSnapshot {
+    pub job_id: String,
+    pub state: BatchJobState,
+    pub total_count: u32,
+    pub completed_count: u32,
+    pub current_input_path: Option<String>,
+    pub results: Vec<BatchItemResult>,
+    pub error: Option<SlimgBridgeError>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum ImageOperation {
     Convert(ConvertOptions),

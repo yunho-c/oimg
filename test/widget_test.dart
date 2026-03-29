@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -168,7 +169,7 @@ void main() {
 
     await tester.tap(find.text('Optimize'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 250));
     await tester.pumpAndSettle();
 
     final batch = slimg.lastBatchRequest!;
@@ -192,20 +193,26 @@ void main() {
     expect(find.text('Saved'), findsWidgets);
   });
 
-  testWidgets('cancel replaces optimize during an active run and ignores late results', (
+  testWidgets('cancel stops queued files after the active item finishes', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     final slimg = _FakeSlimgApi(
-      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
-      batchDelay: const Duration(seconds: 5),
+      inspectResults: {
+        '/tmp/first.png': _metadata('png', 2400),
+        '/tmp/second.png': _metadata('png', 2200),
+        '/tmp/third.png': _metadata('png', 2000),
+        '/tmp/first.optimized.jpeg': _metadata('jpeg', 900),
+        '/tmp/second.optimized.jpeg': _metadata('jpeg', 850),
+      },
+      batchDelay: const Duration(seconds: 1),
     );
     final controller = FileOpenController(
       channel: _FakeFileOpenChannel(),
       slimg: slimg,
-      initialPaths: const ['/tmp/first.png'],
+      initialPaths: const ['/tmp/first.png', '/tmp/second.png', '/tmp/third.png'],
     );
     await controller.initialize();
 
@@ -219,16 +226,27 @@ void main() {
     expect(find.text('Cancel'), findsOneWidget);
     expect(find.text('Optimize'), findsNothing);
 
+    await tester.pump(const Duration(milliseconds: 1300));
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.text('first.optimized.jpeg'), findsWidgets);
+    expect(find.text('Saved'), findsWidgets);
+
     await tester.tap(find.text('Cancel'));
     await tester.pump();
 
+    expect(find.text('Canceling...'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 1300));
+    await tester.pump(const Duration(milliseconds: 250));
+
     expect(find.text('Optimize'), findsOneWidget);
     expect(find.text('Cancel'), findsNothing);
-
-    await tester.pump(const Duration(seconds: 5));
-    await tester.pump();
-
-    expect(find.text('Saved'), findsNothing);
+    expect(find.text('Canceling...'), findsNothing);
+    expect(find.text('second.optimized.jpeg'), findsWidgets);
+    expect(find.text('third.png'), findsWidgets);
+    expect(find.text('third.optimized.jpeg'), findsNothing);
+    expect(find.text('Canceled'), findsOneWidget);
   });
 
   testWidgets('developer dialog toggles persisted timing logs', (tester) async {
@@ -376,6 +394,8 @@ class _FakeSlimgApi implements SlimgApi {
   ProcessFileBatchRequest? lastBatchRequest;
   bool lastTimingLogsEnabled = false;
   int previewCallCount = 0;
+  int _nextJobId = 0;
+  final Map<String, _FakeBatchJob> _jobs = {};
 
   static final Uint8List _previewBytes = base64Decode(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==',
@@ -442,4 +462,138 @@ class _FakeSlimgApi implements SlimgApi {
         })
         .toList(growable: false);
   }
+
+  @override
+  Future<BatchJobHandle> startProcessFileBatchJob({
+    required ProcessFileBatchRequest request,
+  }) async {
+    lastBatchRequest = request;
+    final jobId = 'job-${++_nextJobId}';
+    final snapshot = BatchJobSnapshot(
+      jobId: jobId,
+      state: BatchJobState.running,
+      totalCount: request.requests.length,
+      completedCount: 0,
+      results: const [],
+    );
+    final job = _FakeBatchJob(snapshot: snapshot);
+    _jobs[jobId] = job;
+    unawaited(_runJob(jobId, request));
+    return BatchJobHandle(jobId: jobId);
+  }
+
+  @override
+  Future<BatchJobSnapshot> getProcessFileBatchJob({required String jobId}) async {
+    final job = _jobs[jobId];
+    if (job == null) {
+      throw StateError('unknown job');
+    }
+    return job.snapshot;
+  }
+
+  @override
+  Future<void> cancelProcessFileBatchJob({required String jobId}) async {
+    final job = _jobs[jobId];
+    if (job == null) {
+      throw StateError('unknown job');
+    }
+    job.cancelRequested = true;
+    if (job.snapshot.state == BatchJobState.running) {
+      job.snapshot = BatchJobSnapshot(
+        jobId: job.snapshot.jobId,
+        state: BatchJobState.cancelRequested,
+        totalCount: job.snapshot.totalCount,
+        completedCount: job.snapshot.completedCount,
+        currentInputPath: job.snapshot.currentInputPath,
+        results: job.snapshot.results,
+        error: job.snapshot.error,
+      );
+    }
+  }
+
+  @override
+  Future<void> disposeProcessFileBatchJob({required String jobId}) async {
+    _jobs.remove(jobId);
+  }
+
+  Future<void> _runJob(String jobId, ProcessFileBatchRequest request) async {
+    final job = _jobs[jobId];
+    if (job == null) {
+      return;
+    }
+
+    for (final item in request.requests) {
+      if (job.cancelRequested) {
+        job.snapshot = BatchJobSnapshot(
+          jobId: job.snapshot.jobId,
+          state: BatchJobState.canceled,
+          totalCount: job.snapshot.totalCount,
+          completedCount: job.snapshot.completedCount,
+          results: job.snapshot.results,
+          error: job.snapshot.error,
+        );
+        return;
+      }
+
+      job.snapshot = BatchJobSnapshot(
+        jobId: job.snapshot.jobId,
+        state: job.cancelRequested
+            ? BatchJobState.cancelRequested
+            : BatchJobState.running,
+        totalCount: job.snapshot.totalCount,
+        completedCount: job.snapshot.completedCount,
+        currentInputPath: item.inputPath,
+        results: job.snapshot.results,
+        error: job.snapshot.error,
+      );
+
+      if (batchDelay > Duration.zero) {
+        await Future<void>.delayed(batchDelay);
+      }
+
+      final results = List<BatchItemResult>.from(job.snapshot.results)
+        ..add(
+          BatchItemResult(
+            inputPath: item.inputPath,
+            success: true,
+            result: ProcessResult(
+              outputPath: item.outputPath ?? item.inputPath,
+              format: 'jpeg',
+              width: 48,
+              height: 32,
+              originalSize: BigInt.from(2400),
+              newSize: BigInt.from(900),
+              didWrite: true,
+            ),
+          ),
+        );
+
+      job.snapshot = BatchJobSnapshot(
+        jobId: job.snapshot.jobId,
+        state: job.cancelRequested
+            ? BatchJobState.cancelRequested
+            : BatchJobState.running,
+        totalCount: job.snapshot.totalCount,
+        completedCount: results.length,
+        results: results,
+        error: job.snapshot.error,
+      );
+    }
+
+    job.snapshot = BatchJobSnapshot(
+      jobId: job.snapshot.jobId,
+      state: BatchJobState.completed,
+      totalCount: job.snapshot.totalCount,
+      completedCount: job.snapshot.completedCount,
+      results: job.snapshot.results,
+      error: job.snapshot.error,
+    );
+  }
+}
+
+class _FakeBatchJob {
+  _FakeBatchJob({required this.snapshot});
+
+  BatchJobSnapshot snapshot;
+  bool cancelRequested = false;
 }

@@ -1251,7 +1251,12 @@ class _BottomSidebar extends ConsumerWidget {
                   const SizedBox(width: 16),
                   SizedBox(
                     width: 220,
-                    child: runState.isRunning
+                    child: runState.isCancelRequested
+                        ? Button.destructive(
+                            onPressed: null,
+                            child: const Text('Canceling...'),
+                          )
+                        : runState.isRunning
                         ? Button.destructive(
                             onPressed: runController.cancelCurrentRun,
                             child: const Text('Cancel'),
@@ -1322,10 +1327,12 @@ OptimizationItemState _statusForFile(
 String _statusLabel(OptimizationItemState state) {
   return switch (state.status) {
     OptimizationItemStatus.idle => 'Idle',
+    OptimizationItemStatus.queued => 'Queued',
     OptimizationItemStatus.running => 'Working',
     OptimizationItemStatus.written => 'Saved',
     OptimizationItemStatus.skipped => 'Unchanged',
     OptimizationItemStatus.failed => 'Failed',
+    OptimizationItemStatus.canceled => 'Canceled',
   };
 }
 

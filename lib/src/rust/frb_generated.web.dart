@@ -32,6 +32,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BatchItemResult dco_decode_batch_item_result(dynamic raw);
 
   @protected
+  BatchJobHandle dco_decode_batch_job_handle(dynamic raw);
+
+  @protected
+  BatchJobSnapshot dco_decode_batch_job_snapshot(dynamic raw);
+
+  @protected
+  BatchJobState dco_decode_batch_job_state(dynamic raw);
+
+  @protected
   BatchProcessRequest dco_decode_batch_process_request(dynamic raw);
 
   @protected
@@ -107,6 +116,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FormatInfo dco_decode_format_info(dynamic raw);
+
+  @protected
+  int dco_decode_i_32(dynamic raw);
 
   @protected
   ImageMetadata dco_decode_image_metadata(dynamic raw);
@@ -197,6 +209,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   BatchItemResult sse_decode_batch_item_result(SseDeserializer deserializer);
+
+  @protected
+  BatchJobHandle sse_decode_batch_job_handle(SseDeserializer deserializer);
+
+  @protected
+  BatchJobSnapshot sse_decode_batch_job_snapshot(SseDeserializer deserializer);
+
+  @protected
+  BatchJobState sse_decode_batch_job_state(SseDeserializer deserializer);
 
   @protected
   BatchProcessRequest sse_decode_batch_process_request(
@@ -300,6 +321,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   FormatInfo sse_decode_format_info(SseDeserializer deserializer);
 
   @protected
+  int sse_decode_i_32(SseDeserializer deserializer);
+
+  @protected
   ImageMetadata sse_decode_image_metadata(SseDeserializer deserializer);
 
   @protected
@@ -397,9 +421,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_decode_unit(SseDeserializer deserializer);
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer);
-
-  @protected
   void sse_encode_AnyhowException(
     AnyhowException self,
     SseSerializer serializer,
@@ -413,6 +434,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     BatchItemResult self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_batch_job_handle(
+    BatchJobHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_batch_job_snapshot(
+    BatchJobSnapshot self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_batch_job_state(BatchJobState self, SseSerializer serializer);
 
   @protected
   void sse_encode_batch_process_request(
@@ -538,6 +574,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_format_info(FormatInfo self, SseSerializer serializer);
 
   @protected
+  void sse_encode_i_32(int self, SseSerializer serializer);
+
+  @protected
   void sse_encode_image_metadata(ImageMetadata self, SseSerializer serializer);
 
   @protected
@@ -659,9 +698,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_unit(void self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer);
 }
 
 // Section: wire_class

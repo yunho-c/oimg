@@ -80,6 +80,28 @@ class _FakeSlimgApi implements SlimgApi {
   }) {
     throw UnimplementedError();
   }
+
+  @override
+  Future<BatchJobHandle> startProcessFileBatchJob({
+    required ProcessFileBatchRequest request,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<BatchJobSnapshot> getProcessFileBatchJob({required String jobId}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> cancelProcessFileBatchJob({required String jobId}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> disposeProcessFileBatchJob({required String jobId}) {
+    throw UnimplementedError();
+  }
 }
 
 class _FakeAppSettingsStore implements AppSettingsStore {

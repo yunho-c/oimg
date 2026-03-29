@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oimg/src/file_open/file_open_providers.dart';
 import 'package:oimg/src/file_open/opened_image_file.dart';
@@ -109,7 +111,15 @@ final currentPreviewProvider = FutureProvider.autoDispose<OptimizationPreview?>(
   }
 });
 
-enum OptimizationItemStatus { idle, running, written, skipped, failed }
+enum OptimizationItemStatus {
+  idle,
+  queued,
+  running,
+  written,
+  skipped,
+  failed,
+  canceled,
+}
 
 class OptimizationItemState {
   const OptimizationItemState({
@@ -125,23 +135,54 @@ class OptimizationItemState {
 
 class OptimizationRunState {
   const OptimizationRunState({
-    this.isRunning = false,
+    this.jobId,
+    this.jobState,
+    this.completedCount = 0,
+    this.totalCount = 0,
+    this.currentInputPath,
+    this.appliedResultCount = 0,
     this.items = const {},
     this.globalError,
   });
 
-  final bool isRunning;
+  final String? jobId;
+  final BatchJobState? jobState;
+  final int completedCount;
+  final int totalCount;
+  final String? currentInputPath;
+  final int appliedResultCount;
   final Map<String, OptimizationItemState> items;
   final String? globalError;
 
+  bool get isRunning =>
+      jobState == BatchJobState.running ||
+      jobState == BatchJobState.cancelRequested;
+
+  bool get isCancelRequested => jobState == BatchJobState.cancelRequested;
+
   OptimizationRunState copyWith({
-    bool? isRunning,
+    String? jobId,
+    BatchJobState? jobState,
+    int? completedCount,
+    int? totalCount,
+    String? currentInputPath,
+    int? appliedResultCount,
     Map<String, OptimizationItemState>? items,
     String? globalError,
     bool clearGlobalError = false,
+    bool clearJobId = false,
+    bool clearJobState = false,
+    bool clearCurrentInputPath = false,
   }) {
     return OptimizationRunState(
-      isRunning: isRunning ?? this.isRunning,
+      jobId: clearJobId ? null : (jobId ?? this.jobId),
+      jobState: clearJobState ? null : (jobState ?? this.jobState),
+      completedCount: completedCount ?? this.completedCount,
+      totalCount: totalCount ?? this.totalCount,
+      currentInputPath: clearCurrentInputPath
+          ? null
+          : (currentInputPath ?? this.currentInputPath),
+      appliedResultCount: appliedResultCount ?? this.appliedResultCount,
       items: items ?? this.items,
       globalError: clearGlobalError ? null : (globalError ?? this.globalError),
     );
@@ -154,7 +195,7 @@ final optimizationRunControllerProvider =
     );
 
 class OptimizationRunController extends Notifier<OptimizationRunState> {
-  int _activeRunToken = 0;
+  List<String> _activeInputPaths = const <String>[];
 
   @override
   OptimizationRunState build() => const OptimizationRunState();
@@ -175,13 +216,25 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
     await _run(files);
   }
 
-  void cancelCurrentRun() {
-    if (!state.isRunning) {
+  Future<void> cancelCurrentRun() async {
+    if (!state.isRunning || state.isCancelRequested || state.jobId == null) {
       return;
     }
 
-    _activeRunToken += 1;
-    state = const OptimizationRunState();
+    final jobId = state.jobId!;
+    state = state.copyWith(
+      jobState: BatchJobState.cancelRequested,
+      clearGlobalError: true,
+    );
+
+    try {
+      await ref.read(slimgApiProvider).cancelProcessFileBatchJob(jobId: jobId);
+    } on Object catch (error) {
+      state = _idleState(
+        items: state.items,
+        globalError: error.toString(),
+      );
+    }
   }
 
   Future<void> _run(List<OpenedImageFile> files) async {
@@ -189,75 +242,175 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
       return;
     }
 
-    final runToken = ++_activeRunToken;
-
     final settings = await ref.read(appSettingsProvider.future);
-    if (runToken != _activeRunToken) {
-      return;
-    }
     final requests = files
         .map((file) => buildOptimizationPlan(file: file, settings: settings))
         .map((plan) => plan.processRequest)
         .toList(growable: false);
-
-    state = OptimizationRunState(
-      isRunning: true,
-      items: {
-        for (final file in files)
-          file.path: const OptimizationItemState(
-            status: OptimizationItemStatus.running,
-          ),
-      },
-    );
+    final inputPaths = files.map((file) => file.path).toList(growable: false);
+    final queuedItems = {
+      for (final path in inputPaths)
+        path: const OptimizationItemState(status: OptimizationItemStatus.queued),
+    };
 
     try {
-      final results = await ref
+      final handle = await ref
           .read(slimgApiProvider)
-          .processFileBatch(
+          .startProcessFileBatchJob(
             request: ProcessFileBatchRequest(
               requests: requests,
               continueOnError: true,
             ),
           );
-      if (runToken != _activeRunToken) {
-        return;
-      }
-
-      await ref.read(fileOpenControllerProvider).applyProcessResults(results);
-      if (runToken != _activeRunToken) {
-        return;
-      }
-
-      final nextItems = <String, OptimizationItemState>{};
-      for (final item in results) {
-        if (!item.success || item.result == null) {
-          nextItems[item.inputPath] = OptimizationItemState(
-            status: OptimizationItemStatus.failed,
-            message: item.error?.toString() ?? 'Failed',
-          );
-          continue;
-        }
-
-        final result = item.result!;
-        final key = result.outputPath;
-        nextItems[key] = OptimizationItemState(
-          status: result.didWrite
-              ? OptimizationItemStatus.written
-              : OptimizationItemStatus.skipped,
-          result: result,
-        );
-      }
-
-      state = OptimizationRunState(isRunning: false, items: nextItems);
-    } on Object catch (error) {
-      if (runToken != _activeRunToken) {
-        return;
-      }
+      _activeInputPaths = inputPaths;
       state = OptimizationRunState(
-        isRunning: false,
-        items: state.items,
+        jobId: handle.jobId,
+        jobState: BatchJobState.running,
+        totalCount: inputPaths.length,
+        items: queuedItems,
+      );
+      unawaited(_pollJob(handle.jobId));
+    } on Object catch (error) {
+      state = _idleState(
+        items: queuedItems,
         globalError: error.toString(),
       );
     }
   }
+
+  Future<void> _pollJob(String jobId) async {
+    while (state.jobId == jobId) {
+      try {
+        final snapshot = await ref
+            .read(slimgApiProvider)
+            .getProcessFileBatchJob(jobId: jobId);
+        if (state.jobId != jobId) {
+          return;
+        }
+
+        await _applySnapshot(jobId, snapshot);
+        if (_isTerminalJobState(snapshot.state)) {
+          await _disposeJob(jobId);
+          state = _idleState(
+            items: _buildItemsForSnapshot(snapshot),
+            globalError: snapshot.error?.toString(),
+          );
+          _activeInputPaths = const <String>[];
+          return;
+        }
+      } on Object catch (error) {
+        if (state.jobId != jobId) {
+          return;
+        }
+
+        await _disposeJob(jobId);
+        state = _idleState(
+          items: state.items,
+          globalError: error.toString(),
+        );
+        _activeInputPaths = const <String>[];
+        return;
+      }
+
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+  }
+
+  Future<void> _applySnapshot(String jobId, BatchJobSnapshot snapshot) async {
+    final newResults = snapshot.results.skip(state.appliedResultCount).toList();
+    if (newResults.isNotEmpty) {
+      await ref.read(fileOpenControllerProvider).applyProcessResults(newResults);
+      if (state.jobId != jobId) {
+        return;
+      }
+    }
+
+    state = state.copyWith(
+      jobState: snapshot.state,
+      completedCount: snapshot.completedCount,
+      totalCount: snapshot.totalCount,
+      currentInputPath: snapshot.currentInputPath,
+      appliedResultCount: snapshot.results.length,
+      items: _buildItemsForSnapshot(snapshot),
+      globalError: snapshot.error?.toString(),
+      clearGlobalError: snapshot.error == null,
+      clearCurrentInputPath: snapshot.currentInputPath == null,
+    );
+  }
+
+  Map<String, OptimizationItemState> _buildItemsForSnapshot(
+    BatchJobSnapshot snapshot,
+  ) {
+    final nextItems = <String, OptimizationItemState>{
+      for (final path in _activeInputPaths)
+        path: const OptimizationItemState(status: OptimizationItemStatus.queued),
+    };
+    final completedInputs = <String>{};
+
+    for (final item in snapshot.results) {
+      completedInputs.add(item.inputPath);
+      nextItems.remove(item.inputPath);
+
+      if (!item.success || item.result == null) {
+        nextItems[item.inputPath] = OptimizationItemState(
+          status: OptimizationItemStatus.failed,
+          message: item.error?.toString() ?? 'Failed',
+        );
+        continue;
+      }
+
+      final result = item.result!;
+      nextItems[result.outputPath] = OptimizationItemState(
+        status: result.didWrite
+            ? OptimizationItemStatus.written
+            : OptimizationItemStatus.skipped,
+        result: result,
+      );
+    }
+
+    if (snapshot.currentInputPath case final currentPath?) {
+      nextItems[currentPath] = const OptimizationItemState(
+        status: OptimizationItemStatus.running,
+      );
+    }
+
+    if (snapshot.state == BatchJobState.canceled) {
+      for (final path in _activeInputPaths) {
+        if (!completedInputs.contains(path)) {
+          nextItems[path] = const OptimizationItemState(
+            status: OptimizationItemStatus.canceled,
+          );
+        }
+      }
+    }
+
+    return nextItems;
+  }
+
+  OptimizationRunState _idleState({
+    required Map<String, OptimizationItemState> items,
+    String? globalError,
+  }) {
+    return OptimizationRunState(
+      items: items,
+      globalError: globalError,
+    );
+  }
+
+  Future<void> _disposeJob(String jobId) async {
+    try {
+      await ref.read(slimgApiProvider).disposeProcessFileBatchJob(jobId: jobId);
+    } on Object {
+      // The job is already terminal in the UI path; disposal failures are non-fatal.
+    }
+  }
+}
+
+bool _isTerminalJobState(BatchJobState state) {
+  return switch (state) {
+    BatchJobState.completed ||
+    BatchJobState.canceled ||
+    BatchJobState.failed => true,
+    BatchJobState.running || BatchJobState.cancelRequested => false,
+  };
 }
