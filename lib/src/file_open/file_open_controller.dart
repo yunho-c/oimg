@@ -85,6 +85,16 @@ class FileOpenController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void showPath(String path) {
+    final index = _sessionPaths.indexOf(path);
+    if (index == -1 || index == _currentIndex) {
+      return;
+    }
+
+    _currentIndex = index;
+    notifyListeners();
+  }
+
   String? takePendingNotice() {
     final notice = _pendingNotice;
     _pendingNotice = null;

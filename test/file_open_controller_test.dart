@@ -71,6 +71,22 @@ void main() {
       controller.showNext();
       expect(controller.currentIndex, 1);
     });
+
+    test('can select a file directly by path', () async {
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        initialPaths: const ['1.png', '2.png', '3.png'],
+      );
+
+      await controller.initialize();
+      controller.showPath('3.png');
+
+      expect(controller.currentIndex, 2);
+      expect(controller.currentPath, '3.png');
+
+      controller.showPath('missing.png');
+      expect(controller.currentIndex, 2);
+    });
   });
 }
 

@@ -224,7 +224,7 @@ class _ImageSessionView extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final wideLayout = constraints.maxWidth >= 980;
-          final sidebar = _SessionSidebar(controller: controller);
+          final sidebar = _ExplorerSidebar(controller: controller);
           final stage = _ImageStage(
             title: title,
             currentPath: currentPath,
@@ -235,9 +235,9 @@ class _ImageSessionView extends StatelessWidget {
             return Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(flex: 5, child: stage),
-                const SizedBox(width: 20),
-                SizedBox(width: 320, child: sidebar),
+                SizedBox(width: 280, child: sidebar),
+                const SizedBox(width: 16),
+                Expanded(child: stage),
               ],
             );
           }
@@ -245,9 +245,9 @@ class _ImageSessionView extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              SizedBox(height: 220, child: sidebar),
+              const SizedBox(height: 16),
               Expanded(child: stage),
-              const SizedBox(height: 20),
-              sidebar,
             ],
           );
         },
@@ -342,103 +342,179 @@ class _ImageStage extends StatelessWidget {
   }
 }
 
-class _SessionSidebar extends StatelessWidget {
-  const _SessionSidebar({required this.controller});
+class _ExplorerSidebar extends StatelessWidget {
+  const _ExplorerSidebar({required this.controller});
 
   final FileOpenController controller;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final currentPath = controller.currentPath ?? '';
-    final fileType = currentPath.contains('.')
-        ? currentPath.split('.').last.toUpperCase()
-        : 'IMAGE';
+    final nodes = _buildExplorerNodes(controller);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Card(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Session',
-                style: const TextStyle(fontWeight: FontWeight.w700),
+    return Card(
+      padding: EdgeInsets.zero,
+      borderRadius: theme.borderRadiusXl,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+            child: Text(
+              'Files',
+              style: TextStyle(
+                color: theme.colorScheme.mutedForeground,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.6,
               ),
-              const SizedBox(height: 12),
-              _MetaRow(
-                label: 'Current file',
-                value: controller.currentFileName ?? '',
-              ),
-              const SizedBox(height: 10),
-              _MetaRow(label: 'Format', value: fileType),
-              const SizedBox(height: 10),
-              _MetaRow(
-                label: 'Session size',
-                value:
-                    '${controller.sessionLength} image${controller.sessionLength == 1 ? '' : 's'}',
-              ),
-            ],
+            ).xSmall(),
           ),
-        ),
-        const SizedBox(height: 16),
-        Card(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Navigation',
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 12),
-              PrimaryButton(
-                onPressed: controller.canGoNext ? controller.showNext : null,
-                leading: const Icon(LucideIcons.arrowRight),
-                child: const Text('Next'),
-              ),
-              const SizedBox(height: 10),
-              GhostButton(
-                onPressed: controller.canGoPrevious
-                    ? controller.showPrevious
-                    : null,
-                leading: const Icon(LucideIcons.arrowLeft),
-                alignment: Alignment.centerLeft,
-                child: const Text('Previous'),
-              ),
-              if (controller.currentPositionLabel case final position?) ...[
-                const SizedBox(height: 12),
-                Text(
-                  position,
-                  style: TextStyle(color: theme.colorScheme.mutedForeground),
-                ),
-              ],
-            ],
+          const Divider(),
+          Expanded(
+            child: TreeView<_ExplorerEntry>(
+              nodes: nodes,
+              branchLine: BranchLine.none,
+              expandIcon: false,
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+              builder: (context, node) {
+                final entry = node.data;
+                return TreeItemView(
+                  leading: Icon(
+                    entry.isDirectory ? LucideIcons.folder : LucideIcons.image,
+                    size: 16,
+                    color: entry.isDirectory
+                        ? theme.colorScheme.mutedForeground
+                        : theme.colorScheme.foreground,
+                  ),
+                  trailing: entry.sizeLabel == null
+                      ? null
+                      : Text(entry.sizeLabel!).small().muted(),
+                  expandable: false,
+                  onPressed: entry.isDirectory
+                      ? null
+                      : () => controller.showPath(entry.path),
+                  child: Text(entry.label).small().mediumIf(entry.isDirectory),
+                );
+              },
+            ),
           ),
-        ),
-        const SizedBox(height: 16),
-      ],
+        ],
+      ),
     );
+  }
+
+  List<TreeNode<_ExplorerEntry>> _buildExplorerNodes(
+    FileOpenController controller,
+  ) {
+    final groups = <String, List<String>>{};
+    for (final path in controller.sessionPaths) {
+      final directory = _directoryOf(path);
+      groups.putIfAbsent(directory, () => <String>[]).add(path);
+    }
+
+    return groups.entries
+        .map((entry) {
+          return TreeItem<_ExplorerEntry>(
+            data: _ExplorerEntry.directory(
+              label: _directoryLabel(entry.key),
+              path: entry.key,
+            ),
+            expanded: true,
+            children: entry.value
+                .map((path) {
+                  return TreeItem<_ExplorerEntry>(
+                    data: _ExplorerEntry.file(
+                      label: FileOpenController.fileNameOf(path),
+                      path: path,
+                      sizeLabel: _fileSizeLabel(path),
+                    ),
+                    selected: path == controller.currentPath,
+                  );
+                })
+                .toList(growable: false),
+          );
+        })
+        .toList(growable: false);
+  }
+
+  static String _directoryOf(String path) {
+    final normalized = path.replaceAll('\\', '/');
+    final separator = normalized.lastIndexOf('/');
+    if (separator < 0) {
+      return '.';
+    }
+    if (separator == 0) {
+      return '/';
+    }
+    return normalized.substring(0, separator);
+  }
+
+  static String _directoryLabel(String directory) {
+    final label = FileOpenController.fileNameOf(directory);
+    if (label.isNotEmpty) {
+      return label;
+    }
+    return directory;
   }
 }
 
-class _MetaRow extends StatelessWidget {
-  const _MetaRow({required this.label, required this.value});
+class _ExplorerEntry {
+  const _ExplorerEntry._({
+    required this.label,
+    required this.path,
+    required this.sizeLabel,
+    required this.isDirectory,
+  });
+
+  const _ExplorerEntry.directory({required String label, required String path})
+    : this._(label: label, path: path, sizeLabel: null, isDirectory: true);
+
+  const _ExplorerEntry.file({
+    required String label,
+    required String path,
+    required String? sizeLabel,
+  }) : this._(
+         label: label,
+         path: path,
+         sizeLabel: sizeLabel,
+         isDirectory: false,
+       );
 
   final String label;
-  final String value;
+  final String path;
+  final String? sizeLabel;
+  final bool isDirectory;
+}
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(color: theme.colorScheme.mutedForeground)),
-        const SizedBox(height: 4),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
-      ],
-    );
+extension on Widget {
+  Widget mediumIf(bool condition) {
+    if (!condition) {
+      return this;
+    }
+    return medium();
+  }
+}
+
+String _formatBytes(int bytes) {
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  var value = bytes.toDouble();
+  var unitIndex = 0;
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  final fractionDigits = value >= 10 || unitIndex == 0 ? 0 : 1;
+  return '${value.toStringAsFixed(fractionDigits)} ${units[unitIndex]}';
+}
+
+String? _fileSizeLabel(String path) {
+  try {
+    return _formatBytes(File(path).lengthSync());
+  } catch (_) {
+    return null;
   }
 }
 
