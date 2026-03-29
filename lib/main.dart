@@ -8,6 +8,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
 const _uiScale = 0.8;
+const _uiRadius = 0.6;
 const _titleBarHeight = 24.0;
 
 Future<void> main(List<String> args) async {
@@ -58,7 +59,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorSchemes.lightSlate,
-        radius: 0.9,
+        radius: _uiRadius,
         scaling: _uiScale,
         typography: baseTypography,
         surfaceOpacity: 0.92,
@@ -66,7 +67,7 @@ class MyApp extends StatelessWidget {
       ),
       darkTheme: ThemeData.dark(
         colorScheme: ColorSchemes.darkSlate,
-        radius: 0.9,
+        radius: _uiRadius,
         scaling: _uiScale,
         typography: baseTypography,
         surfaceOpacity: 0.88,
