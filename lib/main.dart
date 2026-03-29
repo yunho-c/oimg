@@ -8,7 +8,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
 const _uiScale = 0.8;
-const _uiRadius = 0.6;
+const _uiRadius = 0.4;
 const _titleBarHeight = 24.0;
 
 Future<void> main(List<String> args) async {
@@ -284,13 +284,13 @@ class _ImageStage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 4),
-                Text(
                   currentPath,
                   style: TextStyle(color: theme.colorScheme.mutedForeground),
+                ).xSmall(),
+                const SizedBox(height: 4),
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
               ],
             ),
