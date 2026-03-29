@@ -161,22 +161,29 @@ class _OimgHomePageState extends State<OimgHomePage> {
         return Scaffold(
           headers: [
             AppBar(
-              title: const DragToMoveArea(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('OIMG'),
-                ),
-              ),
-              trailing: [
-                if (widget.controller.currentPositionLabel case final position?)
-                  Card(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  const Positioned.fill(
+                    child: DragToMoveArea(
+                      child: Center(
+                        child: Text('OIMG'),
+                      ),
                     ),
-                    child: Text(position),
                   ),
-              ],
+                  if (widget.controller.currentPositionLabel case final position?)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Card(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        child: Text(position),
+                      ),
+                    ),
+                ],
+              ),
             ),
             const Divider(),
           ],
