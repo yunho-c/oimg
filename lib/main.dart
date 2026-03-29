@@ -10,6 +10,9 @@ import 'package:window_manager/window_manager.dart';
 const _uiScale = 0.8;
 const _uiRadius = 0.4;
 const _titleBarHeight = 24.0;
+const _defaultSidebarWidth = 280.0;
+const _minSidebarWidth = 180.0;
+const _maxSidebarWidth = 420.0;
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -205,16 +208,23 @@ class _OimgHomePageState extends State<OimgHomePage> {
   }
 }
 
-class _ImageSessionView extends StatelessWidget {
+class _ImageSessionView extends StatefulWidget {
   const _ImageSessionView({required this.controller, required this.title});
 
   final FileOpenController controller;
   final String title;
 
   @override
+  State<_ImageSessionView> createState() => _ImageSessionViewState();
+}
+
+class _ImageSessionViewState extends State<_ImageSessionView> {
+  double _sidebarWidth = _defaultSidebarWidth;
+
+  @override
   Widget build(BuildContext context) {
-    final currentPath = controller.currentPath;
-    final currentFileName = controller.currentFileName;
+    final currentPath = widget.controller.currentPath;
+    final currentFileName = widget.controller.currentFileName;
     if (currentPath == null || currentFileName == null) {
       return const _EmptyState();
     }
@@ -224,19 +234,34 @@ class _ImageSessionView extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final wideLayout = constraints.maxWidth >= 980;
-          final sidebar = _ExplorerSidebar(controller: controller);
+          final sidebar = _ExplorerSidebar(controller: widget.controller);
           final stage = _ImageStage(
-            title: title,
+            title: widget.title,
             currentPath: currentPath,
             currentFileName: currentFileName,
           );
 
           if (wideLayout) {
+            final maxWidth = _clampSidebarWidth(constraints.maxWidth * 0.45);
+            final sidebarWidth = _sidebarWidth.clamp(
+              _minSidebarWidth,
+              maxWidth,
+            );
             return Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SizedBox(width: 280, child: sidebar),
-                const SizedBox(width: 16),
+                SizedBox(width: sidebarWidth, child: sidebar),
+                _SidebarResizeHandle(
+                  onDragUpdate: (delta) {
+                    setState(() {
+                      _sidebarWidth = _clampSidebarWidth(
+                        _sidebarWidth + delta,
+                        maxWidth: maxWidth,
+                      );
+                    });
+                  },
+                ),
+                const SizedBox(width: 12),
                 Expanded(child: stage),
               ],
             );
@@ -251,6 +276,28 @@ class _ImageSessionView extends StatelessWidget {
             ],
           );
         },
+      ),
+    );
+  }
+
+  double _clampSidebarWidth(double width, {double? maxWidth}) {
+    return width.clamp(_minSidebarWidth, maxWidth ?? _maxSidebarWidth);
+  }
+}
+
+class _SidebarResizeHandle extends StatelessWidget {
+  const _SidebarResizeHandle({required this.onDragUpdate});
+
+  final ValueChanged<double> onDragUpdate;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeLeftRight,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onHorizontalDragUpdate: (details) => onDragUpdate(details.delta.dx),
+        child: const SizedBox(width: 8),
       ),
     );
   }
