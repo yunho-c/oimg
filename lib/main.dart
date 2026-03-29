@@ -299,16 +299,11 @@ class _ImageStage extends StatelessWidget {
           Expanded(
             child: Container(
               color: theme.colorScheme.background,
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(10),
               child: InteractiveViewer(
                 minScale: 0.5,
                 maxScale: 6,
                 child: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: theme.colorScheme.border),
-                    borderRadius: theme.borderRadiusLg,
-                    color: theme.colorScheme.card,
-                  ),
                   alignment: Alignment.center,
                   child: Image.file(
                     File(currentPath),
