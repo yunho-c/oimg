@@ -4,7 +4,12 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oimg/src/file_open/file_open_channel.dart';
 import 'package:oimg/src/file_open/file_open_controller.dart';
+import 'package:oimg/src/file_open/file_open_providers.dart';
+import 'package:oimg/src/file_open/opened_image_file.dart';
+import 'package:oimg/src/optimization/optimization_plan.dart';
+import 'package:oimg/src/optimization/optimization_providers.dart';
 import 'package:oimg/src/rust/frb_generated.dart';
+import 'package:oimg/src/rust/slimg_api.dart';
 import 'package:oimg/src/settings/app_settings.dart';
 import 'package:oimg/src/settings/app_settings_controller.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -16,20 +21,30 @@ const _titleBarHeight = 24.0;
 const _defaultSidebarWidth = 280.0;
 const _minSidebarWidth = 180.0;
 const _maxSidebarWidth = 420.0;
-const _settingsSidebarWidth = 280.0;
+const _settingsSidebarWidth = 320.0;
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   await _configureWindow();
   await RustLib.init();
 
+  const slimgApi = FrbSlimgApi();
   final controller = FileOpenController(
     channel: MethodChannelFileOpenChannel(),
+    slimg: slimgApi,
     initialPaths: args,
   );
   await controller.initialize();
 
-  runApp(ProviderScope(child: MyApp(controller: controller)));
+  runApp(
+    ProviderScope(
+      overrides: [
+        slimgApiProvider.overrideWithValue(slimgApi),
+        fileOpenControllerProvider.overrideWith((ref) => controller),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 Future<void> _configureWindow() async {
@@ -53,9 +68,7 @@ Future<void> _configureWindow() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key, required this.controller});
-
-  final FileOpenController controller;
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -81,35 +94,36 @@ class MyApp extends StatelessWidget {
         surfaceBlur: 12,
       ),
       themeMode: ThemeMode.system,
-      home: OimgHomePage(controller: controller),
+      home: const OimgHomePage(),
     );
   }
 }
 
 class OimgHomePage extends ConsumerStatefulWidget {
-  const OimgHomePage({super.key, required this.controller});
-
-  final FileOpenController controller;
+  const OimgHomePage({super.key});
 
   @override
   ConsumerState<OimgHomePage> createState() => _OimgHomePageState();
 }
 
 class _OimgHomePageState extends ConsumerState<OimgHomePage> {
+  late final FileOpenController _controller;
+
   @override
   void initState() {
     super.initState();
-    widget.controller.addListener(_onControllerChanged);
+    _controller = ref.read(fileOpenControllerProvider);
+    _controller.addListener(_onControllerChanged);
   }
 
   @override
   void dispose() {
-    widget.controller.removeListener(_onControllerChanged);
+    _controller.removeListener(_onControllerChanged);
     super.dispose();
   }
 
   void _onControllerChanged() {
-    final notice = widget.controller.takePendingNotice();
+    final notice = _controller.takePendingNotice();
     if (notice == null || !mounted) {
       return;
     }
@@ -135,22 +149,12 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Unsupported files',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        notice,
-                        style: TextStyle(
-                          color: theme.colorScheme.mutedForeground,
-                        ),
-                      ),
-                    ],
-                  ),
+                  child: Text(
+                    notice,
+                    style: TextStyle(
+                      color: theme.colorScheme.mutedForeground,
+                    ),
+                  ).small(),
                 ),
                 const SizedBox(width: 12),
                 GhostButton(
@@ -168,68 +172,61 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: widget.controller,
-      builder: (context, _) {
-        final title =
-            widget.controller.currentFileName ??
-            'Open images from your desktop';
+    final controller = ref.watch(fileOpenControllerProvider);
+    final title =
+        controller.currentFileName ?? 'Open images from your desktop';
 
-        return Scaffold(
-          headers: [
-            AppBar(
-              height: _titleBarHeight,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  const Positioned.fill(
-                    child: DragToMoveArea(child: Center(child: Text('OIMG'))),
-                  ),
-                  if (widget.controller.currentPositionLabel
-                      case final position?)
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Card(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        child: Text(position),
-                      ),
-                    ),
-                ],
+    return Scaffold(
+      headers: [
+        AppBar(
+          height: _titleBarHeight,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              const Positioned.fill(
+                child: DragToMoveArea(child: Center(child: Text('OIMG'))),
               ),
-            ),
-            const Divider(),
-          ],
-          child: widget.controller.hasSession
-              ? _ImageSessionView(controller: widget.controller, title: title)
-              : const _EmptyState(),
-        );
-      },
+              if (controller.currentPositionLabel case final position?)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Card(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    child: Text(position),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const Divider(),
+      ],
+      child: controller.hasSession
+          ? _ImageSessionView(title: title)
+          : const _EmptyState(),
     );
   }
 }
 
-class _ImageSessionView extends StatefulWidget {
-  const _ImageSessionView({required this.controller, required this.title});
+class _ImageSessionView extends ConsumerStatefulWidget {
+  const _ImageSessionView({required this.title});
 
-  final FileOpenController controller;
   final String title;
 
   @override
-  State<_ImageSessionView> createState() => _ImageSessionViewState();
+  ConsumerState<_ImageSessionView> createState() => _ImageSessionViewState();
 }
 
-class _ImageSessionViewState extends State<_ImageSessionView> {
+class _ImageSessionViewState extends ConsumerState<_ImageSessionView> {
   double _sidebarWidth = _defaultSidebarWidth;
 
   @override
   Widget build(BuildContext context) {
-    final currentPath = widget.controller.currentPath;
-    final currentFileName = widget.controller.currentFileName;
-    if (currentPath == null || currentFileName == null) {
+    final controller = ref.watch(fileOpenControllerProvider);
+    final currentFile = controller.currentFile;
+    if (currentFile == null) {
       return const _EmptyState();
     }
 
@@ -237,17 +234,13 @@ class _ImageSessionViewState extends State<_ImageSessionView> {
       padding: const EdgeInsets.all(24),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final wideLayout = constraints.maxWidth >= 980;
-          final sidebar = _ExplorerSidebar(controller: widget.controller);
-          final stage = _ImageStage(
-            title: widget.title,
-            currentPath: currentPath,
-            currentFileName: currentFileName,
-          );
+          final wideLayout = constraints.maxWidth >= 1120;
+          final sidebar = _ExplorerSidebar(controller: controller);
+          final stage = _ImageStage(title: widget.title, currentFile: currentFile);
           const settingsSidebar = _SettingsSidebar();
 
           if (wideLayout) {
-            final maxWidth = _clampSidebarWidth(constraints.maxWidth * 0.45);
+            final maxWidth = _clampSidebarWidth(constraints.maxWidth * 0.38);
             final sidebarWidth = _sidebarWidth.clamp(
               _minSidebarWidth,
               maxWidth,
@@ -284,7 +277,7 @@ class _ImageSessionViewState extends State<_ImageSessionView> {
               const SizedBox(height: 16),
               Expanded(child: stage),
               const SizedBox(height: 16),
-              const SizedBox(height: 320, child: settingsSidebar),
+              const SizedBox(height: 420, child: settingsSidebar),
             ],
           );
         },
@@ -315,20 +308,16 @@ class _SidebarResizeHandle extends StatelessWidget {
   }
 }
 
-class _ImageStage extends StatelessWidget {
-  const _ImageStage({
-    required this.title,
-    required this.currentPath,
-    required this.currentFileName,
-  });
+class _ImageStage extends ConsumerWidget {
+  const _ImageStage({required this.title, required this.currentFile});
 
   final String title;
-  final String currentPath;
-  final String currentFileName;
+  final OpenedImageFile currentFile;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final preview = ref.watch(currentPreviewProvider);
 
     return Card(
       padding: EdgeInsets.zero,
@@ -343,13 +332,45 @@ class _ImageStage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  currentPath,
+                  currentFile.path,
                   style: TextStyle(color: theme.colorScheme.mutedForeground),
                 ).xSmall(),
                 const SizedBox(height: 4),
                 Text(
                   title,
                   style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 10),
+                preview.when(
+                  data: (preview) {
+                    if (preview == null) {
+                      return const SizedBox.shrink();
+                    }
+                    return Wrap(
+                      spacing: 12,
+                      runSpacing: 4,
+                      children: [
+                        _PreviewMetaItem(
+                          label: 'Codec',
+                          value: formatLabel(preview.result.format),
+                        ),
+                        if (preview.originalSize case final original?)
+                          _PreviewMetaItem(
+                            label: 'Size',
+                            value:
+                                '${_formatBytes(original)} -> ${_formatBytes(preview.result.sizeBytes.toInt())}',
+                          ),
+                        if (preview.savingsPercent case final savings?)
+                          _PreviewMetaItem(
+                            label: 'Savings',
+                            value: '${savings.toStringAsFixed(0)}%',
+                          ),
+                      ],
+                    );
+                  },
+                  loading: () => Text('Loading preview').xSmall().muted(),
+                  error: (_, _) =>
+                      Text('Preview unavailable').xSmall().muted(),
                 ),
               ],
             ),
@@ -359,38 +380,17 @@ class _ImageStage extends StatelessWidget {
             child: Container(
               color: theme.colorScheme.background,
               padding: const EdgeInsets.all(10),
-              child: InteractiveViewer(
-                minScale: 0.5,
-                maxScale: 6,
-                child: Container(
-                  alignment: Alignment.center,
-                  child: Image.file(
-                    File(currentPath),
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              LucideIcons.imageOff,
-                              size: 32,
-                              color: theme.colorScheme.mutedForeground,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Unable to load $currentFileName.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: theme.colorScheme.mutedForeground,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+              child: preview.when(
+                data: (preview) => _PreviewCanvas(
+                  path: currentFile.path,
+                  fileName: FileOpenController.fileNameOf(currentFile.path),
+                  preview: preview,
+                ),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (_, _) => _PreviewCanvas(
+                  path: currentFile.path,
+                  fileName: FileOpenController.fileNameOf(currentFile.path),
+                  preview: null,
                 ),
               ),
             ),
@@ -398,6 +398,109 @@ class _ImageStage extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _PreviewCanvas extends StatelessWidget {
+  const _PreviewCanvas({
+    required this.path,
+    required this.fileName,
+    required this.preview,
+  });
+
+  final String path;
+  final String fileName;
+  final OptimizationPreview? preview;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return InteractiveViewer(
+      minScale: 0.5,
+      maxScale: 6,
+      child: Container(
+        alignment: Alignment.center,
+        child: preview == null
+            ? Image.file(
+                File(path),
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return _ImageLoadError(fileName: fileName);
+                },
+              )
+            : Image.memory(
+                preview!.result.encodedBytes,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          LucideIcons.imageOff,
+                          size: 32,
+                          color: theme.colorScheme.mutedForeground,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Unable to render optimized preview.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: theme.colorScheme.mutedForeground,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+      ),
+    );
+  }
+}
+
+class _ImageLoadError extends StatelessWidget {
+  const _ImageLoadError({required this.fileName});
+
+  final String fileName;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            LucideIcons.imageOff,
+            size: 32,
+            color: theme.colorScheme.mutedForeground,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Unable to load $fileName.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: theme.colorScheme.mutedForeground),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PreviewMetaItem extends StatelessWidget {
+  const _PreviewMetaItem({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text('$label $value').xSmall().muted();
   }
 }
 
@@ -466,10 +569,10 @@ class _ExplorerSidebar extends StatelessWidget {
   List<TreeNode<_ExplorerEntry>> _buildExplorerNodes(
     FileOpenController controller,
   ) {
-    final groups = <String, List<String>>{};
-    for (final path in controller.sessionPaths) {
-      final directory = _directoryOf(path);
-      groups.putIfAbsent(directory, () => <String>[]).add(path);
+    final groups = <String, List<OpenedImageFile>>{};
+    for (final file in controller.sessionFiles) {
+      final directory = _directoryOf(file.path);
+      groups.putIfAbsent(directory, () => <OpenedImageFile>[]).add(file);
     }
 
     return groups.entries
@@ -481,16 +584,16 @@ class _ExplorerSidebar extends StatelessWidget {
             ),
             expanded: true,
             children: entry.value
-                .map((path) {
-                  return TreeItem<_ExplorerEntry>(
+                .map(
+                  (file) => TreeItem<_ExplorerEntry>(
                     data: _ExplorerEntry.file(
-                      label: FileOpenController.fileNameOf(path),
-                      path: path,
-                      sizeLabel: _fileSizeLabel(path),
+                      label: FileOpenController.fileNameOf(file.path),
+                      path: file.path,
+                      sizeLabel: _fileSizeLabel(file),
                     ),
-                    selected: path == controller.currentPath,
-                  );
-                })
+                    selected: file.path == controller.currentPath,
+                  ),
+                )
                 .toList(growable: false),
           );
         })
@@ -554,6 +657,9 @@ class _SettingsSidebar extends ConsumerWidget {
     final theme = Theme.of(context);
     final settings = ref.watch(appSettingsProvider);
     final notifier = ref.read(appSettingsProvider.notifier);
+    final runState = ref.watch(optimizationRunControllerProvider);
+    final runController = ref.read(optimizationRunControllerProvider.notifier);
+    final fileController = ref.watch(fileOpenControllerProvider);
 
     return Card(
       padding: EdgeInsets.zero,
@@ -590,7 +696,9 @@ class _SettingsSidebar extends ConsumerWidget {
                         const SizedBox(width: 8),
                         Switch(
                           value: settings.advancedMode,
-                          onChanged: notifier.setAdvancedMode,
+                          onChanged: runState.isRunning
+                              ? null
+                              : notifier.setAdvancedMode,
                         ),
                       ],
                     );
@@ -616,7 +724,9 @@ class _SettingsSidebar extends ConsumerWidget {
                         const SizedBox(height: 8),
                         RadioGroup<PreferredCodec>(
                           value: settings.preferredCodec,
-                          onChanged: notifier.setPreferredCodec,
+                          onChanged: runState.isRunning
+                              ? null
+                              : notifier.setPreferredCodec,
                           child: LayoutBuilder(
                             builder: (context, constraints) {
                               final cardWidth = (constraints.maxWidth - 8) / 2;
@@ -630,7 +740,7 @@ class _SettingsSidebar extends ConsumerWidget {
                                         child: RadioCard<PreferredCodec>(
                                           value: codec,
                                           child: _ChoiceCard(
-                                            title: _codecLabel(codec),
+                                            title: codecLabel(codec),
                                           ),
                                         ),
                                       ),
@@ -645,7 +755,9 @@ class _SettingsSidebar extends ConsumerWidget {
                         const SizedBox(height: 8),
                         RadioGroup<CompressionMethod>(
                           value: settings.compressionMethod,
-                          onChanged: notifier.setCompressionMethod,
+                          onChanged: runState.isRunning
+                              ? null
+                              : notifier.setCompressionMethod,
                           child: Row(
                             children: [
                               Expanded(
@@ -669,7 +781,9 @@ class _SettingsSidebar extends ConsumerWidget {
                         const SizedBox(height: 8),
                         RadioGroup<CompressionPriority>(
                           value: settings.compressionPriority,
-                          onChanged: notifier.setCompressionPriority,
+                          onChanged: runState.isRunning
+                              ? null
+                              : notifier.setCompressionPriority,
                           child: Row(
                             children: [
                               Expanded(
@@ -713,15 +827,55 @@ class _SettingsSidebar extends ConsumerWidget {
                           min: 0,
                           max: 100,
                           divisions: 100,
-                          onChanged: (value) {
-                            notifier.setQuality(value.value.round());
-                          },
+                          onChanged: runState.isRunning
+                              ? null
+                              : (value) {
+                                  notifier.setQuality(value.value.round());
+                                },
                         ),
                         const SizedBox(height: 12),
                       ],
                       _SettingsLabel('Current codec'),
                       const SizedBox(height: 8),
-                      Text(_codecLabel(settings.effectiveCodec)).small().medium(),
+                      Text(codecLabel(settings.effectiveCodec)).small().medium(),
+                      const SizedBox(height: 16),
+                      _SettingsLabel('Actions'),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: PrimaryButton(
+                              onPressed: runState.isRunning
+                                  ? null
+                                  : runController.optimizeSelected,
+                              child: const Text('Optimize selected'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlineButton(
+                              onPressed: runState.isRunning
+                                  ? null
+                                  : runController.optimizeAll,
+                              child: const Text('Optimize all'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (runState.globalError case final error?)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: Text(error).xSmall().muted(),
+                        ),
+                      const SizedBox(height: 16),
+                      _SettingsLabel('Status'),
+                      const SizedBox(height: 8),
+                      ...fileController.sessionFiles.map(
+                        (file) => _StatusRow(
+                          fileName: FileOpenController.fileNameOf(file.path),
+                          status: _statusForFile(file, runState),
+                        ),
+                      ),
                     ],
                   );
                 },
@@ -748,6 +902,73 @@ class _SettingsSidebar extends ConsumerWidget {
   }
 }
 
+class _StatusRow extends StatelessWidget {
+  const _StatusRow({required this.fileName, required this.status});
+
+  final String fileName;
+  final OptimizationItemState status;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Expanded(child: Text(fileName).small()),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.secondary,
+              borderRadius: theme.borderRadiusLg,
+            ),
+            child: Text(_statusLabel(status)).xSmall().muted(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+OptimizationItemState _statusForFile(
+  OpenedImageFile file,
+  OptimizationRunState runState,
+) {
+  final direct = runState.items[file.path];
+  if (direct != null) {
+    return direct;
+  }
+
+  if (file.lastError != null) {
+    return OptimizationItemState(
+      status: OptimizationItemStatus.failed,
+      message: file.lastError,
+    );
+  }
+
+  if (file.lastResult != null) {
+    return OptimizationItemState(
+      status: file.lastResult!.didWrite
+          ? OptimizationItemStatus.written
+          : OptimizationItemStatus.skipped,
+      result: file.lastResult,
+    );
+  }
+
+  return const OptimizationItemState(status: OptimizationItemStatus.idle);
+}
+
+String _statusLabel(OptimizationItemState state) {
+  return switch (state.status) {
+    OptimizationItemStatus.idle => 'Idle',
+    OptimizationItemStatus.running => 'Working',
+    OptimizationItemStatus.written => 'Saved',
+    OptimizationItemStatus.skipped => 'Unchanged',
+    OptimizationItemStatus.failed => 'Failed',
+  };
+}
+
 class _SettingsLabel extends StatelessWidget {
   const _SettingsLabel(this.label);
 
@@ -766,9 +987,7 @@ class _ChoiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Basic(
-      title: Text(title).small().medium(),
-    );
+    return Basic(title: Text(title).small().medium());
   }
 }
 
@@ -795,22 +1014,12 @@ String _formatBytes(int bytes) {
   return '${value.toStringAsFixed(fractionDigits)} ${units[unitIndex]}';
 }
 
-String? _fileSizeLabel(String path) {
-  try {
-    return _formatBytes(File(path).lengthSync());
-  } catch (_) {
+String? _fileSizeLabel(OpenedImageFile file) {
+  final bytes = file.metadata.fileSize?.toInt();
+  if (bytes == null) {
     return null;
   }
-}
-
-String _codecLabel(PreferredCodec codec) {
-  return switch (codec) {
-    PreferredCodec.png => 'PNG',
-    PreferredCodec.jpeg => 'JPEG',
-    PreferredCodec.webp => 'WebP',
-    PreferredCodec.avif => 'AVIF',
-    PreferredCodec.jxl => 'JPEG XL',
-  };
+  return _formatBytes(bytes);
 }
 
 String _qualityValueLabel(AppSettings settings) {

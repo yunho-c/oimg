@@ -62,6 +62,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ProcessBytesRequest dco_decode_box_autoadd_process_bytes_request(dynamic raw);
 
   @protected
+  ProcessFileBatchRequest dco_decode_box_autoadd_process_file_batch_request(
+    dynamic raw,
+  );
+
+  @protected
   ProcessFileRequest dco_decode_box_autoadd_process_file_request(dynamic raw);
 
   @protected
@@ -125,6 +130,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  List<ProcessFileRequest> dco_decode_list_process_file_request(dynamic raw);
+
+  @protected
   String? dco_decode_opt_String(dynamic raw);
 
   @protected
@@ -150,6 +158,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ProcessBytesRequest dco_decode_process_bytes_request(dynamic raw);
+
+  @protected
+  ProcessFileBatchRequest dco_decode_process_file_batch_request(dynamic raw);
 
   @protected
   ProcessFileRequest dco_decode_process_file_request(dynamic raw);
@@ -232,6 +243,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  ProcessFileBatchRequest sse_decode_box_autoadd_process_file_batch_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   ProcessFileRequest sse_decode_box_autoadd_process_file_request(
     SseDeserializer deserializer,
   );
@@ -307,6 +323,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  List<ProcessFileRequest> sse_decode_list_process_file_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
 
   @protected
@@ -338,6 +359,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ProcessBytesRequest sse_decode_process_bytes_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ProcessFileBatchRequest sse_decode_process_file_batch_request(
     SseDeserializer deserializer,
   );
 
@@ -446,6 +472,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_process_file_batch_request(
+    ProcessFileBatchRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_process_file_request(
     ProcessFileRequest self,
     SseSerializer serializer,
@@ -539,6 +571,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_process_file_request(
+    List<ProcessFileRequest> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
 
   @protected
@@ -580,6 +618,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_process_bytes_request(
     ProcessBytesRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_process_file_batch_request(
+    ProcessFileBatchRequest self,
     SseSerializer serializer,
   );
 

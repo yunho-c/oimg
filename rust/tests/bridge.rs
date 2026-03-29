@@ -2,7 +2,8 @@ use std::fs;
 
 use oimg_rust::api::bridge::{
     self, BatchProcessRequest, ConvertOptions, CropOptions, CropSpec, ImageOperation,
-    PreviewFileRequest, ProcessBytesRequest, ProcessFileRequest, ResizeOptions, ResizeSpec,
+    OptimizeOptions, PreviewFileRequest, ProcessBytesRequest, ProcessFileBatchRequest,
+    ProcessFileRequest, ResizeOptions, ResizeSpec,
 };
 use slimg_core::{convert, decode, Format, ImageData, PipelineOptions};
 use tempfile::tempdir;
@@ -107,12 +108,34 @@ fn process_file_derives_suffixed_output_when_overwrite_is_false() {
 
     assert!(result.output_path.ends_with("photo.resized.png"));
     assert_eq!(result.width, 24);
+    assert!(result.did_write);
 
     let written_bytes = fs::read(&result.output_path).unwrap();
     let (decoded, format) = decode(&written_bytes).unwrap();
     assert_eq!(format, Format::Png);
     assert_eq!(decoded.width, 24);
     assert_eq!(decoded.height, 16);
+}
+
+#[test]
+fn process_file_reports_skipped_write_when_optimized_result_is_not_smaller() {
+    let dir = tempdir().unwrap();
+    let input_path = dir.path().join("photo.png");
+    fs::write(&input_path, png_bytes()).unwrap();
+
+    let result = bridge::process_file(ProcessFileRequest {
+        input_path: input_path.to_string_lossy().into_owned(),
+        output_path: None,
+        overwrite: true,
+        operation: ImageOperation::Optimize(OptimizeOptions {
+            quality: 100,
+            write_only_if_smaller: true,
+        }),
+    })
+    .unwrap();
+
+    assert_eq!(result.output_path, input_path.to_string_lossy());
+    assert!(!result.did_write || result.new_size < result.original_size);
 }
 
 #[test]
@@ -149,4 +172,49 @@ fn process_files_returns_ordered_partial_failures() {
     assert_eq!(results[0].input_path, first_path.to_string_lossy());
     assert_eq!(results[1].input_path, missing_path.to_string_lossy());
     assert_eq!(results[2].input_path, third_path.to_string_lossy());
+}
+
+#[test]
+fn process_file_batch_supports_mixed_operations() {
+    let dir = tempdir().unwrap();
+    let first_path = dir.path().join("first.png");
+    let second_path = dir.path().join("second.png");
+    let second_output = dir.path().join("second.optimized.jpg");
+
+    fs::write(&first_path, png_bytes()).unwrap();
+    fs::write(&second_path, png_bytes()).unwrap();
+
+    let results = bridge::process_file_batch(ProcessFileBatchRequest {
+        requests: vec![
+            ProcessFileRequest {
+                input_path: first_path.to_string_lossy().into_owned(),
+                output_path: None,
+                overwrite: true,
+                operation: ImageOperation::Optimize(OptimizeOptions {
+                    quality: 80,
+                    write_only_if_smaller: true,
+                }),
+            },
+            ProcessFileRequest {
+                input_path: second_path.to_string_lossy().into_owned(),
+                output_path: Some(second_output.to_string_lossy().into_owned()),
+                overwrite: true,
+                operation: ImageOperation::Convert(ConvertOptions {
+                    target_format: "jpeg".to_string(),
+                    quality: 80,
+                }),
+            },
+        ],
+        continue_on_error: true,
+    })
+    .unwrap();
+
+    assert_eq!(results.len(), 2);
+    assert!(results[0].success);
+    assert!(results[1].success);
+    assert_eq!(
+        results[1].result.as_ref().unwrap().output_path,
+        second_output.to_string_lossy()
+    );
+    assert!(results[1].result.as_ref().unwrap().did_write);
 }

@@ -34,3 +34,7 @@ Future<EncodedImageResult> processBytes({
 Future<List<BatchItemResult>> processFiles({
   required BatchProcessRequest request,
 }) => RustLib.instance.api.crateApiBridgeProcessFiles(request: request);
+
+Future<List<BatchItemResult>> processFileBatch({
+  required ProcessFileBatchRequest request,
+}) => RustLib.instance.api.crateApiBridgeProcessFileBatch(request: request);

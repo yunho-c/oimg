@@ -29,4 +29,8 @@ class SlimgBridge {
   Future<List<BatchItemResult>> processFiles({
     required BatchProcessRequest request,
   }) => bridge_api.processFiles(request: request);
+
+  Future<List<BatchItemResult>> processFileBatch({
+    required ProcessFileBatchRequest request,
+  }) => bridge_api.processFileBatch(request: request);
 }

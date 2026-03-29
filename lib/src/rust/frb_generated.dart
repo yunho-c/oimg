@@ -68,7 +68,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 861731066;
+  int get rustContentHash => -206444806;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -95,6 +95,10 @@ abstract class RustLibApi extends BaseApi {
 
   Future<ProcessResult> crateApiBridgeProcessFile({
     required ProcessFileRequest request,
+  });
+
+  Future<List<BatchItemResult>> crateApiBridgeProcessFileBatch({
+    required ProcessFileBatchRequest request,
   });
 
   Future<List<BatchItemResult>> crateApiBridgeProcessFiles({
@@ -288,6 +292,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "process_file", argNames: ["request"]);
 
   @override
+  Future<List<BatchItemResult>> crateApiBridgeProcessFileBatch({
+    required ProcessFileBatchRequest request,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_process_file_batch_request(
+            request,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 7,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_batch_item_result,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiBridgeProcessFileBatchConstMeta,
+        argValues: [request],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeProcessFileBatchConstMeta =>
+      const TaskConstMeta(
+        debugName: "process_file_batch",
+        argNames: ["request"],
+      );
+
+  @override
   Future<List<BatchItemResult>> crateApiBridgeProcessFiles({
     required BatchProcessRequest request,
   }) {
@@ -299,7 +339,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 8,
             port: port_,
           );
         },
@@ -323,7 +363,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_format_info,
@@ -345,7 +385,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -458,6 +498,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_process_bytes_request(raw);
+  }
+
+  @protected
+  ProcessFileBatchRequest dco_decode_box_autoadd_process_file_batch_request(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_process_file_batch_request(raw);
   }
 
   @protected
@@ -693,6 +741,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<ProcessFileRequest> dco_decode_list_process_file_request(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_process_file_request).toList();
+  }
+
+  @protected
   String? dco_decode_opt_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_String(raw);
@@ -774,6 +828,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ProcessFileBatchRequest dco_decode_process_file_batch_request(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return ProcessFileBatchRequest(
+      requests: dco_decode_list_process_file_request(arr[0]),
+      continueOnError: dco_decode_bool(arr[1]),
+    );
+  }
+
+  @protected
   ProcessFileRequest dco_decode_process_file_request(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -791,8 +857,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ProcessResult dco_decode_process_result(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    if (arr.length != 7)
+      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
     return ProcessResult(
       outputPath: dco_decode_String(arr[0]),
       format: dco_decode_String(arr[1]),
@@ -800,6 +866,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       height: dco_decode_u_32(arr[3]),
       originalSize: dco_decode_u_64(arr[4]),
       newSize: dco_decode_u_64(arr[5]),
+      didWrite: dco_decode_bool(arr[6]),
     );
   }
 
@@ -1019,6 +1086,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_process_bytes_request(deserializer));
+  }
+
+  @protected
+  ProcessFileBatchRequest sse_decode_box_autoadd_process_file_batch_request(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_process_file_batch_request(deserializer));
   }
 
   @protected
@@ -1291,6 +1366,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<ProcessFileRequest> sse_decode_list_process_file_request(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <ProcessFileRequest>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_process_file_request(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   String? sse_decode_opt_String(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -1401,6 +1490,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ProcessFileBatchRequest sse_decode_process_file_batch_request(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_requests = sse_decode_list_process_file_request(deserializer);
+    var var_continueOnError = sse_decode_bool(deserializer);
+    return ProcessFileBatchRequest(
+      requests: var_requests,
+      continueOnError: var_continueOnError,
+    );
+  }
+
+  @protected
   ProcessFileRequest sse_decode_process_file_request(
     SseDeserializer deserializer,
   ) {
@@ -1426,6 +1528,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_height = sse_decode_u_32(deserializer);
     var var_originalSize = sse_decode_u_64(deserializer);
     var var_newSize = sse_decode_u_64(deserializer);
+    var var_didWrite = sse_decode_bool(deserializer);
     return ProcessResult(
       outputPath: var_outputPath,
       format: var_format,
@@ -1433,6 +1536,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       height: var_height,
       originalSize: var_originalSize,
       newSize: var_newSize,
+      didWrite: var_didWrite,
     );
   }
 
@@ -1673,6 +1777,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_process_file_batch_request(
+    ProcessFileBatchRequest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_process_file_batch_request(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_process_file_request(
     ProcessFileRequest self,
     SseSerializer serializer,
@@ -1910,6 +2023,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_process_file_request(
+    List<ProcessFileRequest> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_process_file_request(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -2009,6 +2134,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_process_file_batch_request(
+    ProcessFileBatchRequest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_process_file_request(self.requests, serializer);
+    sse_encode_bool(self.continueOnError, serializer);
+  }
+
+  @protected
   void sse_encode_process_file_request(
     ProcessFileRequest self,
     SseSerializer serializer,
@@ -2029,6 +2164,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_u_32(self.height, serializer);
     sse_encode_u_64(self.originalSize, serializer);
     sse_encode_u_64(self.newSize, serializer);
+    sse_encode_bool(self.didWrite, serializer);
   }
 
   @protected

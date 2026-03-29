@@ -5,7 +5,7 @@ pub use crate::types::{
     BatchItemResult, BatchProcessRequest, ConvertOptions, CropOptions, CropSpec,
     EncodedImageResult, ExtendOptions, ExtendSpec, FillSpec, FormatInfo, ImageMetadata,
     ImageOperation, OptimizeOptions, PreviewFileRequest, PreviewResult, ProcessBytesRequest,
-    ProcessFileRequest, ProcessResult, ResizeOptions, ResizeSpec,
+    ProcessFileBatchRequest, ProcessFileRequest, ProcessResult, ResizeOptions, ResizeSpec,
 };
 
 use crate::error::{panic_message, Result};
@@ -47,6 +47,10 @@ pub fn process_bytes(request: ProcessBytesRequest) -> Result<EncodedImageResult>
 
 pub fn process_files(request: BatchProcessRequest) -> Result<Vec<BatchItemResult>> {
     with_internal(|| crate::convert::process_files(request))
+}
+
+pub fn process_file_batch(request: ProcessFileBatchRequest) -> Result<Vec<BatchItemResult>> {
+    with_internal(|| crate::convert::process_file_batch(request))
 }
 
 fn with_internal<T, F>(func: F) -> Result<T>

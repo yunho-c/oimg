@@ -13,7 +13,7 @@ use crate::fs::{derive_output_path, safe_write_bytes, to_path_buf};
 use crate::types::{
     BatchItemResult, BatchProcessRequest, ConvertOptions, CropSpec, EncodedImageResult, ExtendSpec,
     FillSpec, ImageMetadata, ImageOperation, OptimizeOptions, PreviewResult, ProcessBytesRequest,
-    ProcessFileRequest, ProcessResult, ResizeSpec,
+    ProcessFileBatchRequest, ProcessFileRequest, ProcessResult, ResizeSpec,
 };
 
 pub(crate) fn inspect_file(input_path: String) -> Result<ImageMetadata> {
@@ -90,46 +90,42 @@ pub(crate) fn process_files(request: BatchProcessRequest) -> Result<Vec<BatchIte
         .map(|value| to_path_buf(value, "output_dir"))
         .transpose()?;
 
-    if request.continue_on_error {
-        return Ok(request
+    process_batch_items(
+        request
             .input_paths
-            .into_par_iter()
-            .map(|input_path| {
-                batch_item_for_path(
-                    input_path,
-                    output_dir.clone(),
-                    request.overwrite,
-                    request.operation.clone(),
-                )
-            })
-            .collect());
-    }
-
-    let mut results = Vec::with_capacity(request.input_paths.len());
-    let mut failed = false;
-
-    for input_path in request.input_paths {
-        if failed {
-            results.push(BatchItemResult {
+            .into_iter()
+            .map(|input_path| BatchWorkItem {
                 input_path: input_path.clone(),
-                success: false,
-                result: None,
-                error: Some(SlimgBridgeError::skipped_after_failure(&input_path)),
-            });
-            continue;
-        }
+                exec: BatchExec::Path {
+                    input_path,
+                    output_dir: output_dir.clone(),
+                    overwrite: request.overwrite,
+                    operation: request.operation.clone(),
+                },
+            })
+            .collect(),
+        request.continue_on_error,
+    )
+}
 
-        let item = batch_item_for_path(
-            input_path,
-            output_dir.clone(),
-            request.overwrite,
-            request.operation.clone(),
-        );
-        failed = !item.success;
-        results.push(item);
+pub(crate) fn process_file_batch(request: ProcessFileBatchRequest) -> Result<Vec<BatchItemResult>> {
+    if request.requests.is_empty() {
+        return Err(SlimgBridgeError::invalid_request(
+            "requests must contain at least one file request",
+        ));
     }
 
-    Ok(results)
+    process_batch_items(
+        request
+            .requests
+            .into_iter()
+            .map(|request| BatchWorkItem {
+                input_path: request.input_path.clone(),
+                exec: BatchExec::Request { request },
+            })
+            .collect(),
+        request.continue_on_error,
+    )
 }
 
 struct OperationOutput {
@@ -140,6 +136,68 @@ struct OperationOutput {
     should_write: bool,
 }
 
+struct BatchWorkItem {
+    input_path: String,
+    exec: BatchExec,
+}
+
+enum BatchExec {
+    Path {
+        input_path: String,
+        output_dir: Option<PathBuf>,
+        overwrite: bool,
+        operation: ImageOperation,
+    },
+    Request {
+        request: ProcessFileRequest,
+    },
+}
+
+fn process_batch_items(
+    items: Vec<BatchWorkItem>,
+    continue_on_error: bool,
+) -> Result<Vec<BatchItemResult>> {
+    if continue_on_error {
+        return Ok(items
+            .into_par_iter()
+            .map(batch_item_from_work_item)
+            .collect());
+    }
+
+    let mut results = Vec::with_capacity(items.len());
+    let mut failed = false;
+
+    for item in items {
+        if failed {
+            results.push(BatchItemResult {
+                input_path: item.input_path.clone(),
+                success: false,
+                result: None,
+                error: Some(SlimgBridgeError::skipped_after_failure(&item.input_path)),
+            });
+            continue;
+        }
+
+        let result = batch_item_from_work_item(item);
+        failed = !result.success;
+        results.push(result);
+    }
+
+    Ok(results)
+}
+
+fn batch_item_from_work_item(item: BatchWorkItem) -> BatchItemResult {
+    match item.exec {
+        BatchExec::Path {
+            input_path,
+            output_dir,
+            overwrite,
+            operation,
+        } => batch_item_for_path(input_path, output_dir, overwrite, operation),
+        BatchExec::Request { request } => batch_item_for_request(request),
+    }
+}
+
 fn batch_item_for_path(
     input_path: String,
     output_dir: Option<PathBuf>,
@@ -147,6 +205,24 @@ fn batch_item_for_path(
     operation: ImageOperation,
 ) -> BatchItemResult {
     match process_file_at_path(input_path.clone(), None, output_dir, overwrite, operation) {
+        Ok(result) => BatchItemResult {
+            input_path,
+            success: true,
+            result: Some(result),
+            error: None,
+        },
+        Err(error) => BatchItemResult {
+            input_path,
+            success: false,
+            result: None,
+            error: Some(error),
+        },
+    }
+}
+
+fn batch_item_for_request(request: ProcessFileRequest) -> BatchItemResult {
+    let input_path = request.input_path.clone();
+    match process_file(request) {
         Ok(result) => BatchItemResult {
             input_path,
             success: true,
@@ -202,6 +278,7 @@ fn process_file_at_path(
         height: output.height,
         original_size: input_bytes.len() as u64,
         new_size: output.data.len() as u64,
+        did_write: output.should_write,
     })
 }
 

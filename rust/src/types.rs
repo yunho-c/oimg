@@ -41,6 +41,7 @@ pub struct ProcessResult {
     pub height: u32,
     pub original_size: u64,
     pub new_size: u64,
+    pub did_write: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -80,6 +81,12 @@ pub struct BatchProcessRequest {
     pub output_dir: Option<String>,
     pub overwrite: bool,
     pub operation: ImageOperation,
+    pub continue_on_error: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProcessFileBatchRequest {
+    pub requests: Vec<ProcessFileRequest>,
     pub continue_on_error: bool,
 }
 

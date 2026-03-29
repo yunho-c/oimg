@@ -1,47 +1,46 @@
 import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
+import 'package:oimg/src/rust/slimg_api.dart';
+import 'package:oimg/src/rust/types.dart';
 
 import 'file_open_channel.dart';
+import 'opened_image_file.dart';
 
 class FileOpenController extends ChangeNotifier {
   FileOpenController({
     required FileOpenChannel channel,
+    required SlimgApi slimg,
     List<String> initialPaths = const [],
   }) : _channel = channel,
+       _slimg = slimg,
        _initialPaths = List<String>.unmodifiable(initialPaths);
 
-  static const supportedExtensions = <String>{
-    '.png',
-    '.jpg',
-    '.jpeg',
-    '.gif',
-    '.bmp',
-    '.webp',
-    '.tif',
-    '.tiff',
-  };
-
   final FileOpenChannel _channel;
+  final SlimgApi _slimg;
   final List<String> _initialPaths;
 
-  List<String> _sessionPaths = const [];
+  List<OpenedImageFile> _sessionFiles = const [];
   int _currentIndex = 0;
   String? _pendingNotice;
 
+  UnmodifiableListView<OpenedImageFile> get sessionFiles =>
+      UnmodifiableListView(_sessionFiles);
   UnmodifiableListView<String> get sessionPaths =>
-      UnmodifiableListView(_sessionPaths);
+      UnmodifiableListView(_sessionFiles.map((file) => file.path).toList());
 
-  bool get hasSession => _sessionPaths.isNotEmpty;
+  bool get hasSession => _sessionFiles.isNotEmpty;
   int get currentIndex => _currentIndex;
-  int get sessionLength => _sessionPaths.length;
+  int get sessionLength => _sessionFiles.length;
   bool get canGoPrevious => _currentIndex > 0;
-  bool get canGoNext => _currentIndex + 1 < _sessionPaths.length;
-  String? get currentPath => hasSession ? _sessionPaths[_currentIndex] : null;
+  bool get canGoNext => _currentIndex + 1 < _sessionFiles.length;
+  OpenedImageFile? get currentFile =>
+      hasSession ? _sessionFiles[_currentIndex] : null;
+  String? get currentPath => currentFile?.path;
   String? get currentFileName =>
       currentPath == null ? null : fileNameOf(currentPath!);
   String? get currentPositionLabel =>
-      hasSession ? '${_currentIndex + 1} / ${_sessionPaths.length}' : null;
+      hasSession ? '${_currentIndex + 1} / ${_sessionFiles.length}' : null;
 
   Future<void> initialize() async {
     await _channel.bind(openPaths);
@@ -49,21 +48,29 @@ class FileOpenController extends ChangeNotifier {
   }
 
   Future<void> openPaths(List<String> paths) async {
-    final supportedPaths = paths
-        .where(isSupportedImagePath)
-        .toList(growable: false);
-    if (supportedPaths.isEmpty) {
+    final inspectedFiles = <OpenedImageFile>[];
+    var rejectedCount = 0;
+
+    for (final path in paths) {
+      final file = await _inspectPath(path);
+      if (file == null) {
+        rejectedCount += 1;
+        continue;
+      }
+      inspectedFiles.add(file);
+    }
+
+    if (inspectedFiles.isEmpty) {
       if (paths.isNotEmpty) {
-        _pendingNotice =
-            'OIMG can only open PNG, JPEG, GIF, BMP, WebP, and TIFF files.';
+        _pendingNotice = 'Some files could not be opened.';
         notifyListeners();
       }
       return;
     }
 
-    _sessionPaths = supportedPaths;
+    _sessionFiles = inspectedFiles;
     _currentIndex = 0;
-    _pendingNotice = null;
+    _pendingNotice = rejectedCount == 0 ? null : 'Some files could not be opened.';
     notifyListeners();
   }
 
@@ -86,7 +93,7 @@ class FileOpenController extends ChangeNotifier {
   }
 
   void showPath(String path) {
-    final index = _sessionPaths.indexOf(path);
+    final index = _sessionFiles.indexWhere((file) => file.path == path);
     if (index == -1 || index == _currentIndex) {
       return;
     }
@@ -101,9 +108,58 @@ class FileOpenController extends ChangeNotifier {
     return notice;
   }
 
-  static bool isSupportedImagePath(String path) {
-    final lowerPath = path.toLowerCase();
-    return supportedExtensions.any(lowerPath.endsWith);
+  Future<void> applyProcessResults(List<BatchItemResult> results) async {
+    if (_sessionFiles.isEmpty) {
+      return;
+    }
+
+    final updatedFiles = _sessionFiles.toList(growable: false);
+    final selectedIndex = _currentIndex;
+
+    for (final item in results) {
+      final index = updatedFiles.indexWhere((file) => file.path == item.inputPath);
+      if (index == -1) {
+        continue;
+      }
+
+      if (!item.success || item.result == null) {
+        updatedFiles[index] = updatedFiles[index].copyWith(
+          lastError: item.error?.toString() ?? 'Unable to optimize file.',
+          clearLastResult: true,
+        );
+        continue;
+      }
+
+      final result = item.result!;
+      final refreshedFile = await _inspectPath(result.outputPath);
+      if (refreshedFile == null) {
+        updatedFiles[index] = updatedFiles[index].copyWith(
+          lastResult: result,
+          lastError: 'Unable to reload optimized file.',
+        );
+        continue;
+      }
+
+      updatedFiles[index] = refreshedFile.copyWith(
+        lastResult: result,
+        clearLastError: true,
+      );
+    }
+
+    _sessionFiles = updatedFiles;
+    if (_sessionFiles.isNotEmpty) {
+      _currentIndex = selectedIndex.clamp(0, _sessionFiles.length - 1);
+    }
+    notifyListeners();
+  }
+
+  Future<OpenedImageFile?> _inspectPath(String path) async {
+    try {
+      final metadata = await _slimg.inspectFile(inputPath: path);
+      return OpenedImageFile(path: path, metadata: metadata);
+    } on Object {
+      return null;
+    }
   }
 
   static String fileNameOf(String path) {

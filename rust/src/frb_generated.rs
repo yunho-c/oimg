@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 861731066;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -206444806;
 
 // Section: executor
 
@@ -247,6 +247,42 @@ fn wire__crate__api__bridge__process_file_impl(
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || {
                         let output_ok = crate::api::bridge::process_file(api_request)?;
+                        Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__bridge__process_file_batch_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "process_file_batch",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_request =
+                <crate::types::ProcessFileBatchRequest>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let output_ok = crate::api::bridge::process_file_batch(api_request)?;
                         Ok(output_ok)
                     })(),
                 )
@@ -671,6 +707,18 @@ impl SseDecode for Vec<u8> {
     }
 }
 
+impl SseDecode for Vec<crate::types::ProcessFileRequest> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::types::ProcessFileRequest>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Option<String> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -780,6 +828,18 @@ impl SseDecode for crate::types::ProcessBytesRequest {
     }
 }
 
+impl SseDecode for crate::types::ProcessFileBatchRequest {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_requests = <Vec<crate::types::ProcessFileRequest>>::sse_decode(deserializer);
+        let mut var_continueOnError = <bool>::sse_decode(deserializer);
+        return crate::types::ProcessFileBatchRequest {
+            requests: var_requests,
+            continue_on_error: var_continueOnError,
+        };
+    }
+}
+
 impl SseDecode for crate::types::ProcessFileRequest {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -805,6 +865,7 @@ impl SseDecode for crate::types::ProcessResult {
         let mut var_height = <u32>::sse_decode(deserializer);
         let mut var_originalSize = <u64>::sse_decode(deserializer);
         let mut var_newSize = <u64>::sse_decode(deserializer);
+        let mut var_didWrite = <bool>::sse_decode(deserializer);
         return crate::types::ProcessResult {
             output_path: var_outputPath,
             format: var_format,
@@ -812,6 +873,7 @@ impl SseDecode for crate::types::ProcessResult {
             height: var_height,
             original_size: var_originalSize,
             new_size: var_newSize,
+            did_write: var_didWrite,
         };
     }
 }
@@ -994,7 +1056,8 @@ fn pde_ffi_dispatcher_primary_impl(
         4 => wire__crate__api__bridge__preview_file_impl(port, ptr, rust_vec_len, data_len),
         5 => wire__crate__api__bridge__process_bytes_impl(port, ptr, rust_vec_len, data_len),
         6 => wire__crate__api__bridge__process_file_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__bridge__process_files_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__bridge__process_file_batch_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__bridge__process_files_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1007,8 +1070,8 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        8 => wire__crate__api__bridge__supported_formats_impl(ptr, rust_vec_len, data_len),
-        9 => wire__crate__api__bridge__version_impl(ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__bridge__supported_formats_impl(ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__bridge__version_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1378,6 +1441,27 @@ impl flutter_rust_bridge::IntoIntoDart<crate::types::ProcessBytesRequest>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::types::ProcessFileBatchRequest {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.requests.into_into_dart().into_dart(),
+            self.continue_on_error.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::types::ProcessFileBatchRequest
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::types::ProcessFileBatchRequest>
+    for crate::types::ProcessFileBatchRequest
+{
+    fn into_into_dart(self) -> crate::types::ProcessFileBatchRequest {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::types::ProcessFileRequest {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -1410,6 +1494,7 @@ impl flutter_rust_bridge::IntoDart for crate::types::ProcessResult {
             self.height.into_into_dart().into_dart(),
             self.original_size.into_into_dart().into_dart(),
             self.new_size.into_into_dart().into_dart(),
+            self.did_write.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -1786,6 +1871,16 @@ impl SseEncode for Vec<u8> {
     }
 }
 
+impl SseEncode for Vec<crate::types::ProcessFileRequest> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::types::ProcessFileRequest>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Option<String> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1871,6 +1966,14 @@ impl SseEncode for crate::types::ProcessBytesRequest {
     }
 }
 
+impl SseEncode for crate::types::ProcessFileBatchRequest {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Vec<crate::types::ProcessFileRequest>>::sse_encode(self.requests, serializer);
+        <bool>::sse_encode(self.continue_on_error, serializer);
+    }
+}
+
 impl SseEncode for crate::types::ProcessFileRequest {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1890,6 +1993,7 @@ impl SseEncode for crate::types::ProcessResult {
         <u32>::sse_encode(self.height, serializer);
         <u64>::sse_encode(self.original_size, serializer);
         <u64>::sse_encode(self.new_size, serializer);
+        <bool>::sse_encode(self.did_write, serializer);
     }
 }
 

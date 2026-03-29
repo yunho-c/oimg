@@ -380,6 +380,27 @@ class ProcessBytesRequest {
           operation == other.operation;
 }
 
+class ProcessFileBatchRequest {
+  final List<ProcessFileRequest> requests;
+  final bool continueOnError;
+
+  const ProcessFileBatchRequest({
+    required this.requests,
+    required this.continueOnError,
+  });
+
+  @override
+  int get hashCode => requests.hashCode ^ continueOnError.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ProcessFileBatchRequest &&
+          runtimeType == other.runtimeType &&
+          requests == other.requests &&
+          continueOnError == other.continueOnError;
+}
+
 class ProcessFileRequest {
   final String inputPath;
   final String? outputPath;
@@ -418,6 +439,7 @@ class ProcessResult {
   final int height;
   final BigInt originalSize;
   final BigInt newSize;
+  final bool didWrite;
 
   const ProcessResult({
     required this.outputPath,
@@ -426,6 +448,7 @@ class ProcessResult {
     required this.height,
     required this.originalSize,
     required this.newSize,
+    required this.didWrite,
   });
 
   @override
@@ -435,7 +458,8 @@ class ProcessResult {
       width.hashCode ^
       height.hashCode ^
       originalSize.hashCode ^
-      newSize.hashCode;
+      newSize.hashCode ^
+      didWrite.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -447,7 +471,8 @@ class ProcessResult {
           width == other.width &&
           height == other.height &&
           originalSize == other.originalSize &&
-          newSize == other.newSize;
+          newSize == other.newSize &&
+          didWrite == other.didWrite;
 }
 
 class ResizeOptions {
