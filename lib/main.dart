@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oimg/src/file_open/file_open_channel.dart';
 import 'package:oimg/src/file_open/file_open_controller.dart';
 import 'package:oimg/src/rust/frb_generated.dart';
+import 'package:oimg/src/settings/app_settings.dart';
+import 'package:oimg/src/settings/app_settings_controller.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -14,6 +16,7 @@ const _titleBarHeight = 24.0;
 const _defaultSidebarWidth = 280.0;
 const _minSidebarWidth = 180.0;
 const _maxSidebarWidth = 420.0;
+const _settingsSidebarWidth = 280.0;
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -83,16 +86,16 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class OimgHomePage extends StatefulWidget {
+class OimgHomePage extends ConsumerStatefulWidget {
   const OimgHomePage({super.key, required this.controller});
 
   final FileOpenController controller;
 
   @override
-  State<OimgHomePage> createState() => _OimgHomePageState();
+  ConsumerState<OimgHomePage> createState() => _OimgHomePageState();
 }
 
-class _OimgHomePageState extends State<OimgHomePage> {
+class _OimgHomePageState extends ConsumerState<OimgHomePage> {
   @override
   void initState() {
     super.initState();
@@ -241,6 +244,7 @@ class _ImageSessionViewState extends State<_ImageSessionView> {
             currentPath: currentPath,
             currentFileName: currentFileName,
           );
+          const settingsSidebar = _SettingsSidebar();
 
           if (wideLayout) {
             final maxWidth = _clampSidebarWidth(constraints.maxWidth * 0.45);
@@ -264,6 +268,11 @@ class _ImageSessionViewState extends State<_ImageSessionView> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(child: stage),
+                const SizedBox(width: 12),
+                const SizedBox(
+                  width: _settingsSidebarWidth,
+                  child: settingsSidebar,
+                ),
               ],
             );
           }
@@ -274,6 +283,8 @@ class _ImageSessionViewState extends State<_ImageSessionView> {
               SizedBox(height: 220, child: sidebar),
               const SizedBox(height: 16),
               Expanded(child: stage),
+              const SizedBox(height: 16),
+              const SizedBox(height: 320, child: settingsSidebar),
             ],
           );
         },
@@ -535,6 +546,191 @@ class _ExplorerEntry {
   final bool isDirectory;
 }
 
+class _SettingsSidebar extends ConsumerWidget {
+  const _SettingsSidebar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final settings = ref.watch(appSettingsProvider);
+    final notifier = ref.read(appSettingsProvider.notifier);
+
+    return Card(
+      padding: EdgeInsets.zero,
+      borderRadius: theme.borderRadiusXl,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+            child: Text(
+              'Settings',
+              style: TextStyle(
+                color: theme.colorScheme.mutedForeground,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.6,
+              ),
+            ).xSmall(),
+          ),
+          const Divider(),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(12),
+              child: settings.when(
+                data: (settings) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _SettingsLabel('Advanced'),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(child: const Text('Advanced mode').small()),
+                          Switch(
+                            value: settings.advancedMode,
+                            onChanged: notifier.setAdvancedMode,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (settings.advancedMode) ...[
+                        _SettingsLabel('Codec'),
+                        const SizedBox(height: 8),
+                        RadioGroup<PreferredCodec>(
+                          value: settings.preferredCodec,
+                          onChanged: notifier.setPreferredCodec,
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final cardWidth = (constraints.maxWidth - 8) / 2;
+                              return Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: PreferredCodec.values
+                                    .map(
+                                      (codec) => SizedBox(
+                                        width: cardWidth,
+                                        child: RadioCard<PreferredCodec>(
+                                          value: codec,
+                                          child: _ChoiceCard(
+                                            title: _codecLabel(codec),
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(growable: false),
+                              );
+                            },
+                          ),
+                        ),
+                      ] else ...[
+                        _SettingsLabel('Compression'),
+                        const SizedBox(height: 8),
+                        RadioGroup<CompressionMethod>(
+                          value: settings.compressionMethod,
+                          onChanged: notifier.setCompressionMethod,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: RadioCard<CompressionMethod>(
+                                  value: CompressionMethod.lossless,
+                                  child: const _ChoiceCard(title: 'Lossless'),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: RadioCard<CompressionMethod>(
+                                  value: CompressionMethod.lossy,
+                                  child: const _ChoiceCard(title: 'Lossy'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _SettingsLabel('Priority'),
+                        const SizedBox(height: 8),
+                        RadioGroup<CompressionPriority>(
+                          value: settings.compressionPriority,
+                          onChanged: notifier.setCompressionPriority,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: RadioCard<CompressionPriority>(
+                                  value: CompressionPriority.compatibility,
+                                  child: const _ChoiceCard(
+                                    title: 'Compatibility',
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: RadioCard<CompressionPriority>(
+                                  value: CompressionPriority.efficiency,
+                                  child: const _ChoiceCard(
+                                    title: 'Efficiency',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                      _SettingsLabel('Current codec'),
+                      const SizedBox(height: 8),
+                      Text(_codecLabel(settings.effectiveCodec)).small().medium(),
+                    ],
+                  );
+                },
+                loading: () => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: const Text('Loading settings').small(),
+                  ),
+                ),
+                error: (_, _) {
+                  return Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: const Text('Unable to load settings')
+                        .small()
+                        .muted(),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsLabel extends StatelessWidget {
+  const _SettingsLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(label).xSmall().medium().muted();
+  }
+}
+
+class _ChoiceCard extends StatelessWidget {
+  const _ChoiceCard({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Basic(
+      title: Text(title).small().medium(),
+    );
+  }
+}
+
 extension on Widget {
   Widget mediumIf(bool condition) {
     if (!condition) {
@@ -564,6 +760,16 @@ String? _fileSizeLabel(String path) {
   } catch (_) {
     return null;
   }
+}
+
+String _codecLabel(PreferredCodec codec) {
+  return switch (codec) {
+    PreferredCodec.png => 'PNG',
+    PreferredCodec.jpeg => 'JPEG',
+    PreferredCodec.webp => 'WebP',
+    PreferredCodec.avif => 'AVIF',
+    PreferredCodec.jxl => 'JPEG XL',
+  };
 }
 
 class _EmptyState extends StatelessWidget {
