@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app_settings.dart';
 import 'app_settings_repository.dart';
+import 'developer_diagnostics.dart';
 
 final appSettingsRepositoryProvider = Provider<AppSettingsRepository>((ref) {
   return AppSettingsRepository(store: SharedPreferencesAppSettingsStore());
@@ -17,8 +18,10 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
       ref.read(appSettingsRepositoryProvider);
 
   @override
-  Future<AppSettings> build() {
-    return _repository.load();
+  Future<AppSettings> build() async {
+    final settings = await _repository.load();
+    _applyDiagnostics(settings);
+    return settings;
   }
 
   Future<void> setCompressionMethod(CompressionMethod compressionMethod) async {
@@ -49,12 +52,36 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     await _update((settings) => settings.copyWith(quality: quality));
   }
 
+  Future<void> setDeveloperModeEnabled(bool developerModeEnabled) async {
+    await _update(
+      (settings) => settings.copyWith(
+        developerModeEnabled: developerModeEnabled,
+        timingLogsEnabled: developerModeEnabled
+            ? settings.timingLogsEnabled
+            : false,
+      ),
+    );
+  }
+
+  Future<void> setTimingLogsEnabled(bool timingLogsEnabled) async {
+    await _update(
+      (settings) => settings.copyWith(timingLogsEnabled: timingLogsEnabled),
+    );
+  }
+
   Future<void> _update(
     AppSettings Function(AppSettings settings) transform,
   ) async {
     final currentSettings = state.hasValue ? state.requireValue : await future;
     final nextSettings = transform(currentSettings);
+    _applyDiagnostics(nextSettings);
     state = AsyncData(nextSettings);
     await _repository.save(nextSettings);
+  }
+
+  void _applyDiagnostics(AppSettings settings) {
+    DeveloperDiagnostics.setTimingLogsEnabled(
+      settings.developerModeEnabled && settings.timingLogsEnabled,
+    );
   }
 }

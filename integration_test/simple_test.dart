@@ -51,6 +51,9 @@ class _NoopFileOpenChannel implements FileOpenChannel {
 
 class _FakeSlimgApi implements SlimgApi {
   @override
+  void setTimingLogsEnabled({required bool enabled}) {}
+
+  @override
   Future<ImageMetadata> inspectFile({required String inputPath}) {
     throw StateError('unsupported');
   }

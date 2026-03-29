@@ -13,6 +13,9 @@ class SlimgBridge {
   Future<ImageMetadata> inspectFile({required String inputPath}) =>
       bridge_api.inspectFile(inputPath: inputPath);
 
+  void setTimingLogsEnabled({required bool enabled}) =>
+      bridge_api.setTimingLogsEnabled(enabled: enabled);
+
   Future<ImageMetadata> inspectBytes({required List<int> data}) =>
       bridge_api.inspectBytes(data: data);
 

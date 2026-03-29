@@ -1,9 +1,13 @@
+import 'package:oimg/src/settings/developer_diagnostics.dart';
+
 import 'slimg_bridge.dart';
 
 abstract class SlimgApi {
   const SlimgApi();
 
   Future<ImageMetadata> inspectFile({required String inputPath});
+
+  void setTimingLogsEnabled({required bool enabled});
 
   Future<PreviewResult> previewFile({required PreviewFileRequest request});
 
@@ -26,8 +30,34 @@ class FrbSlimgApi implements SlimgApi {
   }
 
   @override
+  void setTimingLogsEnabled({required bool enabled}) {
+    _bridge.setTimingLogsEnabled(enabled: enabled);
+  }
+
+  @override
   Future<PreviewResult> previewFile({required PreviewFileRequest request}) {
-    return _bridge.previewFile(request: request);
+    final stopwatch = Stopwatch()..start();
+    DeveloperDiagnostics.logTiming(
+      'slimg-api',
+      'preview start path=${request.inputPath}',
+    );
+    return _bridge
+        .previewFile(request: request)
+        .then(
+          (result) {
+            stopwatch.stop();
+            DeveloperDiagnostics.logTiming(
+              'slimg-api',
+              'preview done path=${request.inputPath} total=${stopwatch.elapsedMilliseconds}ms format=${result.format} size=${result.sizeBytes}',
+            );
+            return result;
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            stopwatch.stop();
+            DeveloperDiagnostics.logTimingError('slimg-api', error, stackTrace);
+            throw error;
+          },
+        );
   }
 
   @override

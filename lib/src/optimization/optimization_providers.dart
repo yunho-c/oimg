@@ -4,10 +4,12 @@ import 'package:oimg/src/file_open/opened_image_file.dart';
 import 'package:oimg/src/rust/slimg_api.dart';
 import 'package:oimg/src/rust/types.dart';
 import 'package:oimg/src/settings/app_settings_controller.dart';
+import 'package:oimg/src/settings/developer_diagnostics.dart';
 
 import 'optimization_plan.dart';
 
 final slimgApiProvider = Provider<SlimgApi>((ref) => const FrbSlimgApi());
+int _previewRequestSequence = 0;
 
 class OptimizationPreview {
   const OptimizationPreview({
@@ -43,26 +45,59 @@ class OptimizationPreview {
 final currentPreviewProvider = FutureProvider.autoDispose<OptimizationPreview?>((
   ref,
 ) async {
+  final requestId = ++_previewRequestSequence;
+  final totalStopwatch = Stopwatch()..start();
+  ref.onDispose(() {
+    DeveloperDiagnostics.logTiming(
+      'preview:$requestId',
+      'disposed total=${totalStopwatch.elapsedMilliseconds}ms',
+    );
+  });
+
   final controller = ref.watch(fileOpenControllerProvider);
   final currentFile = controller.currentFile;
   if (currentFile == null) {
     return null;
   }
 
-  final settings = await ref.watch(appSettingsProvider.future);
-  final plan = buildOptimizationPlan(file: currentFile, settings: settings);
+  try {
+    final settingsStopwatch = Stopwatch()..start();
+    final settings = await ref.watch(appSettingsProvider.future);
+    settingsStopwatch.stop();
+    DeveloperDiagnostics.logTiming(
+      'preview:$requestId',
+      'settings=${settingsStopwatch.elapsedMilliseconds}ms path=${currentFile.path} codec=${settings.effectiveCodec.name} quality=${settings.quality}',
+    );
+    final plan = buildOptimizationPlan(file: currentFile, settings: settings);
 
-  await Future<void>.delayed(const Duration(milliseconds: 150));
+    final debounceStopwatch = Stopwatch()..start();
+    await Future<void>.delayed(const Duration(milliseconds: 150));
+    debounceStopwatch.stop();
+    DeveloperDiagnostics.logTiming(
+      'preview:$requestId',
+      'debounce=${debounceStopwatch.elapsedMilliseconds}ms target=${plan.targetCodec.name} sourceCodec=${plan.usesSourceCodec}',
+    );
 
-  final result = await ref
-      .read(slimgApiProvider)
-      .previewFile(request: plan.previewRequest);
+    final previewStopwatch = Stopwatch()..start();
+    final result = await ref
+        .read(slimgApiProvider)
+        .previewFile(request: plan.previewRequest);
+    previewStopwatch.stop();
+    totalStopwatch.stop();
+    DeveloperDiagnostics.logTiming(
+      'preview:$requestId',
+      'preview=${previewStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms format=${result.format} size=${result.sizeBytes}',
+    );
 
-  return OptimizationPreview(
-    sourceFile: currentFile,
-    plan: plan,
-    result: result,
-  );
+    return OptimizationPreview(
+      sourceFile: currentFile,
+      plan: plan,
+      result: result,
+    );
+  } on Object catch (error, stackTrace) {
+    DeveloperDiagnostics.logTimingError('preview:$requestId', error, stackTrace);
+    rethrow;
+  }
 });
 
 enum OptimizationItemStatus { idle, running, written, skipped, failed }

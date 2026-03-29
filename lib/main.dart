@@ -12,6 +12,7 @@ import 'package:oimg/src/rust/frb_generated.dart';
 import 'package:oimg/src/rust/slimg_api.dart';
 import 'package:oimg/src/settings/app_settings.dart';
 import 'package:oimg/src/settings/app_settings_controller.dart';
+import 'package:oimg/src/settings/developer_diagnostics.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -108,16 +109,26 @@ class OimgHomePage extends ConsumerStatefulWidget {
 
 class _OimgHomePageState extends ConsumerState<OimgHomePage> {
   late final FileOpenController _controller;
+  late final ProviderSubscription<AsyncValue<AppSettings>>
+  _appSettingsSubscription;
 
   @override
   void initState() {
     super.initState();
     _controller = ref.read(fileOpenControllerProvider);
     _controller.addListener(_onControllerChanged);
+    _appSettingsSubscription = ref.listenManual<AsyncValue<AppSettings>>(
+      appSettingsProvider,
+      (previous, next) {
+        next.whenData(_syncDeveloperSettings);
+      },
+      fireImmediately: true,
+    );
   }
 
   @override
   void dispose() {
+    _appSettingsSubscription.close();
     _controller.removeListener(_onControllerChanged);
     super.dispose();
   }
@@ -170,6 +181,22 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
     });
   }
 
+  void _syncDeveloperSettings(AppSettings settings) {
+    final enabled =
+        settings.developerModeEnabled && settings.timingLogsEnabled;
+    DeveloperDiagnostics.setTimingLogsEnabled(enabled);
+    ref.read(slimgApiProvider).setTimingLogsEnabled(enabled: enabled);
+  }
+
+  Future<void> _openDeveloperDialog() {
+    return showDialog<void>(
+      context: context,
+      builder: (context) {
+        return const _DeveloperSettingsDialog();
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(fileOpenControllerProvider);
@@ -190,12 +217,32 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
               if (controller.currentPositionLabel case final position?)
                 Align(
                   alignment: Alignment.centerRight,
-                  child: Card(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    child: Text(position),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Card(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        child: Text(position),
+                      ),
+                      const SizedBox(width: 6),
+                      _DeveloperButton(
+                        onPressed: () {
+                          unawaited(_openDeveloperDialog());
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              if (controller.currentPositionLabel == null)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: _DeveloperButton(
+                    onPressed: () {
+                      unawaited(_openDeveloperDialog());
+                    },
                   ),
                 ),
             ],
@@ -896,6 +943,155 @@ class _SettingsSidebar extends ConsumerWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DeveloperButton extends StatelessWidget {
+  const _DeveloperButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onPressed,
+        child: SizedBox(
+          width: 16,
+          height: 16,
+          child: Icon(
+            LucideIcons.wrench,
+            size: 10,
+            color: theme.colorScheme.mutedForeground.withValues(alpha: 0.55),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DeveloperSettingsDialog extends ConsumerWidget {
+  const _DeveloperSettingsDialog();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(appSettingsProvider);
+    final notifier = ref.read(appSettingsProvider.notifier);
+
+    return AlertDialog(
+      title: const Text('Developer'),
+      content: SizedBox(
+        width: 640,
+        child: settings.when(
+          data: (settings) {
+            return ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 320),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _DeveloperSection(
+                    title: 'Mode',
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Developer mode').small().medium(),
+                              const SizedBox(height: 4),
+                              Text('Unlock diagnostics and internal controls.')
+                                  .xSmall()
+                                  .muted(),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Switch(
+                          value: settings.developerModeEnabled,
+                          onChanged: notifier.setDeveloperModeEnabled,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _DeveloperSection(
+                    title: 'Diagnostics',
+                    child: Checkbox(
+                      state: settings.timingLogsEnabled
+                          ? CheckboxState.checked
+                          : CheckboxState.unchecked,
+                      onChanged: settings.developerModeEnabled
+                          ? (value) {
+                              notifier.setTimingLogsEnabled(
+                                value == CheckboxState.checked,
+                              );
+                            }
+                          : null,
+                      trailing: Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Timing logs').small().medium(),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Measure preview and optimize timings in Dart and Rust.',
+                            ).xSmall().muted(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+          loading: () => const SizedBox(
+            height: 320,
+            child: Center(child: Text('Loading developer settings')),
+          ),
+          error: (_, _) => const SizedBox(
+            height: 320,
+            child: Center(child: Text('Unable to load developer settings')),
+          ),
+        ),
+      ),
+      actions: [
+        OutlineButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
+    );
+  }
+}
+
+class _DeveloperSection extends StatelessWidget {
+  const _DeveloperSection({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      padding: const EdgeInsets.all(18),
+      borderRadius: theme.borderRadiusXl,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title).xSmall().medium().muted(),
+          const SizedBox(height: 10),
+          child,
         ],
       ),
     );

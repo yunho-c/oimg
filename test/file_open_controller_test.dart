@@ -141,6 +141,9 @@ class _FakeSlimgApi implements SlimgApi {
   final Map<String, ImageMetadata> inspectResults;
 
   @override
+  void setTimingLogsEnabled({required bool enabled}) {}
+
+  @override
   Future<ImageMetadata> inspectFile({required String inputPath}) async {
     final value = inspectResults[inputPath];
     if (value == null) {

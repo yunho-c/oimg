@@ -25,6 +25,11 @@ pub fn supported_formats() -> Vec<FormatInfo> {
     crate::codec::format_info()
 }
 
+#[flutter_rust_bridge::frb(sync)]
+pub fn set_timing_logs_enabled(enabled: bool) {
+    crate::diagnostics::set_timing_logs_enabled(enabled);
+}
+
 pub fn inspect_file(input_path: String) -> Result<ImageMetadata> {
     with_internal(|| crate::convert::inspect_file(input_path))
 }

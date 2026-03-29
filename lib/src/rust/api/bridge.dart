@@ -15,6 +15,9 @@ String version() => RustLib.instance.api.crateApiBridgeVersion();
 List<FormatInfo> supportedFormats() =>
     RustLib.instance.api.crateApiBridgeSupportedFormats();
 
+void setTimingLogsEnabled({required bool enabled}) =>
+    RustLib.instance.api.crateApiBridgeSetTimingLogsEnabled(enabled: enabled);
+
 Future<ImageMetadata> inspectFile({required String inputPath}) =>
     RustLib.instance.api.crateApiBridgeInspectFile(inputPath: inputPath);
 

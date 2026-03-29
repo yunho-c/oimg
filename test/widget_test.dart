@@ -188,18 +188,57 @@ void main() {
     expect(find.text('first.optimized.jpeg'), findsWidgets);
     expect(find.text('Saved'), findsWidgets);
   });
+
+  testWidgets('developer dialog toggles persisted timing logs', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final store = _FakeAppSettingsStore();
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(
+      _buildApp(controller: controller, slimg: slimg, store: store),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byIcon(LucideIcons.wrench));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Developer'), findsOneWidget);
+    expect(find.text('Timing logs'), findsOneWidget);
+    expect(slimg.lastTimingLogsEnabled, isFalse);
+
+    await tester.tap(find.byType(Switch).last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(Checkbox));
+    await tester.pumpAndSettle();
+
+    expect(slimg.lastTimingLogsEnabled, isTrue);
+    expect(store.value, contains('"developerModeEnabled":true'));
+    expect(store.value, contains('"timingLogsEnabled":true'));
+  });
 }
 
 Widget _buildApp({
   required FileOpenController controller,
   required _FakeSlimgApi slimg,
+  AppSettingsStore? store,
 }) {
   return ProviderScope(
     overrides: [
       slimgApiProvider.overrideWithValue(slimg),
       fileOpenControllerProvider.overrideWith((ref) => controller),
       appSettingsRepositoryProvider.overrideWithValue(
-        AppSettingsRepository(store: _FakeAppSettingsStore()),
+        AppSettingsRepository(store: store ?? _FakeAppSettingsStore()),
       ),
     ],
     child: const MyApp(),
@@ -246,6 +285,7 @@ class _FakeSlimgApi implements SlimgApi {
 
   final Map<String, ImageMetadata> inspectResults;
   ProcessFileBatchRequest? lastBatchRequest;
+  bool lastTimingLogsEnabled = false;
 
   static final Uint8List _previewBytes = base64Decode(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==',
@@ -258,6 +298,11 @@ class _FakeSlimgApi implements SlimgApi {
       throw StateError('unsupported');
     }
     return result;
+  }
+
+  @override
+  void setTimingLogsEnabled({required bool enabled}) {
+    lastTimingLogsEnabled = enabled;
   }
 
   @override

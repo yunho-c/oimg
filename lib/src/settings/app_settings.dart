@@ -13,6 +13,8 @@ class AppSettings {
     required this.advancedMode,
     required this.preferredCodec,
     required this.quality,
+    required this.developerModeEnabled,
+    required this.timingLogsEnabled,
   });
 
   final CompressionMethod compressionMethod;
@@ -20,6 +22,8 @@ class AppSettings {
   final bool advancedMode;
   final PreferredCodec preferredCodec;
   final int quality;
+  final bool developerModeEnabled;
+  final bool timingLogsEnabled;
 
   static const defaults = AppSettings(
     compressionMethod: CompressionMethod.lossy,
@@ -27,6 +31,8 @@ class AppSettings {
     advancedMode: false,
     preferredCodec: PreferredCodec.jpeg,
     quality: 80,
+    developerModeEnabled: false,
+    timingLogsEnabled: false,
   );
 
   PreferredCodec get effectiveCodec {
@@ -78,6 +84,8 @@ class AppSettings {
     bool? advancedMode,
     PreferredCodec? preferredCodec,
     int? quality,
+    bool? developerModeEnabled,
+    bool? timingLogsEnabled,
   }) {
     return AppSettings(
       compressionMethod: compressionMethod ?? this.compressionMethod,
@@ -85,6 +93,8 @@ class AppSettings {
       advancedMode: advancedMode ?? this.advancedMode,
       preferredCodec: preferredCodec ?? this.preferredCodec,
       quality: quality ?? this.quality,
+      developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,
+      timingLogsEnabled: timingLogsEnabled ?? this.timingLogsEnabled,
     );
   }
 
@@ -95,6 +105,8 @@ class AppSettings {
       'advancedMode': advancedMode,
       'preferredCodec': preferredCodec.name,
       'quality': quality,
+      'developerModeEnabled': developerModeEnabled,
+      'timingLogsEnabled': timingLogsEnabled,
     };
   }
 
@@ -121,6 +133,11 @@ class AppSettings {
         json['preferredCodec'] as String,
       ),
       quality: json['quality'] as int? ?? defaults.quality,
+      developerModeEnabled:
+          json['developerModeEnabled'] as bool? ??
+          defaults.developerModeEnabled,
+      timingLogsEnabled:
+          json['timingLogsEnabled'] as bool? ?? defaults.timingLogsEnabled,
     );
   }
 
@@ -131,7 +148,9 @@ class AppSettings {
         other.compressionPriority == compressionPriority &&
         other.advancedMode == advancedMode &&
         other.preferredCodec == preferredCodec &&
-        other.quality == quality;
+        other.quality == quality &&
+        other.developerModeEnabled == developerModeEnabled &&
+        other.timingLogsEnabled == timingLogsEnabled;
   }
 
   @override
@@ -141,5 +160,7 @@ class AppSettings {
     advancedMode,
     preferredCodec,
     quality,
+    developerModeEnabled,
+    timingLogsEnabled,
   );
 }

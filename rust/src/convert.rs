@@ -1,10 +1,12 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 use rayon::prelude::*;
 use slimg_core::{
-    convert as core_convert, decode, optimize as core_optimize, CropMode, ExtendMode, FillColor,
-    Format, PipelineOptions, ResizeMode,
+    codec::{get_codec, EncodeOptions},
+    convert as core_convert, decode, CropMode, ExtendMode, FillColor, Format, PipelineOptions,
+    ResizeMode,
 };
 
 use crate::codec::format_to_string;
@@ -54,17 +56,56 @@ pub(crate) fn process_bytes(request: ProcessBytesRequest) -> Result<EncodedImage
 }
 
 pub(crate) fn preview_file(request: crate::types::PreviewFileRequest) -> Result<PreviewResult> {
-    let path = read_existing_input_path(&request.input_path)?;
-    let data = fs::read(&path).map_err(|error| map_input_io(&path, error))?;
-    let output = run_operation(&data, &request.operation)?;
+    let total_start = Instant::now();
+    crate::diagnostics::timing_log(format!(
+        "preview start path={} operation={:?}",
+        request.input_path, request.operation
+    ));
 
-    Ok(PreviewResult {
-        encoded_bytes: output.data.clone(),
-        format: format_to_string(output.format),
-        width: output.width,
-        height: output.height,
-        size_bytes: output.data.len() as u64,
-    })
+    let result = (|| -> Result<PreviewResult> {
+        let read_start = Instant::now();
+        let path = read_existing_input_path(&request.input_path)?;
+        let data = fs::read(&path).map_err(|error| map_input_io(&path, error))?;
+        let read_elapsed = read_start.elapsed();
+
+        let operation_start = Instant::now();
+        let output = run_operation(&data, &request.operation)?;
+        let operation_elapsed = operation_start.elapsed();
+
+        crate::diagnostics::timing_log(format!(
+            "preview path={} read={}ms operation={}ms input_bytes={}",
+            request.input_path,
+            read_elapsed.as_millis(),
+            operation_elapsed.as_millis(),
+            data.len()
+        ));
+
+        Ok(PreviewResult {
+            encoded_bytes: output.data.clone(),
+            format: format_to_string(output.format),
+            width: output.width,
+            height: output.height,
+            size_bytes: output.data.len() as u64,
+        })
+    })();
+
+    match &result {
+        Ok(preview) => crate::diagnostics::timing_log(format!(
+            "preview done path={} format={} size={} total={}ms",
+            request.input_path,
+            preview.format,
+            preview.size_bytes,
+            total_start.elapsed().as_millis()
+        )),
+        Err(error) => crate::diagnostics::timing_log(format!(
+            "preview failed path={} error={} total={}ms",
+            request.input_path,
+            error,
+            total_start.elapsed().as_millis()
+        )),
+    }
+
+    result
 }
 
 pub(crate) fn process_file(request: ProcessFileRequest) -> Result<ProcessResult> {
@@ -345,17 +386,38 @@ fn convert_bytes(data: &[u8], options: &ConvertOptions) -> Result<OperationOutpu
 
 fn optimize_bytes(data: &[u8], options: &OptimizeOptions) -> Result<OperationOutput> {
     let quality = validate_quality(options.quality)?;
-    let (image, _) = decode(data)?;
-    let result = core_optimize(data, quality)?;
-    let should_write = !options.write_only_if_smaller || result.data.len() < data.len();
+    let total_start = Instant::now();
+
+    let decode_start = Instant::now();
+    let (image, format) = decode(data)?;
+    let decode_elapsed = decode_start.elapsed();
+
+    let encode_start = Instant::now();
+    let codec = get_codec(format);
+    let encoded = codec.encode(&image, &EncodeOptions { quality })?;
+    let encode_elapsed = encode_start.elapsed();
+
+    let should_write = !options.write_only_if_smaller || encoded.len() < data.len();
+
+    crate::diagnostics::timing_log(format!(
+        "optimize format={} quality={} decode={}ms encode={}ms total={}ms input_bytes={} output_bytes={} write={}",
+        format_to_string(format),
+        quality,
+        decode_elapsed.as_millis(),
+        encode_elapsed.as_millis(),
+        total_start.elapsed().as_millis(),
+        data.len(),
+        encoded.len(),
+        should_write
+    ));
 
     Ok(OperationOutput {
         data: if should_write {
-            result.data
+            encoded
         } else {
             data.to_vec()
         },
-        format: result.format,
+        format,
         width: image.width,
         height: image.height,
         should_write,

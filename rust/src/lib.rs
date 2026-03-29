@@ -1,6 +1,7 @@
 pub mod api;
 mod codec;
 mod convert;
+mod diagnostics;
 mod error;
 mod frb_generated;
 mod fs;

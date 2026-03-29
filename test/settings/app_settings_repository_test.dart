@@ -21,6 +21,8 @@ void main() {
         advancedMode: true,
         preferredCodec: PreferredCodec.webp,
         quality: 90,
+        developerModeEnabled: true,
+        timingLogsEnabled: true,
       );
 
       await repository.save(settings);

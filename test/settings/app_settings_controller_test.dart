@@ -40,6 +40,8 @@ void main() {
       await notifier.setAdvancedMode(true);
       await notifier.setPreferredCodec(PreferredCodec.webp);
       await notifier.setQuality(92);
+      await notifier.setDeveloperModeEnabled(true);
+      await notifier.setTimingLogsEnabled(true);
 
       final settings = container.read(appSettingsProvider).requireValue;
       expect(
@@ -50,6 +52,8 @@ void main() {
           advancedMode: true,
           preferredCodec: PreferredCodec.webp,
           quality: 92,
+          developerModeEnabled: true,
+          timingLogsEnabled: true,
         ),
       );
       expect(await store.read(), settings.toJsonString());
