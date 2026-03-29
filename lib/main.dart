@@ -23,6 +23,7 @@ const _defaultSidebarWidth = 280.0;
 const _minSidebarWidth = 180.0;
 const _maxSidebarWidth = 420.0;
 const _settingsSidebarWidth = 320.0;
+const _bottomSidebarHeight = 156.0;
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -285,6 +286,7 @@ class _ImageSessionViewState extends ConsumerState<_ImageSessionView> {
           final sidebar = _ExplorerSidebar(controller: controller);
           final stage = _ImageStage(title: widget.title, currentFile: currentFile);
           const settingsSidebar = _SettingsSidebar();
+          final bottomSidebar = _BottomSidebar(currentFile: currentFile);
 
           if (wideLayout) {
             final maxWidth = _clampSidebarWidth(constraints.maxWidth * 0.38);
@@ -292,27 +294,36 @@ class _ImageSessionViewState extends ConsumerState<_ImageSessionView> {
               _minSidebarWidth,
               maxWidth,
             );
-            return Row(
+            return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SizedBox(width: sidebarWidth, child: sidebar),
-                _SidebarResizeHandle(
-                  onDragUpdate: (delta) {
-                    setState(() {
-                      _sidebarWidth = _clampSidebarWidth(
-                        _sidebarWidth + delta,
-                        maxWidth: maxWidth,
-                      );
-                    });
-                  },
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(width: sidebarWidth, child: sidebar),
+                      _SidebarResizeHandle(
+                        onDragUpdate: (delta) {
+                          setState(() {
+                            _sidebarWidth = _clampSidebarWidth(
+                              _sidebarWidth + delta,
+                              maxWidth: maxWidth,
+                            );
+                          });
+                        },
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(child: stage),
+                      const SizedBox(width: 12),
+                      const SizedBox(
+                        width: _settingsSidebarWidth,
+                        child: settingsSidebar,
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(width: 12),
-                Expanded(child: stage),
-                const SizedBox(width: 12),
-                const SizedBox(
-                  width: _settingsSidebarWidth,
-                  child: settingsSidebar,
-                ),
+                SizedBox(height: _bottomSidebarHeight, child: bottomSidebar),
               ],
             );
           }
@@ -320,11 +331,20 @@ class _ImageSessionViewState extends ConsumerState<_ImageSessionView> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SizedBox(height: 220, child: sidebar),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(height: 220, child: sidebar),
+                    const SizedBox(height: 16),
+                    Expanded(child: stage),
+                    const SizedBox(height: 16),
+                    const SizedBox(height: 420, child: settingsSidebar),
+                  ],
+                ),
+              ),
               const SizedBox(height: 16),
-              Expanded(child: stage),
-              const SizedBox(height: 16),
-              const SizedBox(height: 420, child: settingsSidebar),
+              SizedBox(height: _bottomSidebarHeight, child: bottomSidebar),
             ],
           );
         },
@@ -1180,6 +1200,97 @@ class _StatusRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _BottomSidebar extends StatelessWidget {
+  const _BottomSidebar({required this.currentFile});
+
+  final OpenedImageFile currentFile;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final metadata = currentFile.metadata;
+
+    return Card(
+      padding: EdgeInsets.zero,
+      borderRadius: theme.borderRadiusXl,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+            child: Text(
+              'Details',
+              style: TextStyle(
+                color: theme.colorScheme.mutedForeground,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.6,
+              ),
+            ).xSmall(),
+          ),
+          const Divider(),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: _BottomDetail(
+                      label: 'File',
+                      value: FileOpenController.fileNameOf(currentFile.path),
+                    ),
+                  ),
+                  Expanded(
+                    child: _BottomDetail(
+                      label: 'Format',
+                      value: formatLabel(metadata.format),
+                    ),
+                  ),
+                  Expanded(
+                    child: _BottomDetail(
+                      label: 'Dimensions',
+                      value: '${metadata.width} x ${metadata.height}',
+                    ),
+                  ),
+                  Expanded(
+                    child: _BottomDetail(
+                      label: 'Size',
+                      value: metadata.fileSize == null
+                          ? 'Unknown'
+                          : _formatBytes(metadata.fileSize!.toInt()),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BottomDetail extends StatelessWidget {
+  const _BottomDetail({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label).xSmall().medium().muted(),
+        const SizedBox(height: 6),
+        Text(value).small().medium(),
+      ],
     );
   }
 }

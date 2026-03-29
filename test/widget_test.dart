@@ -56,6 +56,7 @@ void main() {
 
     expect(find.text('Files'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('Details'), findsOneWidget);
     expect(find.text('Optimize selected'), findsOneWidget);
     expect(find.text('Optimize all'), findsOneWidget);
     expect(find.text('first.png'), findsWidgets);
@@ -129,12 +130,12 @@ void main() {
     await tester.tap(find.byType(Switch));
     await tester.pumpAndSettle();
 
-    expect(find.text('PNG'), findsOneWidget);
+    expect(find.text('PNG'), findsWidgets);
     expect(find.text('WebP'), findsOneWidget);
     expect(find.text('AVIF'), findsOneWidget);
     expect(find.text('JPEG XL'), findsOneWidget);
 
-    await tester.tap(find.text('PNG'));
+    await tester.tap(find.text('PNG').first);
     await tester.pumpAndSettle();
 
     expect(find.text('Quality'), findsNothing);
