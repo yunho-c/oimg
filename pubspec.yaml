@@ -39,6 +39,7 @@ dependencies:
   oimg_rust:
     path: rust_builder
   shadcn_flutter: ^0.0.52
+  window_manager: ^0.5.1
 
 dev_dependencies:
   flutter_test:

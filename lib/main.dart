@@ -1,12 +1,15 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:oimg/src/file_open/file_open_channel.dart';
 import 'package:oimg/src/file_open/file_open_controller.dart';
 import 'package:oimg/src/rust/frb_generated.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
+import 'package:window_manager/window_manager.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  await _configureWindow();
   await RustLib.init();
 
   final controller = FileOpenController(
@@ -16,6 +19,26 @@ Future<void> main(List<String> args) async {
   await controller.initialize();
 
   runApp(MyApp(controller: controller));
+}
+
+Future<void> _configureWindow() async {
+  if (!Platform.isMacOS && !Platform.isWindows && !Platform.isLinux) {
+    return;
+  }
+
+  await windowManager.ensureInitialized();
+  final windowOptions = WindowOptions(
+    size: const Size(1280, 720),
+    center: true,
+    skipTaskbar: false,
+    titleBarStyle: TitleBarStyle.hidden,
+  );
+  unawaited(
+    windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    }),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -138,7 +161,12 @@ class _OimgHomePageState extends State<OimgHomePage> {
         return Scaffold(
           headers: [
             AppBar(
-              title: const Text('OIMG'),
+              title: const DragToMoveArea(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('OIMG'),
+                ),
+              ),
               trailing: [
                 if (widget.controller.currentPositionLabel case final position?)
                   Card(
