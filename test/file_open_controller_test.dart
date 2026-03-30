@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -117,6 +118,37 @@ void main() {
 
       controller.showPath('missing.png');
       expect(controller.currentIndex, 2);
+    });
+
+    test('expands dropped directories into nested file candidates', () async {
+      final root = await Directory.systemTemp.createTemp('oimg-drop-test');
+      addTearDown(() async {
+        await root.delete(recursive: true);
+      });
+
+      final nested = Directory('${root.path}/nested')..createSync();
+      final imageA = File('${root.path}/first.png')..writeAsBytesSync([1, 2, 3]);
+      final imageB = File('${nested.path}/second.jpg')
+        ..writeAsBytesSync([1, 2, 3]);
+      File('${nested.path}/notes.txt').writeAsStringSync('ignored');
+
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: _FakeSlimgApi(
+          inspectResults: {
+            imageA.path: _metadata('png'),
+            imageB.path: _metadata('jpeg'),
+          },
+        ),
+      );
+
+      await controller.initialize();
+      await controller.openPaths([root.path]);
+
+      expect(
+        controller.sessionPaths.toSet(),
+        {imageA.path, imageB.path},
+      );
     });
   });
 }

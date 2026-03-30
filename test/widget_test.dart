@@ -15,6 +15,7 @@ import 'package:oimg/src/settings/app_settings.dart';
 import 'package:oimg/src/settings/app_settings_controller.dart';
 import 'package:oimg/src/settings/app_settings_repository.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
+import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 
 void main() {
   testWidgets('renders empty state with no startup files', (tester) async {
@@ -29,9 +30,10 @@ void main() {
     await controller.initialize();
 
     await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Open an image with OIMG'), findsOneWidget);
+    expect(find.byType(DropRegion), findsOneWidget);
   });
 
   testWidgets('renders startup session, preview, and actions', (tester) async {

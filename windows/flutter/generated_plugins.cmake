@@ -3,7 +3,9 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  irondash_engine_context
   screen_retriever_windows
+  super_native_extensions
   window_manager
 )
 

@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:oimg/src/rust/slimg_api.dart';
@@ -48,10 +49,11 @@ class FileOpenController extends ChangeNotifier {
   }
 
   Future<void> openPaths(List<String> paths) async {
+    final candidatePaths = await _expandCandidatePaths(paths);
     final inspectedFiles = <OpenedImageFile>[];
     var rejectedCount = 0;
 
-    for (final path in paths) {
+    for (final path in candidatePaths) {
       final file = await _inspectPath(path);
       if (file == null) {
         rejectedCount += 1;
@@ -61,7 +63,7 @@ class FileOpenController extends ChangeNotifier {
     }
 
     if (inspectedFiles.isEmpty) {
-      if (paths.isNotEmpty) {
+      if (candidatePaths.isNotEmpty) {
         _pendingNotice = 'Some files could not be opened.';
         notifyListeners();
       }
@@ -166,5 +168,31 @@ class FileOpenController extends ChangeNotifier {
     final normalized = path.replaceAll('\\', '/');
     final segments = normalized.split('/');
     return segments.isEmpty ? path : segments.last;
+  }
+
+  Future<List<String>> _expandCandidatePaths(List<String> paths) async {
+    final expanded = <String>{};
+
+    for (final path in paths) {
+      final type = FileSystemEntity.typeSync(path, followLinks: false);
+      if (type == FileSystemEntityType.directory) {
+        try {
+          await for (final entity in Directory(
+            path,
+          ).list(recursive: true, followLinks: false)) {
+            if (entity is File) {
+              expanded.add(entity.path);
+            }
+          }
+        } on FileSystemException {
+          expanded.add(path);
+        }
+        continue;
+      }
+
+      expanded.add(path);
+    }
+
+    return expanded.toList(growable: false);
   }
 }
