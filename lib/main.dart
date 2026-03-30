@@ -1357,6 +1357,9 @@ class _BottomSidebar extends ConsumerWidget {
     final metadata = currentFile.metadata;
     final runState = ref.watch(optimizationRunControllerProvider);
     final runController = ref.read(optimizationRunControllerProvider.notifier);
+    final progressValue = runState.totalCount > 0
+        ? (runState.completedCount / runState.totalCount).clamp(0.0, 1.0)
+        : 0.0;
 
     return Card(
       padding: EdgeInsets.zero,
@@ -1418,33 +1421,50 @@ class _BottomSidebar extends ConsumerWidget {
                   const SizedBox(width: 16),
                   SizedBox(
                     width: 180,
-                    height: 36,
-                    child: runState.isCancelRequested
-                        ? Button.destructive(
-                            alignment: Alignment.center,
-                            onPressed: null,
-                            child: const Text(
-                              'Canceling...',
-                              style: TextStyle(fontSize: 14),
-                            ),
-                          )
-                        : runState.isRunning
-                        ? Button.destructive(
-                            alignment: Alignment.center,
-                            onPressed: runController.cancelCurrentRun,
-                            child: const Text(
-                              'Cancel',
-                              style: TextStyle(fontSize: 14),
-                            ),
-                          )
-                        : PrimaryButton(
-                            alignment: Alignment.center,
-                            onPressed: runController.optimizeAll,
-                            child: const Text(
-                              'Optimize',
-                              style: TextStyle(fontSize: 13),
-                            ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          height: 36,
+                          child: runState.isCancelRequested
+                              ? Button.destructive(
+                                  alignment: Alignment.center,
+                                  onPressed: null,
+                                  child: const Text(
+                                    'Canceling...',
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                )
+                              : runState.isRunning
+                              ? Button.destructive(
+                                  alignment: Alignment.center,
+                                  onPressed: runController.cancelCurrentRun,
+                                  child: const Text(
+                                    'Cancel',
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                )
+                              : PrimaryButton(
+                                  alignment: Alignment.center,
+                                  onPressed: runController.optimizeAll,
+                                  child: const Text(
+                                    'Optimize',
+                                    style: TextStyle(fontSize: 13),
+                                  ),
+                                ),
+                        ),
+                        if (runState.isRunning) ...[
+                          const SizedBox(height: 8),
+                          LinearProgressIndicator(
+                            value: progressValue,
+                            minHeight: 6,
+                            borderRadius: theme.borderRadiusLg,
                           ),
+                        ],
+                      ],
+                    ),
                   ),
                 ],
               ),
