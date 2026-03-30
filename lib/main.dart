@@ -1417,20 +1417,33 @@ class _BottomSidebar extends ConsumerWidget {
                   ),
                   const SizedBox(width: 16),
                   SizedBox(
-                    width: 220,
+                    width: 180,
+                    height: 36,
                     child: runState.isCancelRequested
                         ? Button.destructive(
+                            alignment: Alignment.center,
                             onPressed: null,
-                            child: const Text('Canceling...'),
+                            child: const Text(
+                              'Canceling...',
+                              style: TextStyle(fontSize: 14),
+                            ),
                           )
                         : runState.isRunning
                         ? Button.destructive(
+                            alignment: Alignment.center,
                             onPressed: runController.cancelCurrentRun,
-                            child: const Text('Cancel'),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(fontSize: 14),
+                            ),
                           )
                         : PrimaryButton(
+                            alignment: Alignment.center,
                             onPressed: runController.optimizeAll,
-                            child: const Text('Optimize'),
+                            child: const Text(
+                              'Optimize',
+                              style: TextStyle(fontSize: 13),
+                            ),
                           ),
                   ),
                 ],
