@@ -109,6 +109,10 @@ pub(crate) fn preview_file(request: crate::types::PreviewFileRequest) -> Result<
 }
 
 pub(crate) fn process_file(request: ProcessFileRequest) -> Result<ProcessResult> {
+    crate::diagnostics::timing_log(format!(
+        "process start input={} output={:?} overwrite={} operation={:?}",
+        request.input_path, request.output_path, request.overwrite, request.operation
+    ));
     process_file_at_path(
         request.input_path,
         request.output_path,
@@ -286,6 +290,7 @@ fn process_file_at_path(
     overwrite: bool,
     operation: ImageOperation,
 ) -> Result<ProcessResult> {
+    let total_start = Instant::now();
     let input = read_existing_input_path(&input_path)?;
     let input_bytes = fs::read(&input).map_err(|error| map_input_io(&input, error))?;
     let source_format = detect_source_format(&input_bytes)?;
@@ -305,14 +310,37 @@ fn process_file_at_path(
     )?;
 
     let output = run_operation(&input_bytes, &operation)?;
+    crate::diagnostics::timing_log(format!(
+        "process resolved input={} output={} source_format={} target_format={} should_write={} overwrite={}",
+        input_path,
+        derived_output_path.display(),
+        format_to_string(source_format),
+        format_to_string(output.format),
+        output.should_write,
+        overwrite
+    ));
     let final_output_path = if output.should_write {
+        crate::diagnostics::timing_log(format!(
+            "process write start output={} bytes={}",
+            derived_output_path.display(),
+            output.data.len()
+        ));
         safe_write_bytes(&derived_output_path, &output.data, overwrite)?;
+        crate::diagnostics::timing_log(format!(
+            "process write done output={}",
+            derived_output_path.display()
+        ));
         derived_output_path
     } else {
+        crate::diagnostics::timing_log(format!(
+            "process skipped write input={} output={} reason=not-smaller-or-no-change",
+            input_path,
+            input.display()
+        ));
         input.clone()
     };
 
-    Ok(ProcessResult {
+    let result = ProcessResult {
         output_path: final_output_path.to_string_lossy().into_owned(),
         format: format_to_string(output.format),
         width: output.width,
@@ -320,7 +348,15 @@ fn process_file_at_path(
         original_size: input_bytes.len() as u64,
         new_size: output.data.len() as u64,
         did_write: output.should_write,
-    })
+    };
+    crate::diagnostics::timing_log(format!(
+        "process done input={} output={} did_write={} total={}ms",
+        input_path,
+        result.output_path,
+        result.did_write,
+        total_start.elapsed().as_millis()
+    ));
+    Ok(result)
 }
 
 fn run_operation(data: &[u8], operation: &ImageOperation) -> Result<OperationOutput> {

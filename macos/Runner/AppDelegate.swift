@@ -8,6 +8,7 @@ class AppDelegate: FlutterAppDelegate {
   private var pendingOpenRequests: [[String]] = []
   private var fileOpenChannelReady = false
   private let compressionServiceProvider = CompressionServiceProvider()
+  private var securityScopedUrlsByPath: [String: URL] = [:]
 
   func attachFileOpenChannel(to controller: FlutterViewController) {
     guard fileOpenChannel == nil else {
@@ -39,19 +40,20 @@ class AppDelegate: FlutterAppDelegate {
   }
 
   override func applicationDidFinishLaunching(_ notification: Notification) {
-    super.applicationDidFinishLaunching(notification)
     NSApp.servicesProvider = compressionServiceProvider
     NSUpdateDynamicServices()
     attachIfPossible()
   }
 
   override func application(_ sender: NSApplication, openFiles filenames: [String]) {
+    retainSecurityScopedAccess(for: filenames.map(URL.init(fileURLWithPath:)))
     queueOpenRequest(filenames)
     attachIfPossible()
     sender.reply(toOpenOrPrint: .success)
   }
 
   override func application(_ application: NSApplication, open urls: [URL]) {
+    retainSecurityScopedAccess(for: urls)
     let filePaths = urls.filter(\.isFileURL).map(\.path)
     if !filePaths.isEmpty {
       queueOpenRequest(filePaths)
@@ -101,5 +103,18 @@ class AppDelegate: FlutterAppDelegate {
       fileOpenChannel.invokeMethod("openFiles", arguments: paths)
     }
     pendingOpenRequests.removeAll()
+  }
+
+  private func retainSecurityScopedAccess(for urls: [URL]) {
+    for url in urls where url.isFileURL {
+      let path = url.path
+      if securityScopedUrlsByPath[path] != nil {
+        continue
+      }
+
+      if url.startAccessingSecurityScopedResource() {
+        securityScopedUrlsByPath[path] = url
+      }
+    }
   }
 }

@@ -254,6 +254,10 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
     };
 
     try {
+      DeveloperDiagnostics.logTiming(
+        'optimize-run',
+        'start files=${inputPaths.length} paths=${inputPaths.join(",")}',
+      );
       final handle = await ref
           .read(slimgApiProvider)
           .startProcessFileBatchJob(
@@ -269,8 +273,13 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
         totalCount: inputPaths.length,
         items: queuedItems,
       );
+      DeveloperDiagnostics.logTiming(
+        'optimize-run',
+        'job-started jobId=${handle.jobId} total=${inputPaths.length}',
+      );
       unawaited(_pollJob(handle.jobId));
     } on Object catch (error) {
+      DeveloperDiagnostics.logTimingError('optimize-run', error);
       state = _idleState(
         items: queuedItems,
         globalError: error.toString(),
@@ -288,9 +297,17 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
           return;
         }
 
+        DeveloperDiagnostics.logTiming(
+          'optimize-run',
+          'snapshot jobId=$jobId state=${snapshot.state.name} completed=${snapshot.completedCount}/${snapshot.totalCount} current=${snapshot.currentInputPath} results=${snapshot.results.length} error=${snapshot.error}',
+        );
         await _applySnapshot(jobId, snapshot);
         if (_isTerminalJobState(snapshot.state)) {
           await _disposeJob(jobId);
+          DeveloperDiagnostics.logTiming(
+            'optimize-run',
+            'job-terminal jobId=$jobId state=${snapshot.state.name} error=${snapshot.error}',
+          );
           state = _idleState(
             items: _buildItemsForSnapshot(snapshot),
             globalError: snapshot.error?.toString(),
@@ -304,6 +321,7 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
         }
 
         await _disposeJob(jobId);
+        DeveloperDiagnostics.logTimingError('optimize-run', error);
         state = _idleState(
           items: state.items,
           globalError: error.toString(),
@@ -319,6 +337,12 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
   Future<void> _applySnapshot(String jobId, BatchJobSnapshot snapshot) async {
     final newResults = snapshot.results.skip(state.appliedResultCount).toList();
     if (newResults.isNotEmpty) {
+      for (final item in newResults) {
+        DeveloperDiagnostics.logTiming(
+          'optimize-run',
+          'result input=${item.inputPath} success=${item.success} error=${item.error} output=${item.result?.outputPath} didWrite=${item.result?.didWrite}',
+        );
+      }
       await ref.read(fileOpenControllerProvider).applyProcessResults(newResults);
       if (state.jobId != jobId) {
         return;

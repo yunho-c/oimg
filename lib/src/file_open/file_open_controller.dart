@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:oimg/src/rust/slimg_api.dart';
+import 'package:oimg/src/settings/developer_diagnostics.dart';
 import 'package:oimg/src/rust/types.dart';
 
 import 'file_open_channel.dart';
@@ -119,12 +120,20 @@ class FileOpenController extends ChangeNotifier {
     final selectedIndex = _currentIndex;
 
     for (final item in results) {
+      DeveloperDiagnostics.logTiming(
+        'optimize-results',
+        'input=${item.inputPath} success=${item.success} hasResult=${item.result != null} error=${item.error}',
+      );
       final index = updatedFiles.indexWhere((file) => file.path == item.inputPath);
       if (index == -1) {
         continue;
       }
 
       if (!item.success || item.result == null) {
+        DeveloperDiagnostics.logTiming(
+          'optimize-results',
+          'failed input=${item.inputPath} error=${item.error}',
+        );
         updatedFiles[index] = updatedFiles[index].copyWith(
           lastError: item.error?.toString() ?? 'Unable to optimize file.',
           clearLastResult: true,
@@ -135,6 +144,10 @@ class FileOpenController extends ChangeNotifier {
       final result = item.result!;
       final refreshedFile = await _inspectPath(result.outputPath);
       if (refreshedFile == null) {
+        DeveloperDiagnostics.logTiming(
+          'optimize-results',
+          'reload-failed input=${item.inputPath} output=${result.outputPath} didWrite=${result.didWrite}',
+        );
         updatedFiles[index] = updatedFiles[index].copyWith(
           lastResult: result,
           lastError: 'Unable to reload optimized file.',
@@ -142,6 +155,10 @@ class FileOpenController extends ChangeNotifier {
         continue;
       }
 
+      DeveloperDiagnostics.logTiming(
+        'optimize-results',
+        'applied input=${item.inputPath} output=${result.outputPath} didWrite=${result.didWrite} original=${result.originalSize} new=${result.newSize}',
+      );
       updatedFiles[index] = refreshedFile.copyWith(
         lastResult: result,
         clearLastError: true,
