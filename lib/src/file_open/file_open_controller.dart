@@ -9,6 +9,21 @@ import 'package:oimg/src/rust/types.dart';
 import 'file_open_channel.dart';
 import 'opened_image_file.dart';
 
+enum ExplorerSelectionType { file, folder }
+
+class ExplorerSelection {
+  const ExplorerSelection._({required this.type, required this.path});
+
+  const ExplorerSelection.file(String path)
+    : this._(type: ExplorerSelectionType.file, path: path);
+
+  const ExplorerSelection.folder(String path)
+    : this._(type: ExplorerSelectionType.folder, path: path);
+
+  final ExplorerSelectionType type;
+  final String path;
+}
+
 class FileOpenController extends ChangeNotifier {
   FileOpenController({
     required FileOpenChannel channel,
@@ -25,6 +40,7 @@ class FileOpenController extends ChangeNotifier {
   List<OpenedImageFile> _sessionFiles = const [];
   int _currentIndex = 0;
   String? _pendingNotice;
+  String? _selectedFolderPath;
 
   UnmodifiableListView<OpenedImageFile> get sessionFiles =>
       UnmodifiableListView(_sessionFiles);
@@ -39,10 +55,59 @@ class FileOpenController extends ChangeNotifier {
   OpenedImageFile? get currentFile =>
       hasSession ? _sessionFiles[_currentIndex] : null;
   String? get currentPath => currentFile?.path;
+  String? get selectedFolderPath => _selectedFolderPath;
+  bool get isFolderSelected => _selectedFolderPath != null;
+  ExplorerSelection? get explorerSelection {
+    if (_selectedFolderPath case final folderPath?) {
+      return ExplorerSelection.folder(folderPath);
+    }
+    if (currentPath case final path?) {
+      return ExplorerSelection.file(path);
+    }
+    return null;
+  }
   String? get currentFileName =>
       currentPath == null ? null : fileNameOf(currentPath!);
+  String? get currentDisplayTitle =>
+      isFolderSelected
+          ? (selectedFolderName ?? selectedFolderPath)
+          : currentFileName;
+  String? get selectedFolderName =>
+      _selectedFolderPath == null ? null : directoryLabelOf(_selectedFolderPath!);
+  UnmodifiableListView<OpenedImageFile> get selectedFolderFiles {
+    if (_selectedFolderPath == null) {
+      return UnmodifiableListView(const <OpenedImageFile>[]);
+    }
+
+    final files = _sessionFiles
+        .where((file) => directoryOf(file.path) == _selectedFolderPath)
+        .toList(growable: false);
+    return UnmodifiableListView(files);
+  }
+  int? get selectedFolderSizeBytes {
+    if (_selectedFolderPath == null) {
+      return null;
+    }
+
+    var hasSize = false;
+    var totalBytes = 0;
+    for (final file in _sessionFiles) {
+      if (directoryOf(file.path) != _selectedFolderPath) {
+        continue;
+      }
+      final bytes = file.metadata.fileSize?.toInt();
+      if (bytes == null) {
+        continue;
+      }
+      hasSize = true;
+      totalBytes += bytes;
+    }
+    return hasSize ? totalBytes : null;
+  }
   String? get currentPositionLabel =>
-      hasSession ? '${_currentIndex + 1} / ${_sessionFiles.length}' : null;
+      isFolderSelected
+          ? null
+          : (hasSession ? '${_currentIndex + 1} / ${_sessionFiles.length}' : null);
 
   Future<void> initialize() async {
     await _channel.bind(openPaths);
@@ -73,6 +138,7 @@ class FileOpenController extends ChangeNotifier {
 
     _sessionFiles = inspectedFiles;
     _currentIndex = 0;
+    _selectedFolderPath = null;
     _pendingNotice = rejectedCount == 0 ? null : 'Some files could not be opened.';
     notifyListeners();
   }
@@ -83,6 +149,7 @@ class FileOpenController extends ChangeNotifier {
     }
 
     _currentIndex -= 1;
+    _selectedFolderPath = null;
     notifyListeners();
   }
 
@@ -92,16 +159,33 @@ class FileOpenController extends ChangeNotifier {
     }
 
     _currentIndex += 1;
+    _selectedFolderPath = null;
     notifyListeners();
   }
 
   void showPath(String path) {
     final index = _sessionFiles.indexWhere((file) => file.path == path);
-    if (index == -1 || index == _currentIndex) {
+    if (index == -1) {
+      return;
+    }
+    if (index == _currentIndex && _selectedFolderPath == null) {
       return;
     }
 
     _currentIndex = index;
+    _selectedFolderPath = null;
+    notifyListeners();
+  }
+
+  void showFolder(String path) {
+    final hasFilesInFolder = _sessionFiles.any(
+      (file) => directoryOf(file.path) == path,
+    );
+    if (!hasFilesInFolder || _selectedFolderPath == path) {
+      return;
+    }
+
+    _selectedFolderPath = path;
     notifyListeners();
   }
 
@@ -169,6 +253,14 @@ class FileOpenController extends ChangeNotifier {
     if (_sessionFiles.isNotEmpty) {
       _currentIndex = selectedIndex.clamp(0, _sessionFiles.length - 1);
     }
+    if (_selectedFolderPath case final folderPath?) {
+      final folderStillExists = _sessionFiles.any(
+        (file) => directoryOf(file.path) == folderPath,
+      );
+      if (!folderStillExists) {
+        _selectedFolderPath = null;
+      }
+    }
     notifyListeners();
   }
 
@@ -185,6 +277,26 @@ class FileOpenController extends ChangeNotifier {
     final normalized = path.replaceAll('\\', '/');
     final segments = normalized.split('/');
     return segments.isEmpty ? path : segments.last;
+  }
+
+  static String directoryOf(String path) {
+    final normalized = path.replaceAll('\\', '/');
+    final separator = normalized.lastIndexOf('/');
+    if (separator < 0) {
+      return '.';
+    }
+    if (separator == 0) {
+      return '/';
+    }
+    return normalized.substring(0, separator);
+  }
+
+  static String directoryLabelOf(String directory) {
+    final label = fileNameOf(directory);
+    if (label.isNotEmpty) {
+      return label;
+    }
+    return directory;
   }
 
   Future<List<String>> _expandCandidatePaths(List<String> paths) async {

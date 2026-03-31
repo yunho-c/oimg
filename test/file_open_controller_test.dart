@@ -120,6 +120,42 @@ void main() {
       expect(controller.currentIndex, 2);
     });
 
+    test('can select a folder and expose its loaded files and size', () async {
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: _FakeSlimgApi(
+          inspectResults: {
+            '/tmp/animals/cat.png': _metadata('png'),
+            '/tmp/animals/dog.png': _metadata('png'),
+            '/tmp/cars/road.png': _metadata('png'),
+          },
+        ),
+        initialPaths: const [
+          '/tmp/animals/cat.png',
+          '/tmp/animals/dog.png',
+          '/tmp/cars/road.png',
+        ],
+      );
+
+      await controller.initialize();
+      controller.showFolder('/tmp/animals');
+
+      expect(controller.isFolderSelected, isTrue);
+      expect(controller.selectedFolderName, 'animals');
+      expect(
+        controller.selectedFolderFiles.map((file) => file.path),
+        ['/tmp/animals/cat.png', '/tmp/animals/dog.png'],
+      );
+      expect(controller.selectedFolderSizeBytes, 2048);
+      expect(controller.currentPositionLabel, isNull);
+
+      controller.showPath('/tmp/animals/dog.png');
+
+      expect(controller.isFolderSelected, isFalse);
+      expect(controller.currentPath, '/tmp/animals/dog.png');
+      expect(controller.currentPositionLabel, '2 / 3');
+    });
+
     test('expands dropped directories into nested file candidates', () async {
       final root = await Directory.systemTemp.createTemp('oimg-drop-test');
       addTearDown(() async {

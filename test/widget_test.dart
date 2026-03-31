@@ -107,6 +107,51 @@ void main() {
     expect(find.text('1 / 2'), findsOneWidget);
   });
 
+  testWidgets('folder rows open a collage and file selection returns to file view', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {
+        '/tmp/animals/cat.png': _metadata('png', 2400),
+        '/tmp/animals/dog.jpg': _metadata('jpeg', 1800),
+        '/tmp/cars/road.png': _metadata('png', 900),
+      },
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const [
+        '/tmp/animals/cat.png',
+        '/tmp/animals/dog.jpg',
+        '/tmp/cars/road.png',
+      ],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('1 / 3'), findsOneWidget);
+    expect(find.text('4.1 KB'), findsOneWidget);
+
+    await tester.tap(find.text('animals').first);
+    await tester.pump();
+
+    expect(find.text('1 / 3'), findsNothing);
+    expect(find.text('Images 2'), findsOneWidget);
+    expect(find.text('Loaded'), findsOneWidget);
+
+    await tester.tap(find.text('dog.jpg').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('2 / 3'), findsOneWidget);
+  });
+
   testWidgets('toggles advanced mode in the settings sidebar', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));

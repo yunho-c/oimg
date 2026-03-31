@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oimg/src/file_open/file_open_channel.dart';
@@ -203,7 +204,7 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
   Widget build(BuildContext context) {
     final controller = ref.watch(fileOpenControllerProvider);
     final title =
-        controller.currentFileName ?? 'Open images from your desktop';
+        controller.currentDisplayTitle ?? 'Open images from your desktop';
 
     return Scaffold(
       headers: [
@@ -451,9 +452,11 @@ class _ImageSessionViewState extends ConsumerState<_ImageSessionView> {
         builder: (context, constraints) {
           final wideLayout = constraints.maxWidth >= 1120;
           final sidebar = _ExplorerSidebar(controller: controller);
-          final stage = _ImageStage(title: widget.title, currentFile: currentFile);
+          final stage = controller.isFolderSelected
+              ? _FolderStage(controller: controller)
+              : _ImageStage(title: widget.title, currentFile: currentFile);
           const settingsSidebar = _SettingsSidebar();
-          final bottomSidebar = _BottomSidebar(currentFile: currentFile);
+          final bottomSidebar = _BottomSidebar(controller: controller);
 
           if (wideLayout) {
             final maxWidth = _clampSidebarWidth(constraints.maxWidth * 0.38);
@@ -692,6 +695,78 @@ class _ImageStage extends ConsumerWidget {
   }
 }
 
+class _FolderStage extends StatelessWidget {
+  const _FolderStage({required this.controller});
+
+  final FileOpenController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final folderPath = controller.selectedFolderPath;
+    final folderFiles = controller.selectedFolderFiles;
+    final totalBytes = controller.selectedFolderSizeBytes;
+    if (folderPath == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Card(
+      padding: EdgeInsets.zero,
+      borderRadius: theme.borderRadiusXl,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  folderPath,
+                  style: TextStyle(color: theme.colorScheme.mutedForeground),
+                ).xSmall(),
+                const SizedBox(height: 4),
+                Text(
+                  controller.selectedFolderName ?? folderPath,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  children: [
+                    _PreviewMetaItem(
+                      label: 'Images',
+                      value: '${folderFiles.length}',
+                    ),
+                    if (totalBytes case final bytes?)
+                      _PreviewMetaItem(
+                        label: 'Size',
+                        value: _formatBytes(bytes),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const Divider(),
+          Expanded(
+            child: Container(
+              color: theme.colorScheme.background,
+              padding: const EdgeInsets.all(14),
+              child: _FolderCollage(
+                files: folderFiles,
+                onOpenFile: controller.showPath,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _PreviewCanvas extends StatelessWidget {
   const _PreviewCanvas({
     required this.path,
@@ -747,6 +822,125 @@ class _PreviewCanvas extends StatelessWidget {
                   );
                 },
               ),
+      ),
+    );
+  }
+}
+
+class _FolderCollage extends StatelessWidget {
+  const _FolderCollage({
+    required this.files,
+    required this.onOpenFile,
+  });
+
+  final List<OpenedImageFile> files;
+  final ValueChanged<String> onOpenFile;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const spacing = 12.0;
+        final crossAxisCount = math.max(
+          1,
+          math.min(4, (constraints.maxWidth / 180).floor()),
+        );
+        final totalSpacing = spacing * (crossAxisCount - 1);
+        final tileWidth = (constraints.maxWidth - totalSpacing) / crossAxisCount;
+
+        return GridView.builder(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: spacing,
+            childAspectRatio: 0.95,
+          ),
+          itemCount: files.length,
+          itemBuilder: (context, index) {
+            final file = files[index];
+            return _FolderCollageTile(
+              file: file,
+              tileWidth: tileWidth,
+              onPressed: () => onOpenFile(file.path),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _FolderCollageTile extends StatelessWidget {
+  const _FolderCollageTile({
+    required this.file,
+    required this.tileWidth,
+    required this.onPressed,
+  });
+
+  final OpenedImageFile file;
+  final double tileWidth;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+    final cacheWidth = math.max(1, (tileWidth * devicePixelRatio).round());
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onPressed,
+        child: Card(
+          padding: EdgeInsets.zero,
+          borderRadius: theme.borderRadiusLg,
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Container(
+                  color: theme.colorScheme.secondary,
+                  alignment: Alignment.center,
+                  child: Image.file(
+                    File(file.path),
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    cacheWidth: cacheWidth,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(
+                        LucideIcons.imageOff,
+                        size: 24,
+                        color: theme.colorScheme.mutedForeground,
+                      );
+                    },
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        FileOpenController.fileNameOf(file.path),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ).small().medium(),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _fileSizeLabel(file) ?? 'Unknown',
+                      textAlign: TextAlign.right,
+                    ).xSmall().muted(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -845,7 +1039,7 @@ class _ExplorerSidebar extends StatelessWidget {
                       : Text(entry.sizeLabel!).small().muted(),
                   expandable: false,
                   onPressed: entry.isDirectory
-                      ? null
+                      ? () => controller.showFolder(entry.path)
                       : () => controller.showPath(entry.path),
                   child: Text(entry.label).small().mediumIf(entry.isDirectory),
                 );
@@ -860,20 +1054,26 @@ class _ExplorerSidebar extends StatelessWidget {
   List<TreeNode<_ExplorerEntry>> _buildExplorerNodes(
     FileOpenController controller,
   ) {
+    final selection = controller.explorerSelection;
     final groups = <String, List<OpenedImageFile>>{};
     for (final file in controller.sessionFiles) {
-      final directory = _directoryOf(file.path);
+      final directory = FileOpenController.directoryOf(file.path);
       groups.putIfAbsent(directory, () => <OpenedImageFile>[]).add(file);
     }
 
     return groups.entries
         .map((entry) {
+          final folderSizeLabel = _folderSizeLabel(entry.value);
           return TreeItem<_ExplorerEntry>(
             data: _ExplorerEntry.directory(
-              label: _directoryLabel(entry.key),
+              label: FileOpenController.directoryLabelOf(entry.key),
               path: entry.key,
+              sizeLabel: folderSizeLabel,
             ),
             expanded: true,
+            selected:
+                selection?.type == ExplorerSelectionType.folder &&
+                selection?.path == entry.key,
             children: entry.value
                 .map(
                   (file) => TreeItem<_ExplorerEntry>(
@@ -882,33 +1082,15 @@ class _ExplorerSidebar extends StatelessWidget {
                       path: file.path,
                       sizeLabel: _fileSizeLabel(file),
                     ),
-                    selected: file.path == controller.currentPath,
+                    selected:
+                        selection?.type == ExplorerSelectionType.file &&
+                        selection?.path == file.path,
                   ),
                 )
                 .toList(growable: false),
           );
         })
         .toList(growable: false);
-  }
-
-  static String _directoryOf(String path) {
-    final normalized = path.replaceAll('\\', '/');
-    final separator = normalized.lastIndexOf('/');
-    if (separator < 0) {
-      return '.';
-    }
-    if (separator == 0) {
-      return '/';
-    }
-    return normalized.substring(0, separator);
-  }
-
-  static String _directoryLabel(String directory) {
-    final label = FileOpenController.fileNameOf(directory);
-    if (label.isNotEmpty) {
-      return label;
-    }
-    return directory;
   }
 }
 
@@ -920,8 +1102,16 @@ class _ExplorerEntry {
     required this.isDirectory,
   });
 
-  const _ExplorerEntry.directory({required String label, required String path})
-    : this._(label: label, path: path, sizeLabel: null, isDirectory: true);
+  const _ExplorerEntry.directory({
+    required String label,
+    required String path,
+    required String? sizeLabel,
+  }) : this._(
+         label: label,
+         path: path,
+         sizeLabel: sizeLabel,
+         isDirectory: true,
+       );
 
   const _ExplorerEntry.file({
     required String label,
@@ -1347,19 +1537,28 @@ class _StatusRow extends StatelessWidget {
 }
 
 class _BottomSidebar extends ConsumerWidget {
-  const _BottomSidebar({required this.currentFile});
+  const _BottomSidebar({required this.controller});
 
-  final OpenedImageFile currentFile;
+  final FileOpenController controller;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final currentFile = controller.currentFile;
+    if (currentFile == null) {
+      return const SizedBox.shrink();
+    }
+
     final metadata = currentFile.metadata;
     final runState = ref.watch(optimizationRunControllerProvider);
     final runController = ref.read(optimizationRunControllerProvider.notifier);
     final progressValue = runState.totalCount > 0
         ? (runState.completedCount / runState.totalCount).clamp(0.0, 1.0)
         : 0.0;
+    final isFolderSelected = controller.isFolderSelected;
+    final selectedFolderFiles = controller.selectedFolderFiles;
+    final selectedFolderPath = controller.selectedFolderPath;
+    final selectedFolderSizeBytes = controller.selectedFolderSizeBytes;
 
     return Card(
       padding: EdgeInsets.zero,
@@ -1391,28 +1590,40 @@ class _BottomSidebar extends ConsumerWidget {
                         Expanded(
                           flex: 2,
                           child: _BottomDetail(
-                            label: 'File',
-                            value: FileOpenController.fileNameOf(currentFile.path),
+                            label: isFolderSelected ? 'Folder' : 'File',
+                            value: isFolderSelected
+                                ? (controller.selectedFolderName ??
+                                      selectedFolderPath ??
+                                      'Unknown')
+                                : FileOpenController.fileNameOf(currentFile.path),
                           ),
                         ),
                         Expanded(
                           child: _BottomDetail(
-                            label: 'Format',
-                            value: formatLabel(metadata.format),
+                            label: isFolderSelected ? 'Images' : 'Format',
+                            value: isFolderSelected
+                                ? '${selectedFolderFiles.length}'
+                                : formatLabel(metadata.format),
                           ),
                         ),
                         Expanded(
                           child: _BottomDetail(
-                            label: 'Dimensions',
-                            value: '${metadata.width} x ${metadata.height}',
+                            label: isFolderSelected ? 'Selection' : 'Dimensions',
+                            value: isFolderSelected
+                                ? 'Loaded'
+                                : '${metadata.width} x ${metadata.height}',
                           ),
                         ),
                         Expanded(
                           child: _BottomDetail(
                             label: 'Size',
-                            value: metadata.fileSize == null
-                                ? 'Unknown'
-                                : _formatBytes(metadata.fileSize!.toInt()),
+                            value: isFolderSelected
+                                ? (selectedFolderSizeBytes == null
+                                      ? 'Unknown'
+                                      : _formatBytes(selectedFolderSizeBytes))
+                                : (metadata.fileSize == null
+                                      ? 'Unknown'
+                                      : _formatBytes(metadata.fileSize!.toInt())),
                           ),
                         ),
                       ],
@@ -1587,6 +1798,23 @@ String? _fileSizeLabel(OpenedImageFile file) {
     return null;
   }
   return _formatBytes(bytes);
+}
+
+String? _folderSizeLabel(List<OpenedImageFile> files) {
+  var hasSize = false;
+  var totalBytes = 0;
+  for (final file in files) {
+    final bytes = file.metadata.fileSize?.toInt();
+    if (bytes == null) {
+      continue;
+    }
+    hasSize = true;
+    totalBytes += bytes;
+  }
+  if (!hasSize) {
+    return null;
+  }
+  return _formatBytes(totalBytes);
 }
 
 String _qualityValueLabel(AppSettings settings) {
