@@ -7,10 +7,7 @@ use std::sync::{
 use std::thread;
 
 use crate::error::{panic_message, Result, SlimgBridgeError};
-use crate::types::{
-    BatchItemResult, BatchJobHandle, BatchJobSnapshot, BatchJobState, ProcessFileBatchRequest,
-    ProcessFileRequest,
-};
+use crate::types::{BatchJobHandle, BatchJobSnapshot, BatchJobState, ProcessFileBatchRequest};
 
 static NEXT_JOB_ID: AtomicU64 = AtomicU64::new(1);
 static JOBS: OnceLock<Mutex<HashMap<String, Arc<BatchJobRecord>>>> = OnceLock::new();
@@ -90,72 +87,37 @@ fn spawn_batch_job(record: Arc<BatchJobRecord>, request: ProcessFileBatchRequest
 }
 
 fn run_batch_job(record: &Arc<BatchJobRecord>, request: ProcessFileBatchRequest) -> Result<()> {
-    let ProcessFileBatchRequest {
-        requests,
+    let continue_on_error = request.continue_on_error;
+    let items = crate::execution::build_work_items_for_process_file_batch(request)?;
+    let outcome = crate::execution::execute_batch_items_with_events(
+        items,
         continue_on_error,
-    } = request;
-    let mut failed = false;
-
-    for request in requests {
-        if record.cancel_requested.load(Ordering::SeqCst) {
-            let mut snapshot = record.snapshot_lock()?;
-            snapshot.state = BatchJobState::Canceled;
-            snapshot.current_input_path = None;
-            return Ok(());
-        }
-
-        let input_path = request.input_path.clone();
-        {
-            let mut snapshot = record.snapshot_lock()?;
-            snapshot.current_input_path = Some(input_path.clone());
-            if !matches!(snapshot.state, BatchJobState::CancelRequested) {
-                snapshot.state = BatchJobState::Running;
+        || record.cancel_requested.load(Ordering::SeqCst),
+        |input_path| {
+            if let Ok(mut snapshot) = record.snapshot_lock() {
+                snapshot.current_input_path = Some(input_path.to_string());
+                if !matches!(snapshot.state, BatchJobState::CancelRequested) {
+                    snapshot.state = BatchJobState::Running;
+                }
             }
-        }
-
-        let item = if failed {
-            BatchItemResult {
-                input_path: input_path.clone(),
-                success: false,
-                result: None,
-                error: Some(SlimgBridgeError::skipped_after_failure(&input_path)),
+        },
+        |item| {
+            if let Ok(mut snapshot) = record.snapshot_lock() {
+                snapshot.results.push(item.clone());
+                snapshot.completed_count = snapshot.results.len() as u32;
+                snapshot.current_input_path = None;
             }
-        } else {
-            batch_item_for_request(request)
-        };
-
-        if !item.success && !continue_on_error {
-            failed = true;
-        }
-
-        let mut snapshot = record.snapshot_lock()?;
-        snapshot.results.push(item);
-        snapshot.completed_count = snapshot.results.len() as u32;
-        snapshot.current_input_path = None;
-    }
+        },
+    )?;
 
     let mut snapshot = record.snapshot_lock()?;
-    snapshot.state = BatchJobState::Completed;
     snapshot.current_input_path = None;
+    snapshot.state = if outcome.canceled {
+        BatchJobState::Canceled
+    } else {
+        BatchJobState::Completed
+    };
     Ok(())
-}
-
-fn batch_item_for_request(request: ProcessFileRequest) -> BatchItemResult {
-    let input_path = request.input_path.clone();
-    match crate::convert::process_file(request) {
-        Ok(result) => BatchItemResult {
-            input_path,
-            success: true,
-            result: Some(result),
-            error: None,
-        },
-        Err(error) => BatchItemResult {
-            input_path,
-            success: false,
-            result: None,
-            error: Some(error),
-        },
-    }
 }
 
 fn finish_failed(record: &BatchJobRecord, error: SlimgBridgeError) {

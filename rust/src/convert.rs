@@ -2,7 +2,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use rayon::prelude::*;
 use slimg_core::{
     codec::{get_codec, EncodeOptions},
     convert as core_convert, decode, CropMode, ExtendMode, FillColor, Format, PipelineOptions,
@@ -45,7 +44,7 @@ pub(crate) fn process_bytes(request: ProcessBytesRequest) -> Result<EncodedImage
         return Err(SlimgBridgeError::invalid_request("data must not be empty"));
     }
 
-    let output = run_operation(&request.data, &request.operation)?;
+    let output = run_operation(&request.data, &request.operation, None)?;
     Ok(EncodedImageResult {
         encoded_bytes: output.data.clone(),
         format: format_to_string(output.format),
@@ -69,7 +68,7 @@ pub(crate) fn preview_file(request: crate::types::PreviewFileRequest) -> Result<
         let read_elapsed = read_start.elapsed();
 
         let operation_start = Instant::now();
-        let output = run_operation(&data, &request.operation)?;
+        let output = run_operation(&data, &request.operation, None)?;
         let operation_elapsed = operation_start.elapsed();
 
         crate::diagnostics::timing_log(format!(
@@ -113,64 +112,19 @@ pub(crate) fn process_file(request: ProcessFileRequest) -> Result<ProcessResult>
         "process start input={} output={:?} overwrite={} operation={:?}",
         request.input_path, request.output_path, request.overwrite, request.operation
     ));
-    process_file_at_path(
-        request.input_path,
-        request.output_path,
-        None,
-        request.overwrite,
-        request.operation,
-    )
+    process_file_request_with_threads(request, None)
 }
 
 pub(crate) fn process_files(request: BatchProcessRequest) -> Result<Vec<BatchItemResult>> {
-    if request.input_paths.is_empty() {
-        return Err(SlimgBridgeError::invalid_request(
-            "input_paths must contain at least one file",
-        ));
-    }
-
-    let output_dir = request
-        .output_dir
-        .as_deref()
-        .map(|value| to_path_buf(value, "output_dir"))
-        .transpose()?;
-
-    process_batch_items(
-        request
-            .input_paths
-            .into_iter()
-            .map(|input_path| BatchWorkItem {
-                input_path: input_path.clone(),
-                exec: BatchExec::Path {
-                    input_path,
-                    output_dir: output_dir.clone(),
-                    overwrite: request.overwrite,
-                    operation: request.operation.clone(),
-                },
-            })
-            .collect(),
-        request.continue_on_error,
-    )
+    let continue_on_error = request.continue_on_error;
+    let items = crate::execution::build_work_items_for_process_files(request)?;
+    crate::execution::execute_batch_items(items, continue_on_error)
 }
 
 pub(crate) fn process_file_batch(request: ProcessFileBatchRequest) -> Result<Vec<BatchItemResult>> {
-    if request.requests.is_empty() {
-        return Err(SlimgBridgeError::invalid_request(
-            "requests must contain at least one file request",
-        ));
-    }
-
-    process_batch_items(
-        request
-            .requests
-            .into_iter()
-            .map(|request| BatchWorkItem {
-                input_path: request.input_path.clone(),
-                exec: BatchExec::Request { request },
-            })
-            .collect(),
-        request.continue_on_error,
-    )
+    let continue_on_error = request.continue_on_error;
+    let items = crate::execution::build_work_items_for_process_file_batch(request)?;
+    crate::execution::execute_batch_items(items, continue_on_error)
 }
 
 struct OperationOutput {
@@ -181,114 +135,27 @@ struct OperationOutput {
     should_write: bool,
 }
 
-struct BatchWorkItem {
-    input_path: String,
-    exec: BatchExec,
+pub(crate) fn process_file_request_with_threads(
+    request: ProcessFileRequest,
+    threads: Option<usize>,
+) -> Result<ProcessResult> {
+    process_file_path_with_threads(
+        request.input_path,
+        request.output_path,
+        None,
+        request.overwrite,
+        request.operation,
+        threads,
+    )
 }
 
-enum BatchExec {
-    Path {
-        input_path: String,
-        output_dir: Option<PathBuf>,
-        overwrite: bool,
-        operation: ImageOperation,
-    },
-    Request {
-        request: ProcessFileRequest,
-    },
-}
-
-fn process_batch_items(
-    items: Vec<BatchWorkItem>,
-    continue_on_error: bool,
-) -> Result<Vec<BatchItemResult>> {
-    if continue_on_error {
-        return Ok(items
-            .into_par_iter()
-            .map(batch_item_from_work_item)
-            .collect());
-    }
-
-    let mut results = Vec::with_capacity(items.len());
-    let mut failed = false;
-
-    for item in items {
-        if failed {
-            results.push(BatchItemResult {
-                input_path: item.input_path.clone(),
-                success: false,
-                result: None,
-                error: Some(SlimgBridgeError::skipped_after_failure(&item.input_path)),
-            });
-            continue;
-        }
-
-        let result = batch_item_from_work_item(item);
-        failed = !result.success;
-        results.push(result);
-    }
-
-    Ok(results)
-}
-
-fn batch_item_from_work_item(item: BatchWorkItem) -> BatchItemResult {
-    match item.exec {
-        BatchExec::Path {
-            input_path,
-            output_dir,
-            overwrite,
-            operation,
-        } => batch_item_for_path(input_path, output_dir, overwrite, operation),
-        BatchExec::Request { request } => batch_item_for_request(request),
-    }
-}
-
-fn batch_item_for_path(
-    input_path: String,
-    output_dir: Option<PathBuf>,
-    overwrite: bool,
-    operation: ImageOperation,
-) -> BatchItemResult {
-    match process_file_at_path(input_path.clone(), None, output_dir, overwrite, operation) {
-        Ok(result) => BatchItemResult {
-            input_path,
-            success: true,
-            result: Some(result),
-            error: None,
-        },
-        Err(error) => BatchItemResult {
-            input_path,
-            success: false,
-            result: None,
-            error: Some(error),
-        },
-    }
-}
-
-fn batch_item_for_request(request: ProcessFileRequest) -> BatchItemResult {
-    let input_path = request.input_path.clone();
-    match process_file(request) {
-        Ok(result) => BatchItemResult {
-            input_path,
-            success: true,
-            result: Some(result),
-            error: None,
-        },
-        Err(error) => BatchItemResult {
-            input_path,
-            success: false,
-            result: None,
-            error: Some(error),
-        },
-    }
-}
-
-fn process_file_at_path(
+pub(crate) fn process_file_path_with_threads(
     input_path: String,
     explicit_output_path: Option<String>,
     output_dir: Option<PathBuf>,
     overwrite: bool,
     operation: ImageOperation,
+    threads: Option<usize>,
 ) -> Result<ProcessResult> {
     let total_start = Instant::now();
     let input = read_existing_input_path(&input_path)?;
@@ -309,7 +176,7 @@ fn process_file_at_path(
         target_format,
     )?;
 
-    let output = run_operation(&input_bytes, &operation)?;
+    let output = run_operation(&input_bytes, &operation, threads)?;
     crate::diagnostics::timing_log(format!(
         "process resolved input={} output={} source_format={} target_format={} should_write={} overwrite={}",
         input_path,
@@ -359,14 +226,19 @@ fn process_file_at_path(
     Ok(result)
 }
 
-fn run_operation(data: &[u8], operation: &ImageOperation) -> Result<OperationOutput> {
+fn run_operation(
+    data: &[u8],
+    operation: &ImageOperation,
+    threads: Option<usize>,
+) -> Result<OperationOutput> {
     match operation {
-        ImageOperation::Convert(options) => convert_bytes(data, options),
-        ImageOperation::Optimize(options) => optimize_bytes(data, options),
+        ImageOperation::Convert(options) => convert_bytes(data, options, threads),
+        ImageOperation::Optimize(options) => optimize_bytes(data, options, threads),
         ImageOperation::Resize(options) => transform_bytes(data, options.quality, |source| {
             Ok(PipelineOptions {
                 format: resolve_optional_target_format(options.target_format.as_deref(), source)?,
                 quality: validate_quality(options.quality)?,
+                threads,
                 resize: Some(map_resize_spec(&options.resize)?),
                 crop: None,
                 extend: None,
@@ -377,6 +249,7 @@ fn run_operation(data: &[u8], operation: &ImageOperation) -> Result<OperationOut
             Ok(PipelineOptions {
                 format: resolve_optional_target_format(options.target_format.as_deref(), source)?,
                 quality: validate_quality(options.quality)?,
+                threads,
                 resize: None,
                 crop: Some(map_crop_spec(&options.crop)?),
                 extend: None,
@@ -387,6 +260,7 @@ fn run_operation(data: &[u8], operation: &ImageOperation) -> Result<OperationOut
             Ok(PipelineOptions {
                 format: resolve_optional_target_format(options.target_format.as_deref(), source)?,
                 quality: validate_quality(options.quality)?,
+                threads,
                 resize: None,
                 crop: None,
                 extend: Some(map_extend_spec(&options.extend)?),
@@ -396,7 +270,11 @@ fn run_operation(data: &[u8], operation: &ImageOperation) -> Result<OperationOut
     }
 }
 
-fn convert_bytes(data: &[u8], options: &ConvertOptions) -> Result<OperationOutput> {
+fn convert_bytes(
+    data: &[u8],
+    options: &ConvertOptions,
+    threads: Option<usize>,
+) -> Result<OperationOutput> {
     let quality = validate_quality(options.quality)?;
     let target_format = crate::codec::parse_format(&options.target_format)?;
     let (image, _) = decode(data)?;
@@ -405,6 +283,7 @@ fn convert_bytes(data: &[u8], options: &ConvertOptions) -> Result<OperationOutpu
         &PipelineOptions {
             format: target_format,
             quality,
+            threads,
             resize: None,
             crop: None,
             extend: None,
@@ -420,7 +299,11 @@ fn convert_bytes(data: &[u8], options: &ConvertOptions) -> Result<OperationOutpu
     })
 }
 
-fn optimize_bytes(data: &[u8], options: &OptimizeOptions) -> Result<OperationOutput> {
+fn optimize_bytes(
+    data: &[u8],
+    options: &OptimizeOptions,
+    threads: Option<usize>,
+) -> Result<OperationOutput> {
     let quality = validate_quality(options.quality)?;
     let total_start = Instant::now();
 
@@ -430,7 +313,7 @@ fn optimize_bytes(data: &[u8], options: &OptimizeOptions) -> Result<OperationOut
 
     let encode_start = Instant::now();
     let codec = get_codec(format);
-    let encoded = codec.encode(&image, &EncodeOptions { quality })?;
+    let encoded = codec.encode(&image, &EncodeOptions { quality, threads })?;
     let encode_elapsed = encode_start.elapsed();
 
     let should_write = !options.write_only_if_smaller || encoded.len() < data.len();
@@ -448,11 +331,7 @@ fn optimize_bytes(data: &[u8], options: &OptimizeOptions) -> Result<OperationOut
     ));
 
     Ok(OperationOutput {
-        data: if should_write {
-            encoded
-        } else {
-            data.to_vec()
-        },
+        data: if should_write { encoded } else { data.to_vec() },
         format,
         width: image.width,
         height: image.height,
@@ -648,6 +527,7 @@ mod tests {
             &PipelineOptions {
                 format: Format::Png,
                 quality: 80,
+                threads: None,
                 resize: None,
                 crop: None,
                 extend: None,

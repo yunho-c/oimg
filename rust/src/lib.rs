@@ -4,6 +4,7 @@ mod codec;
 mod convert;
 mod diagnostics;
 mod error;
+mod execution;
 mod frb_generated;
 mod fs;
 mod preview;

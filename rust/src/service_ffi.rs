@@ -1,7 +1,7 @@
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
-use std::path::{Path, PathBuf};
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -166,7 +166,9 @@ fn run_request_json(request_json: *const c_char) -> CompressionServiceResponse {
     }
 }
 
-fn build_batch_request(request: CompressionServiceRequest) -> crate::error::Result<ProcessFileBatchRequest> {
+fn build_batch_request(
+    request: CompressionServiceRequest,
+) -> crate::error::Result<ProcessFileBatchRequest> {
     let CompressionServiceRequest {
         action,
         paths,
@@ -303,6 +305,7 @@ mod tests {
             &PipelineOptions {
                 format: Format::Png,
                 quality: 80,
+                threads: None,
                 resize: None,
                 crop: None,
                 extend: None,

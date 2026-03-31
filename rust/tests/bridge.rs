@@ -34,6 +34,7 @@ fn png_bytes() -> Vec<u8> {
         &PipelineOptions {
             format: Format::Png,
             quality: 80,
+            threads: None,
             resize: None,
             crop: None,
             extend: None,
@@ -50,6 +51,7 @@ fn png_bytes_with_size(width: u32, height: u32) -> Vec<u8> {
         &PipelineOptions {
             format: Format::Png,
             quality: 80,
+            threads: None,
             resize: None,
             crop: None,
             extend: None,
@@ -301,7 +303,10 @@ fn process_file_batch_job_reports_progress_and_can_be_disposed() {
     assert_eq!(snapshot.completed_count, 2);
     assert_eq!(snapshot.results.len(), 2);
     assert_eq!(snapshot.results[0].input_path, first_path.to_string_lossy());
-    assert_eq!(snapshot.results[1].input_path, second_path.to_string_lossy());
+    assert_eq!(
+        snapshot.results[1].input_path,
+        second_path.to_string_lossy()
+    );
 
     bridge::dispose_process_file_batch_job(handle.job_id.clone()).unwrap();
     let error = bridge::get_process_file_batch_job(handle.job_id).unwrap_err();

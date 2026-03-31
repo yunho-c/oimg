@@ -1361,10 +1361,10 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "flutter_rust_bridge",
- "rayon",
  "serde",
  "serde_json",
  "slimg-core",
+ "slimg-exec",
  "tempfile",
  "thiserror",
 ]
@@ -1839,8 +1839,6 @@ dependencies = [
 [[package]]
 name = "slimg-core"
 version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16765c475c248714d2bc1b0905a04ca35a03d695497e7224c0d375ddf66480ca"
 dependencies = [
  "image",
  "imgref",
@@ -1855,10 +1853,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "slimg-exec"
+version = "0.1.0"
+dependencies = [
+ "slimg-core",
+]
+
+[[package]]
 name = "slimg-libjxl-sys"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43f5ad40fade5c8302715c606cc03108ce4edd711921015f009765b7735d731b"
 dependencies = [
  "bindgen",
  "cmake",

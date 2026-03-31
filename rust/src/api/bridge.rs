@@ -3,10 +3,10 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 pub use crate::error::SlimgBridgeError;
 pub use crate::types::{
     BatchItemResult, BatchJobHandle, BatchJobSnapshot, BatchJobState, BatchProcessRequest,
-    ConvertOptions, CropOptions, CropSpec, EncodedImageResult, ExtendOptions, ExtendSpec,
-    FillSpec, FormatInfo, ImageMetadata, ImageOperation, OptimizeOptions, PreviewFileRequest,
-    PreviewResult, ProcessBytesRequest, ProcessFileBatchRequest, ProcessFileRequest, ProcessResult,
-    ResizeOptions, ResizeSpec,
+    ConvertOptions, CropOptions, CropSpec, EncodedImageResult, ExtendOptions, ExtendSpec, FillSpec,
+    FormatInfo, ImageMetadata, ImageOperation, OptimizeOptions, PreviewFileRequest, PreviewResult,
+    ProcessBytesRequest, ProcessFileBatchRequest, ProcessFileRequest, ProcessResult, ResizeOptions,
+    ResizeSpec,
 };
 
 use crate::error::{panic_message, Result};
