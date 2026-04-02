@@ -1732,6 +1732,26 @@ class _BottomStatsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final topRow = stats.take(2).toList(growable: false);
+    final bottomRow = stats.skip(2).take(2).toList(growable: false);
+
+    return Column(
+      children: [
+        Expanded(child: _BottomStatRow(stats: topRow)),
+        const SizedBox(height: 10),
+        Expanded(child: _BottomStatRow(stats: bottomRow)),
+      ],
+    );
+  }
+}
+
+class _BottomStatRow extends StatelessWidget {
+  const _BottomStatRow({required this.stats});
+
+  final List<_BottomStatData> stats;
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
       children: [
         for (var index = 0; index < stats.length; index++) ...[
