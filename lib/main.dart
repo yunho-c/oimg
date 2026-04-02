@@ -1968,7 +1968,7 @@ class _BottomSummaryViewModel {
           value: formatLabel(file.metadata.format),
         ),
       ],
-      outputSectionTitle: 'Output',
+      outputSectionTitle: 'Optimized',
       outputRows: [
         _BottomInfoRowData(
           label: 'Format',
@@ -2035,7 +2035,7 @@ class _BottomSummaryViewModel {
         _BottomInfoRowData(label: 'Images', value: '${files.length}'),
         const _BottomInfoRowData(label: 'Scope', value: 'Loaded'),
       ],
-      outputSectionTitle: 'Output',
+      outputSectionTitle: 'Optimized',
       outputRows: [
         _BottomInfoRowData(
           label: 'Target',
