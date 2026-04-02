@@ -2005,6 +2005,19 @@ class _BottomSummaryViewModel {
   }) {
     final originalBytes = _originalFileSizeBytes(file);
     final newBytes = preview?.result.sizeBytes.toInt() ?? _effectiveFileSizeBytes(file);
+    final originalBpp = _bitsPerPixel(
+      bytes: originalBytes,
+      width: file.metadata.width,
+      height: file.metadata.height,
+    );
+    final optimizedBpp = _bitsPerPixel(
+      bytes: newBytes,
+      width: preview?.result.width ?? file.lastResult?.width ?? file.metadata.width,
+      height:
+          preview?.result.height ??
+          file.lastResult?.height ??
+          file.metadata.height,
+    );
     final savingsBytes = originalBytes != null && newBytes != null
         ? originalBytes - newBytes
         : null;
@@ -2045,12 +2058,20 @@ class _BottomSummaryViewModel {
           label: 'Format',
           value: formatLabel(file.metadata.format),
         ),
+        _BottomInfoRowData(
+          label: 'Bits Per Pixel',
+          value: _formatNullableBpp(originalBpp),
+        ),
       ],
       outputSectionTitle: 'Optimized',
       outputRows: [
         _BottomInfoRowData(
           label: 'Format',
           value: outputFormat == null ? '—' : formatLabel(outputFormat),
+        ),
+        _BottomInfoRowData(
+          label: 'Bits Per Pixel',
+          value: _formatNullableBpp(optimizedBpp),
         ),
       ],
     );
@@ -2067,6 +2088,8 @@ class _BottomSummaryViewModel {
       useOriginalSizes: true,
     );
     final newBytes = _aggregateFolderBytes(files, useOriginalSizes: false);
+    final originalBpp = _aggregateFolderBpp(files, useOriginalSizes: true);
+    final optimizedBpp = _aggregateFolderBpp(files, useOriginalSizes: false);
     final savingsBytes = originalBytes != null && newBytes != null
         ? originalBytes - newBytes
         : null;
@@ -2112,6 +2135,10 @@ class _BottomSummaryViewModel {
         ),
         _BottomInfoRowData(label: 'Images', value: '${files.length}'),
         const _BottomInfoRowData(label: 'Scope', value: 'Loaded'),
+        _BottomInfoRowData(
+          label: 'Bits Per Pixel',
+          value: _formatNullableBpp(originalBpp),
+        ),
       ],
       outputSectionTitle: 'Optimized',
       outputRows: [
@@ -2122,6 +2149,10 @@ class _BottomSummaryViewModel {
         _BottomInfoRowData(
           label: 'Completed',
           value: '$completedCount / ${files.length}',
+        ),
+        _BottomInfoRowData(
+          label: 'Bits Per Pixel',
+          value: _formatNullableBpp(optimizedBpp),
         ),
       ],
     );
@@ -2176,6 +2207,50 @@ int? _aggregateFolderBytes(
   return hasSize ? totalBytes : null;
 }
 
+double? _aggregateFolderBpp(
+  List<OpenedImageFile> files, {
+  required bool useOriginalSizes,
+}) {
+  var totalBytes = 0;
+  var totalPixels = 0;
+
+  for (final file in files) {
+    final bytes = useOriginalSizes
+        ? _originalFileSizeBytes(file)
+        : _effectiveFileSizeBytes(file);
+    final width = useOriginalSizes
+        ? file.metadata.width
+        : (file.lastResult?.width ?? file.metadata.width);
+    final height = useOriginalSizes
+        ? file.metadata.height
+        : (file.lastResult?.height ?? file.metadata.height);
+    if (bytes == null || width <= 0 || height <= 0) {
+      continue;
+    }
+
+    totalBytes += bytes;
+    totalPixels += width * height;
+  }
+
+  if (totalBytes <= 0 || totalPixels <= 0) {
+    return null;
+  }
+
+  return (totalBytes * 8) / totalPixels;
+}
+
+double? _bitsPerPixel({
+  required int? bytes,
+  required int width,
+  required int height,
+}) {
+  if (bytes == null || bytes <= 0 || width <= 0 || height <= 0) {
+    return null;
+  }
+
+  return (bytes * 8) / (width * height);
+}
+
 String _formatNullableBytes(int? bytes) {
   if (bytes == null) {
     return '—';
@@ -2192,6 +2267,14 @@ String? _formatNullablePercent(double? value) {
 
 String _formatNullablePercentValue(double? value) {
   return _formatNullablePercent(value) ?? '—';
+}
+
+String _formatNullableBpp(double? value) {
+  if (value == null) {
+    return '—';
+  }
+
+  return value >= 10 ? value.toStringAsFixed(1) : value.toStringAsFixed(2);
 }
 
 bool _isTerminalStatus(OptimizationItemStatus status) {
