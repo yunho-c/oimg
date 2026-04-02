@@ -15,6 +15,7 @@ slimg-core = { path = "../../slimg/crates/slimg-core" }
 slimg-exec = { path = "../../slimg/crates/slimg-exec" }
 tempfile = "3.23.0"
 thiserror = "2.0.17"
+tjdistler-iqa = "1.2.0"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

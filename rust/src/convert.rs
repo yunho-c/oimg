@@ -70,6 +70,7 @@ pub(crate) fn preview_file(request: crate::types::PreviewFileRequest) -> Result<
         let operation_start = Instant::now();
         let output = run_operation(&data, &request.operation, None)?;
         let operation_elapsed = operation_start.elapsed();
+        let ms_ssim = crate::metrics::compute_ms_ssim_from_bytes(&data, &output.data);
 
         crate::diagnostics::timing_log(format!(
             "preview path={} read={}ms operation={}ms input_bytes={}",
@@ -85,6 +86,7 @@ pub(crate) fn preview_file(request: crate::types::PreviewFileRequest) -> Result<
             width: output.width,
             height: output.height,
             size_bytes: output.data.len() as u64,
+            ms_ssim,
         })
     })();
 

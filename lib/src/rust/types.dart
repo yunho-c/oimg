@@ -394,6 +394,7 @@ class PreviewResult {
   final int width;
   final int height;
   final BigInt sizeBytes;
+  final double? msSsim;
 
   const PreviewResult({
     required this.encodedBytes,
@@ -401,6 +402,7 @@ class PreviewResult {
     required this.width,
     required this.height,
     required this.sizeBytes,
+    this.msSsim,
   });
 
   @override
@@ -409,7 +411,8 @@ class PreviewResult {
       format.hashCode ^
       width.hashCode ^
       height.hashCode ^
-      sizeBytes.hashCode;
+      sizeBytes.hashCode ^
+      msSsim.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -420,7 +423,8 @@ class PreviewResult {
           format == other.format &&
           width == other.width &&
           height == other.height &&
-          sizeBytes == other.sizeBytes;
+          sizeBytes == other.sizeBytes &&
+          msSsim == other.msSsim;
 }
 
 class ProcessBytesRequest {

@@ -15,13 +15,14 @@ pub struct ImageMetadata {
     pub file_size: Option<u64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PreviewResult {
     pub encoded_bytes: Vec<u8>,
     pub format: String,
     pub width: u32,
     pub height: u32,
     pub size_bytes: u64,
+    pub ms_ssim: Option<f64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

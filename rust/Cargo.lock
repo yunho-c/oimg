@@ -1367,6 +1367,7 @@ dependencies = [
  "slimg-exec",
  "tempfile",
  "thiserror",
+ "tjdistler-iqa",
 ]
 
 [[package]]
@@ -1975,6 +1976,16 @@ dependencies = [
  "quick-error",
  "weezl",
  "zune-jpeg",
+]
+
+[[package]]
+name = "tjdistler-iqa"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d5f9248d97385cec0786a73ad6138e167c411f0c7975d78f4272f04808ed001"
+dependencies = [
+ "cc",
+ "rayon",
 ]
 
 [[package]]

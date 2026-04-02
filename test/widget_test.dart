@@ -67,9 +67,10 @@ void main() {
     expect(find.text('second.jpg'), findsWidgets);
     expect(find.text('JPEG'), findsWidgets);
     expect(find.text('PSNR'), findsOneWidget);
-    expect(find.text('SSIM'), findsOneWidget);
+    expect(find.text('MS-SSIM'), findsOneWidget);
     expect(find.text('Butteraugli'), findsOneWidget);
     expect(find.text('50.0%'), findsOneWidget);
+    expect(find.text('0.987'), findsOneWidget);
 
     await tester.tap(find.text('second.jpg').first);
     await tester.pump();
@@ -528,6 +529,7 @@ class _FakeSlimgApi implements SlimgApi {
       width: 48,
       height: 32,
       sizeBytes: BigInt.from(1200),
+      msSsim: 0.9874,
     );
   }
 

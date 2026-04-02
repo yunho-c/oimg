@@ -958,6 +958,17 @@ impl SseDecode for Option<String> {
     }
 }
 
+impl SseDecode for Option<f64> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<f64>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
 impl SseDecode for Option<crate::types::FillSpec> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1034,12 +1045,14 @@ impl SseDecode for crate::types::PreviewResult {
         let mut var_width = <u32>::sse_decode(deserializer);
         let mut var_height = <u32>::sse_decode(deserializer);
         let mut var_sizeBytes = <u64>::sse_decode(deserializer);
+        let mut var_msSsim = <Option<f64>>::sse_decode(deserializer);
         return crate::types::PreviewResult {
             encoded_bytes: var_encodedBytes,
             format: var_format,
             width: var_width,
             height: var_height,
             size_bytes: var_sizeBytes,
+            ms_ssim: var_msSsim,
         };
     }
 }
@@ -1714,6 +1727,7 @@ impl flutter_rust_bridge::IntoDart for crate::types::PreviewResult {
             self.width.into_into_dart().into_dart(),
             self.height.into_into_dart().into_dart(),
             self.size_bytes.into_into_dart().into_dart(),
+            self.ms_ssim.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2244,6 +2258,16 @@ impl SseEncode for Option<String> {
     }
 }
 
+impl SseEncode for Option<f64> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <f64>::sse_encode(value, serializer);
+        }
+    }
+}
+
 impl SseEncode for Option<crate::types::FillSpec> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2308,6 +2332,7 @@ impl SseEncode for crate::types::PreviewResult {
         <u32>::sse_encode(self.width, serializer);
         <u32>::sse_encode(self.height, serializer);
         <u64>::sse_encode(self.size_bytes, serializer);
+        <Option<f64>>::sse_encode(self.ms_ssim, serializer);
     }
 }
 

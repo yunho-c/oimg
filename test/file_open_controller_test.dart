@@ -228,6 +228,7 @@ class _FakeSlimgApi implements SlimgApi {
       width: 48,
       height: 32,
       sizeBytes: BigInt.from(512),
+      msSsim: null,
     );
   }
 

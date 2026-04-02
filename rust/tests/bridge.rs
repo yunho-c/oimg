@@ -125,6 +125,48 @@ fn preview_file_crops_without_writing() {
     assert_eq!(format, Format::Png);
     assert_eq!(decoded.width, 32);
     assert_eq!(decoded.height, 32);
+    assert_eq!(preview.ms_ssim, None);
+}
+
+#[test]
+fn preview_file_returns_ms_ssim_for_same_dimension_preview() {
+    let dir = tempdir().unwrap();
+    let input_path = dir.path().join("source.png");
+    fs::write(&input_path, png_bytes()).unwrap();
+
+    let preview = bridge::preview_file(PreviewFileRequest {
+        input_path: input_path.to_string_lossy().into_owned(),
+        operation: ImageOperation::Convert(ConvertOptions {
+            target_format: "jpeg".to_string(),
+            quality: 80,
+        }),
+    })
+    .unwrap();
+
+    let metric = preview.ms_ssim.expect("expected preview metric");
+    assert!(
+        (0.0..=1.0).contains(&metric),
+        "expected metric in [0, 1], got {metric}"
+    );
+}
+
+#[test]
+fn preview_file_returns_none_when_metric_cannot_be_computed() {
+    let dir = tempdir().unwrap();
+    let input_path = dir.path().join("source.png");
+    fs::write(&input_path, png_bytes()).unwrap();
+
+    let preview = bridge::preview_file(PreviewFileRequest {
+        input_path: input_path.to_string_lossy().into_owned(),
+        operation: ImageOperation::Resize(ResizeOptions {
+            resize: ResizeSpec::Width { value: 24 },
+            target_format: None,
+            quality: 80,
+        }),
+    })
+    .unwrap();
+
+    assert_eq!(preview.ms_ssim, None);
 }
 
 #[test]

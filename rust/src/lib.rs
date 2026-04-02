@@ -7,6 +7,7 @@ mod error;
 mod execution;
 mod frb_generated;
 mod fs;
+mod metrics;
 mod preview;
 mod service_ffi;
 mod types;
