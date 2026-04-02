@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 881589054;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 237664662;
 
 // Section: executor
 
@@ -74,6 +74,43 @@ fn wire__crate__api__bridge__cancel_process_file_batch_job_impl(
                     (move || {
                         let output_ok =
                             crate::api::bridge::cancel_process_file_batch_job(api_job_id)?;
+                        Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__bridge__compute_preview_quality_metrics_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "compute_preview_quality_metrics",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_request =
+                <crate::types::PreviewQualityMetricsRequest>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let output_ok =
+                            crate::api::bridge::compute_preview_quality_metrics(api_request)?;
                         Ok(output_ok)
                     })(),
                 )
@@ -1037,6 +1074,32 @@ impl SseDecode for crate::types::PreviewFileRequest {
     }
 }
 
+impl SseDecode for crate::types::PreviewQualityMetrics {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_msSsim = <Option<f64>>::sse_decode(deserializer);
+        let mut var_psnr = <Option<f64>>::sse_decode(deserializer);
+        let mut var_butteraugli = <Option<f64>>::sse_decode(deserializer);
+        return crate::types::PreviewQualityMetrics {
+            ms_ssim: var_msSsim,
+            psnr: var_psnr,
+            butteraugli: var_butteraugli,
+        };
+    }
+}
+
+impl SseDecode for crate::types::PreviewQualityMetricsRequest {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_inputPath = <String>::sse_decode(deserializer);
+        let mut var_previewEncodedBytes = <Vec<u8>>::sse_decode(deserializer);
+        return crate::types::PreviewQualityMetricsRequest {
+            input_path: var_inputPath,
+            preview_encoded_bytes: var_previewEncodedBytes,
+        };
+    }
+}
+
 impl SseDecode for crate::types::PreviewResult {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1045,14 +1108,12 @@ impl SseDecode for crate::types::PreviewResult {
         let mut var_width = <u32>::sse_decode(deserializer);
         let mut var_height = <u32>::sse_decode(deserializer);
         let mut var_sizeBytes = <u64>::sse_decode(deserializer);
-        let mut var_msSsim = <Option<f64>>::sse_decode(deserializer);
         return crate::types::PreviewResult {
             encoded_bytes: var_encodedBytes,
             format: var_format,
             width: var_width,
             height: var_height,
             size_bytes: var_sizeBytes,
-            ms_ssim: var_msSsim,
         };
     }
 }
@@ -1290,27 +1351,33 @@ fn pde_ffi_dispatcher_primary_impl(
             rust_vec_len,
             data_len,
         ),
-        2 => wire__crate__api__bridge__dispose_process_file_batch_job_impl(
+        2 => wire__crate__api__bridge__compute_preview_quality_metrics_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        3 => wire__crate__api__bridge__get_process_file_batch_job_impl(
+        3 => wire__crate__api__bridge__dispose_process_file_batch_job_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        4 => wire__crate__api__bridge__init_app_impl(port, ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__bridge__inspect_bytes_impl(port, ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__bridge__inspect_file_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__bridge__preview_file_impl(port, ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__bridge__process_bytes_impl(port, ptr, rust_vec_len, data_len),
-        9 => wire__crate__api__bridge__process_file_impl(port, ptr, rust_vec_len, data_len),
-        10 => wire__crate__api__bridge__process_file_batch_impl(port, ptr, rust_vec_len, data_len),
-        11 => wire__crate__api__bridge__process_files_impl(port, ptr, rust_vec_len, data_len),
-        13 => wire__crate__api__bridge__start_process_file_batch_job_impl(
+        4 => wire__crate__api__bridge__get_process_file_batch_job_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        5 => wire__crate__api__bridge__init_app_impl(port, ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__bridge__inspect_bytes_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__bridge__inspect_file_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__bridge__preview_file_impl(port, ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__bridge__process_bytes_impl(port, ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__bridge__process_file_impl(port, ptr, rust_vec_len, data_len),
+        11 => wire__crate__api__bridge__process_file_batch_impl(port, ptr, rust_vec_len, data_len),
+        12 => wire__crate__api__bridge__process_files_impl(port, ptr, rust_vec_len, data_len),
+        14 => wire__crate__api__bridge__start_process_file_batch_job_impl(
             port,
             ptr,
             rust_vec_len,
@@ -1328,9 +1395,9 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        12 => wire__crate__api__bridge__set_timing_logs_enabled_impl(ptr, rust_vec_len, data_len),
-        14 => wire__crate__api__bridge__supported_formats_impl(ptr, rust_vec_len, data_len),
-        15 => wire__crate__api__bridge__version_impl(ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__bridge__set_timing_logs_enabled_impl(ptr, rust_vec_len, data_len),
+        15 => wire__crate__api__bridge__supported_formats_impl(ptr, rust_vec_len, data_len),
+        16 => wire__crate__api__bridge__version_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1719,6 +1786,49 @@ impl flutter_rust_bridge::IntoIntoDart<crate::types::PreviewFileRequest>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::types::PreviewQualityMetrics {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.ms_ssim.into_into_dart().into_dart(),
+            self.psnr.into_into_dart().into_dart(),
+            self.butteraugli.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::types::PreviewQualityMetrics
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::types::PreviewQualityMetrics>
+    for crate::types::PreviewQualityMetrics
+{
+    fn into_into_dart(self) -> crate::types::PreviewQualityMetrics {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::types::PreviewQualityMetricsRequest {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.input_path.into_into_dart().into_dart(),
+            self.preview_encoded_bytes.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::types::PreviewQualityMetricsRequest
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::types::PreviewQualityMetricsRequest>
+    for crate::types::PreviewQualityMetricsRequest
+{
+    fn into_into_dart(self) -> crate::types::PreviewQualityMetricsRequest {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::types::PreviewResult {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -1727,7 +1837,6 @@ impl flutter_rust_bridge::IntoDart for crate::types::PreviewResult {
             self.width.into_into_dart().into_dart(),
             self.height.into_into_dart().into_dart(),
             self.size_bytes.into_into_dart().into_dart(),
-            self.ms_ssim.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2324,6 +2433,23 @@ impl SseEncode for crate::types::PreviewFileRequest {
     }
 }
 
+impl SseEncode for crate::types::PreviewQualityMetrics {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Option<f64>>::sse_encode(self.ms_ssim, serializer);
+        <Option<f64>>::sse_encode(self.psnr, serializer);
+        <Option<f64>>::sse_encode(self.butteraugli, serializer);
+    }
+}
+
+impl SseEncode for crate::types::PreviewQualityMetricsRequest {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.input_path, serializer);
+        <Vec<u8>>::sse_encode(self.preview_encoded_bytes, serializer);
+    }
+}
+
 impl SseEncode for crate::types::PreviewResult {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2332,7 +2458,6 @@ impl SseEncode for crate::types::PreviewResult {
         <u32>::sse_encode(self.width, serializer);
         <u32>::sse_encode(self.height, serializer);
         <u64>::sse_encode(self.size_bytes, serializer);
-        <Option<f64>>::sse_encode(self.ms_ssim, serializer);
     }
 }
 

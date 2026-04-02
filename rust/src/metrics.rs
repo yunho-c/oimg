@@ -1,6 +1,8 @@
 use slimg_core::{decode, ImageData};
 use tjdistler_iqa::{ImageQualityAssessment, MsSsim};
 
+use crate::types::{PreviewQualityMetrics, PreviewQualityMetricsRequest};
+
 pub(crate) fn compute_ms_ssim(reference: &ImageData, distorted: &ImageData) -> Option<f64> {
     if reference.width != distorted.width || reference.height != distorted.height {
         return None;
@@ -27,6 +29,22 @@ pub(crate) fn compute_ms_ssim_from_bytes(
     let (reference, _) = decode(reference_bytes).ok()?;
     let (distorted, _) = decode(distorted_bytes).ok()?;
     compute_ms_ssim(&reference, &distorted)
+}
+
+pub(crate) fn compute_preview_quality_metrics(
+    request: PreviewQualityMetricsRequest,
+) -> crate::error::Result<PreviewQualityMetrics> {
+    let original_bytes = std::fs::read(&request.input_path).ok();
+
+    let ms_ssim = original_bytes.as_ref().and_then(|reference_bytes| {
+        compute_ms_ssim_from_bytes(reference_bytes, &request.preview_encoded_bytes)
+    });
+
+    Ok(PreviewQualityMetrics {
+        ms_ssim,
+        psnr: None,
+        butteraugli: None,
+    })
 }
 
 fn rgba_to_luma(image: &ImageData) -> Vec<u8> {

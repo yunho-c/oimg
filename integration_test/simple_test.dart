@@ -70,6 +70,13 @@ class _FakeSlimgApi implements SlimgApi {
   }
 
   @override
+  Future<PreviewQualityMetrics> computePreviewQualityMetrics({
+    required PreviewQualityMetricsRequest request,
+  }) async {
+    return const PreviewQualityMetrics();
+  }
+
+  @override
   Future<ProcessResult> processFile({required ProcessFileRequest request}) {
     throw UnimplementedError();
   }

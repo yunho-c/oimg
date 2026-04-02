@@ -4,9 +4,9 @@ pub use crate::error::SlimgBridgeError;
 pub use crate::types::{
     BatchItemResult, BatchJobHandle, BatchJobSnapshot, BatchJobState, BatchProcessRequest,
     ConvertOptions, CropOptions, CropSpec, EncodedImageResult, ExtendOptions, ExtendSpec, FillSpec,
-    FormatInfo, ImageMetadata, ImageOperation, OptimizeOptions, PreviewFileRequest, PreviewResult,
-    ProcessBytesRequest, ProcessFileBatchRequest, ProcessFileRequest, ProcessResult, ResizeOptions,
-    ResizeSpec,
+    FormatInfo, ImageMetadata, ImageOperation, OptimizeOptions, PreviewFileRequest,
+    PreviewQualityMetrics, PreviewQualityMetricsRequest, PreviewResult, ProcessBytesRequest,
+    ProcessFileBatchRequest, ProcessFileRequest, ProcessResult, ResizeOptions, ResizeSpec,
 };
 
 use crate::error::{panic_message, Result};
@@ -41,6 +41,12 @@ pub fn inspect_bytes(data: Vec<u8>) -> Result<ImageMetadata> {
 
 pub fn preview_file(request: PreviewFileRequest) -> Result<PreviewResult> {
     with_internal(|| crate::preview::preview_file(request))
+}
+
+pub fn compute_preview_quality_metrics(
+    request: PreviewQualityMetricsRequest,
+) -> Result<PreviewQualityMetrics> {
+    with_internal(|| crate::metrics::compute_preview_quality_metrics(request))
 }
 
 pub fn process_file(request: ProcessFileRequest) -> Result<ProcessResult> {

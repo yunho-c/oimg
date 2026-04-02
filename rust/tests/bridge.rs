@@ -4,8 +4,8 @@ use std::time::{Duration, Instant};
 
 use oimg_rust::api::bridge::{
     self, BatchJobState, BatchProcessRequest, ConvertOptions, CropOptions, CropSpec,
-    ImageOperation, OptimizeOptions, PreviewFileRequest, ProcessBytesRequest,
-    ProcessFileBatchRequest, ProcessFileRequest, ResizeOptions, ResizeSpec,
+    ImageOperation, OptimizeOptions, PreviewFileRequest, PreviewQualityMetricsRequest,
+    ProcessBytesRequest, ProcessFileBatchRequest, ProcessFileRequest, ResizeOptions, ResizeSpec,
 };
 use slimg_core::{convert, decode, Format, ImageData, PipelineOptions};
 use tempfile::tempdir;
@@ -125,11 +125,10 @@ fn preview_file_crops_without_writing() {
     assert_eq!(format, Format::Png);
     assert_eq!(decoded.width, 32);
     assert_eq!(decoded.height, 32);
-    assert_eq!(preview.ms_ssim, None);
 }
 
 #[test]
-fn preview_file_returns_ms_ssim_for_same_dimension_preview() {
+fn compute_preview_quality_metrics_returns_ms_ssim_for_same_dimension_preview() {
     let dir = tempdir().unwrap();
     let input_path = dir.path().join("source.png");
     fs::write(&input_path, png_bytes()).unwrap();
@@ -143,15 +142,23 @@ fn preview_file_returns_ms_ssim_for_same_dimension_preview() {
     })
     .unwrap();
 
-    let metric = preview.ms_ssim.expect("expected preview metric");
+    let metrics = bridge::compute_preview_quality_metrics(PreviewQualityMetricsRequest {
+        input_path: input_path.to_string_lossy().into_owned(),
+        preview_encoded_bytes: preview.encoded_bytes,
+    })
+    .unwrap();
+
+    let metric = metrics.ms_ssim.expect("expected preview metric");
     assert!(
         (0.0..=1.0).contains(&metric),
         "expected metric in [0, 1], got {metric}"
     );
+    assert_eq!(metrics.psnr, None);
+    assert_eq!(metrics.butteraugli, None);
 }
 
 #[test]
-fn preview_file_returns_none_when_metric_cannot_be_computed() {
+fn compute_preview_quality_metrics_returns_none_when_metric_cannot_be_computed() {
     let dir = tempdir().unwrap();
     let input_path = dir.path().join("source.png");
     fs::write(&input_path, png_bytes()).unwrap();
@@ -166,7 +173,13 @@ fn preview_file_returns_none_when_metric_cannot_be_computed() {
     })
     .unwrap();
 
-    assert_eq!(preview.ms_ssim, None);
+    let metrics = bridge::compute_preview_quality_metrics(PreviewQualityMetricsRequest {
+        input_path: input_path.to_string_lossy().into_owned(),
+        preview_encoded_bytes: preview.encoded_bytes,
+    })
+    .unwrap();
+
+    assert_eq!(metrics.ms_ssim, None);
 }
 
 #[test]
@@ -344,10 +357,18 @@ fn process_file_batch_job_reports_progress_and_can_be_disposed() {
     assert_eq!(snapshot.state, BatchJobState::Completed);
     assert_eq!(snapshot.completed_count, 2);
     assert_eq!(snapshot.results.len(), 2);
-    assert_eq!(snapshot.results[0].input_path, first_path.to_string_lossy());
+    let mut input_paths: Vec<_> = snapshot
+        .results
+        .iter()
+        .map(|result| result.input_path.clone())
+        .collect();
+    input_paths.sort();
     assert_eq!(
-        snapshot.results[1].input_path,
-        second_path.to_string_lossy()
+        input_paths,
+        vec![
+            first_path.to_string_lossy().into_owned(),
+            second_path.to_string_lossy().into_owned(),
+        ]
     );
 
     bridge::dispose_process_file_batch_job(handle.job_id.clone()).unwrap();

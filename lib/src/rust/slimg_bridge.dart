@@ -22,6 +22,10 @@ class SlimgBridge {
   Future<PreviewResult> previewFile({required PreviewFileRequest request}) =>
       bridge_api.previewFile(request: request);
 
+  Future<PreviewQualityMetrics> computePreviewQualityMetrics({
+    required PreviewQualityMetricsRequest request,
+  }) => bridge_api.computePreviewQualityMetrics(request: request);
+
   Future<ProcessResult> processFile({required ProcessFileRequest request}) =>
       bridge_api.processFile(request: request);
 

@@ -11,6 +11,7 @@ import 'package:oimg/src/optimization/optimization_plan.dart';
 import 'package:oimg/src/optimization/optimization_providers.dart';
 import 'package:oimg/src/rust/frb_generated.dart';
 import 'package:oimg/src/rust/slimg_api.dart';
+import 'package:oimg/src/rust/types.dart';
 import 'package:oimg/src/settings/app_settings.dart';
 import 'package:oimg/src/settings/app_settings_controller.dart';
 import 'package:oimg/src/settings/developer_diagnostics.dart';
@@ -1578,6 +1579,9 @@ class _BottomSidebar extends ConsumerWidget {
       data: (value) => value,
       orElse: () => null,
     );
+    final previewQualityMetrics = ref.watch(
+      currentPreviewQualityMetricsProvider,
+    ).maybeWhen(data: (value) => value, orElse: () => null);
     final plan = ref.watch(currentOptimizationPlanProvider).maybeWhen(
       data: (value) => value,
       orElse: () => null,
@@ -1596,6 +1600,7 @@ class _BottomSidebar extends ConsumerWidget {
       currentFile: currentFile,
       runState: runState,
       preview: preview,
+      previewQualityMetrics: previewQualityMetrics,
       plan: plan,
       settings: settings,
     );
@@ -1986,6 +1991,7 @@ class _BottomSummaryViewModel {
     required OpenedImageFile currentFile,
     required OptimizationRunState runState,
     required OptimizationPreview? preview,
+    required PreviewQualityMetrics? previewQualityMetrics,
     required OptimizationPlan? plan,
     required AppSettings? settings,
   }) {
@@ -2001,6 +2007,7 @@ class _BottomSummaryViewModel {
       file: currentFile,
       runState: runState,
       preview: preview,
+      previewQualityMetrics: previewQualityMetrics,
       plan: plan,
     );
   }
@@ -2009,6 +2016,7 @@ class _BottomSummaryViewModel {
     required OpenedImageFile file,
     required OptimizationRunState runState,
     required OptimizationPreview? preview,
+    required PreviewQualityMetrics? previewQualityMetrics,
     required OptimizationPlan? plan,
   }) {
     final originalBytes = _originalFileSizeBytes(file);
@@ -2086,7 +2094,7 @@ class _BottomSummaryViewModel {
         const _BottomMetricData(label: 'PSNR', value: 'N/A'),
         _BottomMetricData(
           label: 'MS-SSIM',
-          value: _formatNullableMetric(preview?.result.msSsim),
+          value: _formatNullableMetric(previewQualityMetrics?.msSsim),
         ),
         const _BottomMetricData(label: 'Butteraugli', value: 'N/A'),
       ],

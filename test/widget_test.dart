@@ -529,7 +529,17 @@ class _FakeSlimgApi implements SlimgApi {
       width: 48,
       height: 32,
       sizeBytes: BigInt.from(1200),
+    );
+  }
+
+  @override
+  Future<PreviewQualityMetrics> computePreviewQualityMetrics({
+    required PreviewQualityMetricsRequest request,
+  }) async {
+    return const PreviewQualityMetrics(
       msSsim: 0.9874,
+      psnr: null,
+      butteraugli: null,
     );
   }
 

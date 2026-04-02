@@ -27,6 +27,12 @@ Future<ImageMetadata> inspectBytes({required List<int> data}) =>
 Future<PreviewResult> previewFile({required PreviewFileRequest request}) =>
     RustLib.instance.api.crateApiBridgePreviewFile(request: request);
 
+Future<PreviewQualityMetrics> computePreviewQualityMetrics({
+  required PreviewQualityMetricsRequest request,
+}) => RustLib.instance.api.crateApiBridgeComputePreviewQualityMetrics(
+  request: request,
+);
+
 Future<ProcessResult> processFile({required ProcessFileRequest request}) =>
     RustLib.instance.api.crateApiBridgeProcessFile(request: request);
 

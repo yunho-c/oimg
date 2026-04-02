@@ -12,6 +12,7 @@ import 'optimization_plan.dart';
 
 final slimgApiProvider = Provider<SlimgApi>((ref) => const FrbSlimgApi());
 int _previewRequestSequence = 0;
+int _previewMetricsRequestSequence = 0;
 
 final currentOptimizationPlanProvider =
     FutureProvider.autoDispose<OptimizationPlan?>((ref) async {
@@ -110,6 +111,54 @@ final currentPreviewProvider = FutureProvider.autoDispose<OptimizationPreview?>(
     rethrow;
   }
 });
+
+final currentPreviewQualityMetricsProvider =
+    FutureProvider.autoDispose<PreviewQualityMetrics?>((ref) async {
+      final requestId = ++_previewMetricsRequestSequence;
+      final totalStopwatch = Stopwatch()..start();
+      ref.onDispose(() {
+        DeveloperDiagnostics.logTiming(
+          'preview-metrics:$requestId',
+          'disposed total=${totalStopwatch.elapsedMilliseconds}ms',
+        );
+      });
+
+      try {
+        final preview = await ref.watch(currentPreviewProvider.future);
+        if (preview == null) {
+          return null;
+        }
+
+        DeveloperDiagnostics.logTiming(
+          'preview-metrics:$requestId',
+          'start path=${preview.sourceFile.path}',
+        );
+
+        final metricsStopwatch = Stopwatch()..start();
+        final result = await ref
+            .read(slimgApiProvider)
+            .computePreviewQualityMetrics(
+              request: PreviewQualityMetricsRequest(
+                inputPath: preview.sourceFile.path,
+                previewEncodedBytes: preview.result.encodedBytes,
+              ),
+            );
+        metricsStopwatch.stop();
+        totalStopwatch.stop();
+        DeveloperDiagnostics.logTiming(
+          'preview-metrics:$requestId',
+          'done metrics=${metricsStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms msSsim=${result.msSsim}',
+        );
+        return result;
+      } on Object catch (error, stackTrace) {
+        DeveloperDiagnostics.logTimingError(
+          'preview-metrics:$requestId',
+          error,
+          stackTrace,
+        );
+        rethrow;
+      }
+    });
 
 enum OptimizationItemStatus {
   idle,

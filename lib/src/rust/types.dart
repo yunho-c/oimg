@@ -388,13 +388,53 @@ class PreviewFileRequest {
           operation == other.operation;
 }
 
+class PreviewQualityMetrics {
+  final double? msSsim;
+  final double? psnr;
+  final double? butteraugli;
+
+  const PreviewQualityMetrics({this.msSsim, this.psnr, this.butteraugli});
+
+  @override
+  int get hashCode => msSsim.hashCode ^ psnr.hashCode ^ butteraugli.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PreviewQualityMetrics &&
+          runtimeType == other.runtimeType &&
+          msSsim == other.msSsim &&
+          psnr == other.psnr &&
+          butteraugli == other.butteraugli;
+}
+
+class PreviewQualityMetricsRequest {
+  final String inputPath;
+  final Uint8List previewEncodedBytes;
+
+  const PreviewQualityMetricsRequest({
+    required this.inputPath,
+    required this.previewEncodedBytes,
+  });
+
+  @override
+  int get hashCode => inputPath.hashCode ^ previewEncodedBytes.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PreviewQualityMetricsRequest &&
+          runtimeType == other.runtimeType &&
+          inputPath == other.inputPath &&
+          previewEncodedBytes == other.previewEncodedBytes;
+}
+
 class PreviewResult {
   final Uint8List encodedBytes;
   final String format;
   final int width;
   final int height;
   final BigInt sizeBytes;
-  final double? msSsim;
 
   const PreviewResult({
     required this.encodedBytes,
@@ -402,7 +442,6 @@ class PreviewResult {
     required this.width,
     required this.height,
     required this.sizeBytes,
-    this.msSsim,
   });
 
   @override
@@ -411,8 +450,7 @@ class PreviewResult {
       format.hashCode ^
       width.hashCode ^
       height.hashCode ^
-      sizeBytes.hashCode ^
-      msSsim.hashCode;
+      sizeBytes.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -423,8 +461,7 @@ class PreviewResult {
           format == other.format &&
           width == other.width &&
           height == other.height &&
-          sizeBytes == other.sizeBytes &&
-          msSsim == other.msSsim;
+          sizeBytes == other.sizeBytes;
 }
 
 class ProcessBytesRequest {

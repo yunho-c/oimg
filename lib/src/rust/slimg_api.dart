@@ -11,6 +11,10 @@ abstract class SlimgApi {
 
   Future<PreviewResult> previewFile({required PreviewFileRequest request});
 
+  Future<PreviewQualityMetrics> computePreviewQualityMetrics({
+    required PreviewQualityMetricsRequest request,
+  });
+
   Future<ProcessResult> processFile({required ProcessFileRequest request});
 
   Future<List<BatchItemResult>> processFileBatch({
@@ -59,6 +63,34 @@ class FrbSlimgApi implements SlimgApi {
             DeveloperDiagnostics.logTiming(
               'slimg-api',
               'preview done path=${request.inputPath} total=${stopwatch.elapsedMilliseconds}ms format=${result.format} size=${result.sizeBytes}',
+            );
+            return result;
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            stopwatch.stop();
+            DeveloperDiagnostics.logTimingError('slimg-api', error, stackTrace);
+            throw error;
+          },
+        );
+  }
+
+  @override
+  Future<PreviewQualityMetrics> computePreviewQualityMetrics({
+    required PreviewQualityMetricsRequest request,
+  }) {
+    final stopwatch = Stopwatch()..start();
+    DeveloperDiagnostics.logTiming(
+      'slimg-api',
+      'preview-metrics start path=${request.inputPath}',
+    );
+    return _bridge
+        .computePreviewQualityMetrics(request: request)
+        .then(
+          (result) {
+            stopwatch.stop();
+            DeveloperDiagnostics.logTiming(
+              'slimg-api',
+              'preview-metrics done path=${request.inputPath} total=${stopwatch.elapsedMilliseconds}ms msSsim=${result.msSsim}',
             );
             return result;
           },
