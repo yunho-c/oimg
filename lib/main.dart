@@ -492,7 +492,7 @@ class _ImageSessionViewState extends ConsumerState<_ImageSessionView> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(height: 16),
                 SizedBox(height: _bottomSidebarHeight, child: bottomSidebar),
               ],
             );
