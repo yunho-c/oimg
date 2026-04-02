@@ -1682,7 +1682,7 @@ class _BottomStatTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
       decoration: BoxDecoration(
-        color: theme.colorScheme.secondary,
+        color: theme.colorScheme.secondary.withValues(alpha: 0.2),
         borderRadius: theme.borderRadiusLg,
       ),
       child: Column(
@@ -1754,7 +1754,7 @@ class _BottomInfoColumn extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
-        color: theme.colorScheme.secondary,
+        color: theme.colorScheme.secondary.withValues(alpha: 0.2),
         borderRadius: theme.borderRadiusLg,
       ),
       child: Column(
@@ -1806,7 +1806,7 @@ class _BottomQualitySection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
-        color: theme.colorScheme.secondary,
+        color: theme.colorScheme.secondary.withValues(alpha: 0.2),
         borderRadius: theme.borderRadiusLg,
       ),
       child: const Column(
