@@ -296,7 +296,6 @@ void main() {
     );
 
     expect(find.text('first.optimized.jpeg'), findsWidgets);
-    expect(find.text('Saved'), findsWidgets);
   });
 
   testWidgets('cancel stops queued files after the active item finishes', (
@@ -336,8 +335,6 @@ void main() {
     await tester.pump(const Duration(milliseconds: 250));
 
     expect(find.text('first.optimized.jpeg'), findsWidgets);
-    expect(find.text('Saved'), findsWidgets);
-
     await tester.tap(find.text('Cancel'));
     await tester.pump();
 
@@ -352,7 +349,6 @@ void main() {
     expect(find.text('second.optimized.jpeg'), findsWidgets);
     expect(find.text('third.png'), findsWidgets);
     expect(find.text('third.optimized.jpeg'), findsNothing);
-    expect(find.text('Canceled'), findsOneWidget);
   });
 
   testWidgets('developer dialog toggles persisted timing logs', (tester) async {

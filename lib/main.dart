@@ -1088,7 +1088,6 @@ class _SettingsSidebar extends ConsumerWidget {
     final settings = ref.watch(appSettingsProvider);
     final notifier = ref.read(appSettingsProvider.notifier);
     final runState = ref.watch(optimizationRunControllerProvider);
-    final fileController = ref.watch(fileOpenControllerProvider);
 
     return Card(
       padding: EdgeInsets.zero,
@@ -1264,23 +1263,11 @@ class _SettingsSidebar extends ConsumerWidget {
                         ),
                         const SizedBox(height: 12),
                       ],
-                      _SettingsLabel('Current codec'),
-                      const SizedBox(height: 8),
-                      Text(codecLabel(settings.effectiveCodec)).small().medium(),
                       if (runState.globalError case final error?)
                         Padding(
-                          padding: const EdgeInsets.only(top: 16),
+                          padding: const EdgeInsets.only(top: 4),
                           child: Text(error).xSmall().muted(),
                         ),
-                      const SizedBox(height: 16),
-                      _SettingsLabel('Status'),
-                      const SizedBox(height: 8),
-                      ...fileController.sessionFiles.map(
-                        (file) => _StatusRow(
-                          fileName: FileOpenController.fileNameOf(file.path),
-                          status: _statusForFile(file, runState),
-                        ),
-                      ),
                     ],
                   );
                 },
@@ -1450,35 +1437,6 @@ class _DeveloperSection extends StatelessWidget {
           Text(title).xSmall().medium().muted(),
           const SizedBox(height: 10),
           child,
-        ],
-      ),
-    );
-  }
-}
-
-class _StatusRow extends StatelessWidget {
-  const _StatusRow({required this.fileName, required this.status});
-
-  final String fileName;
-  final OptimizationItemState status;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Expanded(child: Text(fileName).small()),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.secondary,
-              borderRadius: theme.borderRadiusLg,
-            ),
-            child: Text(_statusLabel(status)).xSmall().muted(),
-          ),
         ],
       ),
     );
@@ -2154,18 +2112,6 @@ OptimizationItemState _statusForFile(
   }
 
   return const OptimizationItemState(status: OptimizationItemStatus.idle);
-}
-
-String _statusLabel(OptimizationItemState state) {
-  return switch (state.status) {
-    OptimizationItemStatus.idle => 'Idle',
-    OptimizationItemStatus.queued => 'Queued',
-    OptimizationItemStatus.running => 'Working',
-    OptimizationItemStatus.written => 'Saved',
-    OptimizationItemStatus.skipped => 'Unchanged',
-    OptimizationItemStatus.failed => 'Failed',
-    OptimizationItemStatus.canceled => 'Canceled',
-  };
 }
 
 class _SettingsLabel extends StatelessWidget {
