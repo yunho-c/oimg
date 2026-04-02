@@ -60,9 +60,6 @@ void main() {
     expect(find.text('Files'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
     expect(find.text('Details'), findsOneWidget);
-    expect(find.text('Summary'), findsOneWidget);
-    expect(find.text('Image info'), findsOneWidget);
-    expect(find.text('Visual quality'), findsOneWidget);
     expect(find.text('Optimize'), findsOneWidget);
     expect(find.text('Optimize selected'), findsNothing);
     expect(find.text('Optimize all'), findsNothing);

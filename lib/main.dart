@@ -1732,21 +1732,12 @@ class _BottomStatsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Text('Summary').xSmall().medium().muted(),
-        const SizedBox(height: 10),
-        Expanded(
-          child: Row(
-            children: [
-              for (var index = 0; index < stats.length; index++) ...[
-                Expanded(child: _BottomStatTile(stat: stats[index])),
-                if (index + 1 < stats.length) const SizedBox(width: 10),
-              ],
-            ],
-          ),
-        ),
+        for (var index = 0; index < stats.length; index++) ...[
+          Expanded(child: _BottomStatTile(stat: stats[index])),
+          if (index + 1 < stats.length) const SizedBox(width: 10),
+        ],
       ],
     );
   }
@@ -1805,28 +1796,19 @@ class _BottomInfoSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Text('Image info').xSmall().medium().muted(),
-        const SizedBox(height: 10),
         Expanded(
-          child: Row(
-            children: [
-              Expanded(
-                child: _BottomInfoColumn(
-                  title: originalTitle,
-                  rows: originalRows,
-                ),
-              ),
-              const SizedBox(width: 18),
-              Expanded(
-                child: _BottomInfoColumn(
-                  title: outputTitle,
-                  rows: outputRows,
-                ),
-              ),
-            ],
+          child: _BottomInfoColumn(
+            title: originalTitle,
+            rows: originalRows,
+          ),
+        ),
+        const SizedBox(width: 18),
+        Expanded(
+          child: _BottomInfoColumn(
+            title: outputTitle,
+            rows: outputRows,
           ),
         ),
       ],
@@ -1894,31 +1876,22 @@ class _BottomQualitySection extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Visual quality').xSmall().medium().muted(),
-        const SizedBox(height: 10),
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.secondary,
-              borderRadius: theme.borderRadiusLg,
-            ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _BottomMetricRow(label: 'PSNR', value: 'N/A'),
-                SizedBox(height: 8),
-                _BottomMetricRow(label: 'SSIM', value: 'N/A'),
-                SizedBox(height: 8),
-                _BottomMetricRow(label: 'Butteraugli', value: 'N/A'),
-              ],
-            ),
-          ),
-        ),
-      ],
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.secondary,
+        borderRadius: theme.borderRadiusLg,
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _BottomMetricRow(label: 'PSNR', value: 'N/A'),
+          SizedBox(height: 8),
+          _BottomMetricRow(label: 'SSIM', value: 'N/A'),
+          SizedBox(height: 8),
+          _BottomMetricRow(label: 'Butteraugli', value: 'N/A'),
+        ],
+      ),
     );
   }
 }
