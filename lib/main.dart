@@ -1779,16 +1779,18 @@ class _BottomInfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(row.label).xSmall().medium().muted(),
-        const SizedBox(height: 2),
-        Text(
-          row.value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ).small().medium(),
+        Text('${row.label} ').xSmall().medium().muted(),
+        Expanded(
+          child: Text(
+            row.value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
+          ).xSmall().medium(),
+        ),
       ],
     );
   }
@@ -1904,7 +1906,7 @@ class _BottomSummaryViewModel {
           color: const Color(0xFF6B7280),
         ),
         _BottomStatData(
-          label: 'New',
+          label: 'Optimized',
           value: _formatNullableBytes(newBytes),
           color: const Color(0xFF2563EB),
         ),
@@ -1967,7 +1969,7 @@ class _BottomSummaryViewModel {
           color: const Color(0xFF6B7280),
         ),
         _BottomStatData(
-          label: 'New',
+          label: 'Optimized',
           value: _formatNullableBytes(newBytes),
           color: const Color(0xFF2563EB),
         ),
