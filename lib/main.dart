@@ -570,7 +570,7 @@ class _ImageStage extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  currentFile.path,
+                  FileOpenController.directoryOf(currentFile.path),
                   style: TextStyle(color: theme.colorScheme.mutedForeground),
                 ).xSmall(),
                 const SizedBox(height: 4),
