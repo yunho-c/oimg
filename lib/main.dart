@@ -574,79 +574,28 @@ class _ImageStage extends ConsumerWidget {
                   style: TextStyle(color: theme.colorScheme.mutedForeground),
                 ).xSmall(),
                 const SizedBox(height: 4),
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 10),
-                plan.when(
-                  data: (plan) {
-                    if (plan == null) {
-                      return const SizedBox.shrink();
-                    }
-                    return preview.when(
-                      data: (preview) {
-                        final estimatedSize = preview?.result.sizeBytes.toInt();
-                        return Wrap(
-                          spacing: 12,
-                          runSpacing: 4,
-                          children: [
-                            _PreviewMetaItem(
-                              label: 'Codec',
-                              value: preview == null
-                                  ? codecLabel(plan.targetCodec)
-                                  : formatLabel(preview.result.format),
-                            ),
-                            if (preview?.originalSize case final original?)
-                              _PreviewMetaItem(
-                                label: 'Size',
-                                value:
-                                    '${_formatBytes(original)} -> ${_formatBytes(estimatedSize!)}',
-                              ),
-                            if (preview?.savingsPercent case final savings?)
-                              _PreviewMetaItem(
-                                label: 'Savings',
-                                value: '${savings.toStringAsFixed(0)}%',
-                              )
-                            else if (plan.useSourceImageForPreview)
-                              const _PreviewMetaItem(
-                                label: 'Size',
-                                value: 'Estimating',
-                              ),
-                          ],
-                        );
-                      },
-                      loading: () => Wrap(
-                        spacing: 12,
-                        runSpacing: 4,
-                        children: [
-                          _PreviewMetaItem(
-                            label: 'Codec',
-                            value: codecLabel(plan.targetCodec),
-                          ),
-                          Text(
-                            plan.useSourceImageForPreview
-                                ? 'Estimating'
-                                : 'Loading preview',
-                          ).xSmall().muted(),
-                        ],
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
-                      error: (_, _) => Wrap(
-                        spacing: 12,
-                        runSpacing: 4,
-                        children: [
-                          _PreviewMetaItem(
-                            label: 'Codec',
-                            value: codecLabel(plan.targetCodec),
-                          ),
-                          Text('Preview unavailable').xSmall().muted(),
-                        ],
-                      ),
-                    );
-                  },
-                  loading: () => Text('Loading preview').xSmall().muted(),
-                  error: (_, _) => Text('Preview unavailable').xSmall().muted(),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      '${currentFile.metadata.width} x ${currentFile.metadata.height}',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(color: theme.colorScheme.mutedForeground),
+                    ).xSmall(),
+                  ],
                 ),
+                if (preview.hasError) ...[
+                  const SizedBox(height: 10),
+                  Text('Preview unavailable').xSmall().muted(),
+                ],
               ],
             ),
           ),
@@ -1793,8 +1742,6 @@ class _BottomStatTile extends StatelessWidget {
               color: stat.color,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(stat.secondary ?? ' ').xSmall().muted(),
         ],
       ),
     );
@@ -1991,13 +1938,6 @@ class _BottomSummaryViewModel {
     final outputFormat =
         file.lastResult?.format ??
         (plan == null ? null : codecIdOf(plan.targetCodec));
-    final outputDimensions = preview != null
-        ? '${preview.result.width} x ${preview.result.height}'
-        : (file.lastResult == null
-              ? '—'
-              : '${file.lastResult!.width} x ${file.lastResult!.height}');
-    final statusLabel = _statusLabel(_statusForFile(file, runState));
-
     return _BottomSummaryViewModel(
       stats: [
         _BottomStatData(
@@ -2012,8 +1952,7 @@ class _BottomSummaryViewModel {
         ),
         _BottomStatData(
           label: 'Savings',
-          value: _formatNullableBytes(savingsBytes),
-          secondary: _formatNullablePercent(savingsPercent),
+          value: _formatNullablePercentValue(savingsPercent),
           color: const Color(0xFF16A34A),
         ),
         const _BottomStatData(
@@ -2025,16 +1964,8 @@ class _BottomSummaryViewModel {
       originalSectionTitle: 'Original',
       originalRows: [
         _BottomInfoRowData(
-          label: 'Name',
-          value: FileOpenController.fileNameOf(file.path),
-        ),
-        _BottomInfoRowData(
           label: 'Format',
           value: formatLabel(file.metadata.format),
-        ),
-        _BottomInfoRowData(
-          label: 'Dimensions',
-          value: '${file.metadata.width} x ${file.metadata.height}',
         ),
       ],
       outputSectionTitle: 'Output',
@@ -2043,8 +1974,6 @@ class _BottomSummaryViewModel {
           label: 'Format',
           value: outputFormat == null ? '—' : formatLabel(outputFormat),
         ),
-        _BottomInfoRowData(label: 'Dimensions', value: outputDimensions),
-        _BottomInfoRowData(label: 'Status', value: statusLabel),
       ],
     );
   }
@@ -2086,8 +2015,7 @@ class _BottomSummaryViewModel {
         ),
         _BottomStatData(
           label: 'Savings',
-          value: _formatNullableBytes(savingsBytes),
-          secondary: _formatNullablePercent(savingsPercent),
+          value: _formatNullablePercentValue(savingsPercent),
           color: const Color(0xFF16A34A),
         ),
         const _BottomStatData(
@@ -2117,10 +2045,6 @@ class _BottomSummaryViewModel {
           label: 'Completed',
           value: '$completedCount / ${files.length}',
         ),
-        _BottomInfoRowData(
-          label: 'Status',
-          value: _folderStatusLabel(files, runState),
-        ),
       ],
     );
   }
@@ -2131,12 +2055,10 @@ class _BottomStatData {
     required this.label,
     required this.value,
     required this.color,
-    this.secondary,
   });
 
   final String label;
   final String value;
-  final String? secondary;
   final Color color;
 }
 
@@ -2190,6 +2112,10 @@ String? _formatNullablePercent(double? value) {
   return '${value.toStringAsFixed(1)}%';
 }
 
+String _formatNullablePercentValue(double? value) {
+  return _formatNullablePercent(value) ?? '—';
+}
+
 bool _isTerminalStatus(OptimizationItemStatus status) {
   return switch (status) {
     OptimizationItemStatus.written ||
@@ -2200,42 +2126,6 @@ bool _isTerminalStatus(OptimizationItemStatus status) {
     OptimizationItemStatus.queued ||
     OptimizationItemStatus.running => false,
   };
-}
-
-String _folderStatusLabel(
-  List<OpenedImageFile> files,
-  OptimizationRunState runState,
-) {
-  if (files.isEmpty) {
-    return 'Idle';
-  }
-
-  final statuses = files.map((file) => _statusForFile(file, runState).status).toList();
-  final allIdle = statuses.every((status) => status == OptimizationItemStatus.idle);
-  if (allIdle) {
-    return 'Idle';
-  }
-
-  final hasRunning = statuses.contains(OptimizationItemStatus.running);
-  final hasQueued = statuses.contains(OptimizationItemStatus.queued);
-  if (hasRunning || hasQueued) {
-    return runState.isCancelRequested ? 'Canceling' : 'Working';
-  }
-
-  if (statuses.every((status) => status == OptimizationItemStatus.written)) {
-    return 'Saved';
-  }
-  if (statuses.every((status) => status == OptimizationItemStatus.skipped)) {
-    return 'Unchanged';
-  }
-  if (statuses.every((status) => status == OptimizationItemStatus.failed)) {
-    return 'Failed';
-  }
-  if (statuses.every((status) => status == OptimizationItemStatus.canceled)) {
-    return 'Canceled';
-  }
-
-  return 'Mixed';
 }
 
 OptimizationItemState _statusForFile(

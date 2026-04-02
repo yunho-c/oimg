@@ -204,10 +204,8 @@ void main() {
 
     expect(find.text('4.1 KB'), findsOneWidget);
     expect(find.text('2.6 KB'), findsWidgets);
-    expect(find.text('1.5 KB'), findsOneWidget);
     expect(find.text('35.7%'), findsOneWidget);
     expect(find.text('1 / 2'), findsOneWidget);
-    expect(find.text('Mixed'), findsOneWidget);
     expect(find.text('JPEG'), findsWidgets);
 
     await tester.pump(const Duration(milliseconds: 200));
@@ -429,7 +427,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
 
       expect(find.byType(CircularProgressIndicator), findsNothing);
-      expect(find.text('Estimating'), findsWidgets);
+      expect(find.text('Estimating'), findsNothing);
       expect(slimg.previewCallCount, 1);
 
       await tester.pump(const Duration(seconds: 5));
