@@ -60,12 +60,19 @@ void main() {
     expect(find.text('Files'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
     expect(find.text('Details'), findsOneWidget);
+    expect(find.text('Summary'), findsOneWidget);
+    expect(find.text('Image info'), findsOneWidget);
+    expect(find.text('Visual quality'), findsOneWidget);
     expect(find.text('Optimize'), findsOneWidget);
     expect(find.text('Optimize selected'), findsNothing);
     expect(find.text('Optimize all'), findsNothing);
     expect(find.text('first.png'), findsWidgets);
     expect(find.text('second.jpg'), findsWidgets);
     expect(find.text('JPEG'), findsWidgets);
+    expect(find.text('PSNR'), findsOneWidget);
+    expect(find.text('SSIM'), findsOneWidget);
+    expect(find.text('Butteraugli'), findsOneWidget);
+    expect(find.text('50.0%'), findsOneWidget);
 
     await tester.tap(find.text('second.jpg').first);
     await tester.pump();
@@ -142,7 +149,8 @@ void main() {
     await tester.pump();
 
     expect(find.text('1 / 3'), findsNothing);
-    expect(find.text('Images 2'), findsOneWidget);
+    expect(find.text('Completed'), findsOneWidget);
+    expect(find.text('0 / 2'), findsOneWidget);
     expect(find.text('Loaded'), findsOneWidget);
 
     await tester.tap(find.text('dog.jpg').first);
@@ -150,6 +158,62 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('2 / 3'), findsOneWidget);
+  });
+
+  testWidgets('folder summary aggregates original and optimized sizes', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {
+        '/tmp/animals/cat.png': _metadata('png', 2400),
+        '/tmp/animals/dog.jpg': _metadata('jpeg', 1800),
+        '/tmp/animals/cat.optimized.jpeg': _metadata('jpeg', 900),
+      },
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const [
+        '/tmp/animals/cat.png',
+        '/tmp/animals/dog.jpg',
+      ],
+    );
+    await controller.initialize();
+    await controller.applyProcessResults([
+      BatchItemResult(
+        inputPath: '/tmp/animals/cat.png',
+        success: true,
+        result: ProcessResult(
+          outputPath: '/tmp/animals/cat.optimized.jpeg',
+          format: 'jpeg',
+          width: 48,
+          height: 32,
+          originalSize: BigInt.from(2400),
+          newSize: BigInt.from(900),
+          didWrite: true,
+        ),
+      ),
+    ]);
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.tap(find.text('animals').first);
+    await tester.pump();
+
+    expect(find.text('4.1 KB'), findsOneWidget);
+    expect(find.text('2.6 KB'), findsWidgets);
+    expect(find.text('1.5 KB'), findsOneWidget);
+    expect(find.text('35.7%'), findsOneWidget);
+    expect(find.text('1 / 2'), findsOneWidget);
+    expect(find.text('Mixed'), findsOneWidget);
+    expect(find.text('JPEG'), findsWidgets);
+
+    await tester.pump(const Duration(milliseconds: 200));
   });
 
   testWidgets('toggles advanced mode in the settings sidebar', (tester) async {

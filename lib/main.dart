@@ -25,7 +25,7 @@ const _defaultSidebarWidth = 280.0;
 const _minSidebarWidth = 180.0;
 const _maxSidebarWidth = 420.0;
 const _settingsSidebarWidth = 320.0;
-const _bottomSidebarHeight = 156.0;
+const _bottomSidebarHeight = 188.0;
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -1549,16 +1549,31 @@ class _BottomSidebar extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
-    final metadata = currentFile.metadata;
+    final preview = ref.watch(currentPreviewProvider).maybeWhen(
+      data: (value) => value,
+      orElse: () => null,
+    );
+    final plan = ref.watch(currentOptimizationPlanProvider).maybeWhen(
+      data: (value) => value,
+      orElse: () => null,
+    );
+    final settings = ref.watch(appSettingsProvider).maybeWhen(
+      data: (value) => value,
+      orElse: () => null,
+    );
     final runState = ref.watch(optimizationRunControllerProvider);
     final runController = ref.read(optimizationRunControllerProvider.notifier);
     final progressValue = runState.totalCount > 0
         ? (runState.completedCount / runState.totalCount).clamp(0.0, 1.0)
         : 0.0;
-    final isFolderSelected = controller.isFolderSelected;
-    final selectedFolderFiles = controller.selectedFolderFiles;
-    final selectedFolderPath = controller.selectedFolderPath;
-    final selectedFolderSizeBytes = controller.selectedFolderSizeBytes;
+    final summary = _BottomSummaryViewModel.build(
+      controller: controller,
+      currentFile: currentFile,
+      runState: runState,
+      preview: preview,
+      plan: plan,
+      settings: settings,
+    );
 
     return Card(
       padding: EdgeInsets.zero,
@@ -1588,50 +1603,41 @@ class _BottomSidebar extends ConsumerWidget {
                     child: Row(
                       children: [
                         Expanded(
-                          flex: 2,
-                          child: _BottomDetail(
-                            label: isFolderSelected ? 'Folder' : 'File',
-                            value: isFolderSelected
-                                ? (controller.selectedFolderName ??
-                                      selectedFolderPath ??
-                                      'Unknown')
-                                : FileOpenController.fileNameOf(currentFile.path),
-                          ),
+                          child: _BottomStatsSection(stats: summary.stats),
                         ),
+                        const SizedBox(width: 18),
                         Expanded(
                           child: _BottomDetail(
-                            label: isFolderSelected ? 'Images' : 'Format',
-                            value: isFolderSelected
-                                ? '${selectedFolderFiles.length}'
-                                : formatLabel(metadata.format),
+                            label: '',
+                            value: '',
+                            child: _BottomInfoSection(
+                              originalTitle: summary.originalSectionTitle,
+                              originalRows: summary.originalRows,
+                              outputTitle: summary.outputSectionTitle,
+                              outputRows: summary.outputRows,
+                            ),
                           ),
                         ),
+                        const SizedBox(width: 18),
                         Expanded(
                           child: _BottomDetail(
-                            label: isFolderSelected ? 'Selection' : 'Dimensions',
-                            value: isFolderSelected
-                                ? 'Loaded'
-                                : '${metadata.width} x ${metadata.height}',
-                          ),
-                        ),
-                        Expanded(
-                          child: _BottomDetail(
-                            label: 'Size',
-                            value: isFolderSelected
-                                ? (selectedFolderSizeBytes == null
-                                      ? 'Unknown'
-                                      : _formatBytes(selectedFolderSizeBytes))
-                                : (metadata.fileSize == null
-                                      ? 'Unknown'
-                                      : _formatBytes(metadata.fileSize!.toInt())),
+                            label: '',
+                            value: '',
+                            child: const _BottomQualitySection(),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 20),
+                  Container(
+                    width: 1,
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    color: theme.colorScheme.border,
+                  ),
+                  const SizedBox(width: 20),
                   SizedBox(
-                    width: 180,
+                    width: 188,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1645,7 +1651,8 @@ class _BottomSidebar extends ConsumerWidget {
                                   onPressed: null,
                                   child: const Text(
                                     'Canceling...',
-                                    style: TextStyle(fontSize: 14),
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(fontSize: 15),
                                   ),
                                 )
                               : runState.isRunning
@@ -1654,7 +1661,8 @@ class _BottomSidebar extends ConsumerWidget {
                                   onPressed: runController.cancelCurrentRun,
                                   child: const Text(
                                     'Cancel',
-                                    style: TextStyle(fontSize: 14),
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(fontSize: 15),
                                   ),
                                 )
                               : PrimaryButton(
@@ -1662,7 +1670,8 @@ class _BottomSidebar extends ConsumerWidget {
                                   onPressed: runController.optimizeAll,
                                   child: const Text(
                                     'Optimize',
-                                    style: TextStyle(fontSize: 13),
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(fontSize: 15),
                                   ),
                                 ),
                         ),
@@ -1688,13 +1697,22 @@ class _BottomSidebar extends ConsumerWidget {
 }
 
 class _BottomDetail extends StatelessWidget {
-  const _BottomDetail({required this.label, required this.value});
+  const _BottomDetail({
+    required this.label,
+    required this.value,
+    this.child,
+  });
 
   final String label;
   final String value;
+  final Widget? child;
 
   @override
   Widget build(BuildContext context) {
+    if (child != null) {
+      return child!;
+    }
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1705,6 +1723,526 @@ class _BottomDetail extends StatelessWidget {
       ],
     );
   }
+}
+
+class _BottomStatsSection extends StatelessWidget {
+  const _BottomStatsSection({required this.stats});
+
+  final List<_BottomStatData> stats;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Summary').xSmall().medium().muted(),
+        const SizedBox(height: 10),
+        Expanded(
+          child: Row(
+            children: [
+              for (var index = 0; index < stats.length; index++) ...[
+                Expanded(child: _BottomStatTile(stat: stats[index])),
+                if (index + 1 < stats.length) const SizedBox(width: 10),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BottomStatTile extends StatelessWidget {
+  const _BottomStatTile({required this.stat});
+
+  final _BottomStatData stat;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.secondary,
+        borderRadius: theme.borderRadiusLg,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(stat.label).xSmall().medium().muted(),
+          const Spacer(),
+          Text(
+            stat.value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: stat.color,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(stat.secondary ?? ' ').xSmall().muted(),
+        ],
+      ),
+    );
+  }
+}
+
+class _BottomInfoSection extends StatelessWidget {
+  const _BottomInfoSection({
+    required this.originalTitle,
+    required this.originalRows,
+    required this.outputTitle,
+    required this.outputRows,
+  });
+
+  final String originalTitle;
+  final List<_BottomInfoRowData> originalRows;
+  final String outputTitle;
+  final List<_BottomInfoRowData> outputRows;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Image info').xSmall().medium().muted(),
+        const SizedBox(height: 10),
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(
+                child: _BottomInfoColumn(
+                  title: originalTitle,
+                  rows: originalRows,
+                ),
+              ),
+              const SizedBox(width: 18),
+              Expanded(
+                child: _BottomInfoColumn(
+                  title: outputTitle,
+                  rows: outputRows,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BottomInfoColumn extends StatelessWidget {
+  const _BottomInfoColumn({required this.title, required this.rows});
+
+  final String title;
+  final List<_BottomInfoRowData> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.secondary,
+        borderRadius: theme.borderRadiusLg,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title).xSmall().medium().muted(),
+          const SizedBox(height: 10),
+          for (var index = 0; index < rows.length; index++) ...[
+            _BottomInfoRow(row: rows[index]),
+            if (index + 1 < rows.length) const SizedBox(height: 8),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _BottomInfoRow extends StatelessWidget {
+  const _BottomInfoRow({required this.row});
+
+  final _BottomInfoRowData row;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(row.label).xSmall().medium().muted(),
+        const SizedBox(height: 2),
+        Text(
+          row.value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ).small().medium(),
+      ],
+    );
+  }
+}
+
+class _BottomQualitySection extends StatelessWidget {
+  const _BottomQualitySection();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Visual quality').xSmall().medium().muted(),
+        const SizedBox(height: 10),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.secondary,
+              borderRadius: theme.borderRadiusLg,
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _BottomMetricRow(label: 'PSNR', value: 'N/A'),
+                SizedBox(height: 8),
+                _BottomMetricRow(label: 'SSIM', value: 'N/A'),
+                SizedBox(height: 8),
+                _BottomMetricRow(label: 'Butteraugli', value: 'N/A'),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BottomMetricRow extends StatelessWidget {
+  const _BottomMetricRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: Text(label).xSmall().medium().muted()),
+        Text(value).xSmall().medium().muted(),
+      ],
+    );
+  }
+}
+
+class _BottomSummaryViewModel {
+  const _BottomSummaryViewModel({
+    required this.stats,
+    required this.originalSectionTitle,
+    required this.originalRows,
+    required this.outputSectionTitle,
+    required this.outputRows,
+  });
+
+  final List<_BottomStatData> stats;
+  final String originalSectionTitle;
+  final List<_BottomInfoRowData> originalRows;
+  final String outputSectionTitle;
+  final List<_BottomInfoRowData> outputRows;
+
+  static _BottomSummaryViewModel build({
+    required FileOpenController controller,
+    required OpenedImageFile currentFile,
+    required OptimizationRunState runState,
+    required OptimizationPreview? preview,
+    required OptimizationPlan? plan,
+    required AppSettings? settings,
+  }) {
+    if (controller.isFolderSelected) {
+      return _buildFolder(
+        controller: controller,
+        runState: runState,
+        settings: settings,
+      );
+    }
+
+    return _buildFile(
+      file: currentFile,
+      runState: runState,
+      preview: preview,
+      plan: plan,
+    );
+  }
+
+  static _BottomSummaryViewModel _buildFile({
+    required OpenedImageFile file,
+    required OptimizationRunState runState,
+    required OptimizationPreview? preview,
+    required OptimizationPlan? plan,
+  }) {
+    final originalBytes = _originalFileSizeBytes(file);
+    final newBytes = preview?.result.sizeBytes.toInt() ?? _effectiveFileSizeBytes(file);
+    final savingsBytes = originalBytes != null && newBytes != null
+        ? originalBytes - newBytes
+        : null;
+    final savingsPercent = originalBytes != null &&
+            originalBytes > 0 &&
+            savingsBytes != null
+        ? (savingsBytes / originalBytes) * 100
+        : null;
+    final outputFormat =
+        file.lastResult?.format ??
+        (plan == null ? null : codecIdOf(plan.targetCodec));
+    final outputDimensions = preview != null
+        ? '${preview.result.width} x ${preview.result.height}'
+        : (file.lastResult == null
+              ? '—'
+              : '${file.lastResult!.width} x ${file.lastResult!.height}');
+    final statusLabel = _statusLabel(_statusForFile(file, runState));
+
+    return _BottomSummaryViewModel(
+      stats: [
+        _BottomStatData(
+          label: 'Original',
+          value: _formatNullableBytes(originalBytes),
+          color: const Color(0xFF6B7280),
+        ),
+        _BottomStatData(
+          label: 'New',
+          value: _formatNullableBytes(newBytes),
+          color: const Color(0xFF2563EB),
+        ),
+        _BottomStatData(
+          label: 'Savings',
+          value: _formatNullableBytes(savingsBytes),
+          secondary: _formatNullablePercent(savingsPercent),
+          color: const Color(0xFF16A34A),
+        ),
+        const _BottomStatData(
+          label: 'Similarity',
+          value: 'N/A',
+          color: Color(0xFFF59E0B),
+        ),
+      ],
+      originalSectionTitle: 'Original',
+      originalRows: [
+        _BottomInfoRowData(
+          label: 'Name',
+          value: FileOpenController.fileNameOf(file.path),
+        ),
+        _BottomInfoRowData(
+          label: 'Format',
+          value: formatLabel(file.metadata.format),
+        ),
+        _BottomInfoRowData(
+          label: 'Dimensions',
+          value: '${file.metadata.width} x ${file.metadata.height}',
+        ),
+      ],
+      outputSectionTitle: 'Output',
+      outputRows: [
+        _BottomInfoRowData(
+          label: 'Format',
+          value: outputFormat == null ? '—' : formatLabel(outputFormat),
+        ),
+        _BottomInfoRowData(label: 'Dimensions', value: outputDimensions),
+        _BottomInfoRowData(label: 'Status', value: statusLabel),
+      ],
+    );
+  }
+
+  static _BottomSummaryViewModel _buildFolder({
+    required FileOpenController controller,
+    required OptimizationRunState runState,
+    required AppSettings? settings,
+  }) {
+    final files = controller.selectedFolderFiles;
+    final originalBytes = _aggregateFolderBytes(
+      files,
+      useOriginalSizes: true,
+    );
+    final newBytes = _aggregateFolderBytes(files, useOriginalSizes: false);
+    final savingsBytes = originalBytes != null && newBytes != null
+        ? originalBytes - newBytes
+        : null;
+    final savingsPercent = originalBytes != null &&
+            originalBytes > 0 &&
+            savingsBytes != null
+        ? (savingsBytes / originalBytes) * 100
+        : null;
+    final completedCount = files
+        .where((file) => _isTerminalStatus(_statusForFile(file, runState).status))
+        .length;
+
+    return _BottomSummaryViewModel(
+      stats: [
+        _BottomStatData(
+          label: 'Original',
+          value: _formatNullableBytes(originalBytes),
+          color: const Color(0xFF6B7280),
+        ),
+        _BottomStatData(
+          label: 'New',
+          value: _formatNullableBytes(newBytes),
+          color: const Color(0xFF2563EB),
+        ),
+        _BottomStatData(
+          label: 'Savings',
+          value: _formatNullableBytes(savingsBytes),
+          secondary: _formatNullablePercent(savingsPercent),
+          color: const Color(0xFF16A34A),
+        ),
+        const _BottomStatData(
+          label: 'Similarity',
+          value: 'N/A',
+          color: Color(0xFFF59E0B),
+        ),
+      ],
+      originalSectionTitle: 'Original',
+      originalRows: [
+        _BottomInfoRowData(
+          label: 'Folder',
+          value: controller.selectedFolderName ??
+              controller.selectedFolderPath ??
+              'Unknown',
+        ),
+        _BottomInfoRowData(label: 'Images', value: '${files.length}'),
+        const _BottomInfoRowData(label: 'Scope', value: 'Loaded'),
+      ],
+      outputSectionTitle: 'Output',
+      outputRows: [
+        _BottomInfoRowData(
+          label: 'Target',
+          value: settings == null ? '—' : codecLabel(settings.effectiveCodec),
+        ),
+        _BottomInfoRowData(
+          label: 'Completed',
+          value: '$completedCount / ${files.length}',
+        ),
+        _BottomInfoRowData(
+          label: 'Status',
+          value: _folderStatusLabel(files, runState),
+        ),
+      ],
+    );
+  }
+}
+
+class _BottomStatData {
+  const _BottomStatData({
+    required this.label,
+    required this.value,
+    required this.color,
+    this.secondary,
+  });
+
+  final String label;
+  final String value;
+  final String? secondary;
+  final Color color;
+}
+
+class _BottomInfoRowData {
+  const _BottomInfoRowData({required this.label, required this.value});
+
+  final String label;
+  final String value;
+}
+
+int? _effectiveFileSizeBytes(OpenedImageFile file) {
+  return file.lastResult?.newSize.toInt() ?? file.metadata.fileSize?.toInt();
+}
+
+int? _originalFileSizeBytes(OpenedImageFile file) {
+  return file.lastResult?.originalSize.toInt() ?? file.metadata.fileSize?.toInt();
+}
+
+int? _aggregateFolderBytes(
+  List<OpenedImageFile> files, {
+  required bool useOriginalSizes,
+}) {
+  var hasSize = false;
+  var totalBytes = 0;
+
+  for (final file in files) {
+    final bytes = useOriginalSizes
+        ? _originalFileSizeBytes(file)
+        : _effectiveFileSizeBytes(file);
+    if (bytes == null) {
+      continue;
+    }
+    hasSize = true;
+    totalBytes += bytes;
+  }
+
+  return hasSize ? totalBytes : null;
+}
+
+String _formatNullableBytes(int? bytes) {
+  if (bytes == null) {
+    return '—';
+  }
+  return _formatBytes(bytes);
+}
+
+String? _formatNullablePercent(double? value) {
+  if (value == null) {
+    return null;
+  }
+  return '${value.toStringAsFixed(1)}%';
+}
+
+bool _isTerminalStatus(OptimizationItemStatus status) {
+  return switch (status) {
+    OptimizationItemStatus.written ||
+    OptimizationItemStatus.skipped ||
+    OptimizationItemStatus.failed ||
+    OptimizationItemStatus.canceled => true,
+    OptimizationItemStatus.idle ||
+    OptimizationItemStatus.queued ||
+    OptimizationItemStatus.running => false,
+  };
+}
+
+String _folderStatusLabel(
+  List<OpenedImageFile> files,
+  OptimizationRunState runState,
+) {
+  if (files.isEmpty) {
+    return 'Idle';
+  }
+
+  final statuses = files.map((file) => _statusForFile(file, runState).status).toList();
+  final allIdle = statuses.every((status) => status == OptimizationItemStatus.idle);
+  if (allIdle) {
+    return 'Idle';
+  }
+
+  final hasRunning = statuses.contains(OptimizationItemStatus.running);
+  final hasQueued = statuses.contains(OptimizationItemStatus.queued);
+  if (hasRunning || hasQueued) {
+    return runState.isCancelRequested ? 'Canceling' : 'Working';
+  }
+
+  if (statuses.every((status) => status == OptimizationItemStatus.written)) {
+    return 'Saved';
+  }
+  if (statuses.every((status) => status == OptimizationItemStatus.skipped)) {
+    return 'Unchanged';
+  }
+  if (statuses.every((status) => status == OptimizationItemStatus.failed)) {
+    return 'Failed';
+  }
+  if (statuses.every((status) => status == OptimizationItemStatus.canceled)) {
+    return 'Canceled';
+  }
+
+  return 'Mixed';
 }
 
 OptimizationItemState _statusForFile(
