@@ -1083,7 +1083,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return PreviewQualityMetrics(
       msSsim: dco_decode_opt_box_autoadd_f_64(arr[0]),
       psnr: dco_decode_opt_box_autoadd_f_64(arr[1]),
-      butteraugli: dco_decode_opt_box_autoadd_f_64(arr[2]),
+      ssimulacra2: dco_decode_opt_box_autoadd_f_64(arr[2]),
     );
   }
 
@@ -1837,11 +1837,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_msSsim = sse_decode_opt_box_autoadd_f_64(deserializer);
     var var_psnr = sse_decode_opt_box_autoadd_f_64(deserializer);
-    var var_butteraugli = sse_decode_opt_box_autoadd_f_64(deserializer);
+    var var_ssimulacra2 = sse_decode_opt_box_autoadd_f_64(deserializer);
     return PreviewQualityMetrics(
       msSsim: var_msSsim,
       psnr: var_psnr,
-      butteraugli: var_butteraugli,
+      ssimulacra2: var_ssimulacra2,
     );
   }
 
@@ -2575,7 +2575,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_opt_box_autoadd_f_64(self.msSsim, serializer);
     sse_encode_opt_box_autoadd_f_64(self.psnr, serializer);
-    sse_encode_opt_box_autoadd_f_64(self.butteraugli, serializer);
+    sse_encode_opt_box_autoadd_f_64(self.ssimulacra2, serializer);
   }
 
   @protected

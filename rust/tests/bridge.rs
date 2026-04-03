@@ -153,8 +153,12 @@ fn compute_preview_quality_metrics_returns_ms_ssim_for_same_dimension_preview() 
         (0.0..=1.0).contains(&metric),
         "expected metric in [0, 1], got {metric}"
     );
+    let ssimulacra2 = metrics.ssimulacra2.expect("expected ssimulacra2 metric");
+    assert!(
+        (0.0..=100.0).contains(&ssimulacra2),
+        "expected SSIMULACRA 2 in [0, 100], got {ssimulacra2}"
+    );
     assert_eq!(metrics.psnr, None);
-    assert_eq!(metrics.butteraugli, None);
 }
 
 #[test]
@@ -180,6 +184,7 @@ fn compute_preview_quality_metrics_returns_none_when_metric_cannot_be_computed()
     .unwrap();
 
     assert_eq!(metrics.ms_ssim, None);
+    assert_eq!(metrics.ssimulacra2, None);
 }
 
 #[test]

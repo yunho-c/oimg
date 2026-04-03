@@ -147,7 +147,7 @@ final currentPreviewQualityMetricsProvider =
         totalStopwatch.stop();
         DeveloperDiagnostics.logTiming(
           'preview-metrics:$requestId',
-          'done metrics=${metricsStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms msSsim=${result.msSsim}',
+          'done metrics=${metricsStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms msSsim=${result.msSsim} ssimulacra2=${result.ssimulacra2}',
         );
         return result;
       } on Object catch (error, stackTrace) {

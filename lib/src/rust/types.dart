@@ -391,12 +391,12 @@ class PreviewFileRequest {
 class PreviewQualityMetrics {
   final double? msSsim;
   final double? psnr;
-  final double? butteraugli;
+  final double? ssimulacra2;
 
-  const PreviewQualityMetrics({this.msSsim, this.psnr, this.butteraugli});
+  const PreviewQualityMetrics({this.msSsim, this.psnr, this.ssimulacra2});
 
   @override
-  int get hashCode => msSsim.hashCode ^ psnr.hashCode ^ butteraugli.hashCode;
+  int get hashCode => msSsim.hashCode ^ psnr.hashCode ^ ssimulacra2.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -405,7 +405,7 @@ class PreviewQualityMetrics {
           runtimeType == other.runtimeType &&
           msSsim == other.msSsim &&
           psnr == other.psnr &&
-          butteraugli == other.butteraugli;
+          ssimulacra2 == other.ssimulacra2;
 }
 
 class PreviewQualityMetricsRequest {

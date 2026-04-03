@@ -68,7 +68,7 @@ void main() {
     expect(find.text('JPEG'), findsWidgets);
     expect(find.text('PSNR'), findsOneWidget);
     expect(find.text('MS-SSIM'), findsOneWidget);
-    expect(find.text('Butteraugli'), findsOneWidget);
+    expect(find.text('SSIMULACRA 2'), findsOneWidget);
     expect(find.text('50.0%'), findsOneWidget);
     expect(find.text('0.987'), findsOneWidget);
 
@@ -539,7 +539,7 @@ class _FakeSlimgApi implements SlimgApi {
     return const PreviewQualityMetrics(
       msSsim: 0.9874,
       psnr: null,
-      butteraugli: null,
+      ssimulacra2: 92.4,
     );
   }
 

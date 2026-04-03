@@ -2096,7 +2096,13 @@ class _BottomSummaryViewModel {
           label: 'MS-SSIM',
           value: _formatNullableMetric(previewQualityMetrics?.msSsim),
         ),
-        const _BottomMetricData(label: 'Butteraugli', value: 'N/A'),
+        _BottomMetricData(
+          label: 'SSIMULACRA 2',
+          value: _formatNullableMetric(
+            previewQualityMetrics?.ssimulacra2,
+            digits: 1,
+          ),
+        ),
       ],
     );
   }
@@ -2182,7 +2188,7 @@ class _BottomSummaryViewModel {
       qualityMetrics: const [
         _BottomMetricData(label: 'PSNR', value: 'N/A'),
         _BottomMetricData(label: 'MS-SSIM', value: 'N/A'),
-        _BottomMetricData(label: 'Butteraugli', value: 'N/A'),
+        _BottomMetricData(label: 'SSIMULACRA 2', value: 'N/A'),
       ],
     );
   }
@@ -2313,12 +2319,12 @@ String _formatNullableBpp(double? value) {
   return value >= 10 ? value.toStringAsFixed(1) : value.toStringAsFixed(2);
 }
 
-String _formatNullableMetric(double? value) {
+String _formatNullableMetric(double? value, {int digits = 3}) {
   if (value == null) {
     return 'N/A';
   }
 
-  return value.toStringAsFixed(3);
+  return value.toStringAsFixed(digits);
 }
 
 bool _isTerminalStatus(OptimizationItemStatus status) {

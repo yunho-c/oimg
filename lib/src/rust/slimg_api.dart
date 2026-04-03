@@ -90,7 +90,7 @@ class FrbSlimgApi implements SlimgApi {
             stopwatch.stop();
             DeveloperDiagnostics.logTiming(
               'slimg-api',
-              'preview-metrics done path=${request.inputPath} total=${stopwatch.elapsedMilliseconds}ms msSsim=${result.msSsim}',
+              'preview-metrics done path=${request.inputPath} total=${stopwatch.elapsedMilliseconds}ms msSsim=${result.msSsim} ssimulacra2=${result.ssimulacra2}',
             );
             return result;
           },

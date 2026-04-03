@@ -1079,11 +1079,11 @@ impl SseDecode for crate::types::PreviewQualityMetrics {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_msSsim = <Option<f64>>::sse_decode(deserializer);
         let mut var_psnr = <Option<f64>>::sse_decode(deserializer);
-        let mut var_butteraugli = <Option<f64>>::sse_decode(deserializer);
+        let mut var_ssimulacra2 = <Option<f64>>::sse_decode(deserializer);
         return crate::types::PreviewQualityMetrics {
             ms_ssim: var_msSsim,
             psnr: var_psnr,
-            butteraugli: var_butteraugli,
+            ssimulacra2: var_ssimulacra2,
         };
     }
 }
@@ -1791,7 +1791,7 @@ impl flutter_rust_bridge::IntoDart for crate::types::PreviewQualityMetrics {
         [
             self.ms_ssim.into_into_dart().into_dart(),
             self.psnr.into_into_dart().into_dart(),
-            self.butteraugli.into_into_dart().into_dart(),
+            self.ssimulacra2.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2438,7 +2438,7 @@ impl SseEncode for crate::types::PreviewQualityMetrics {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <Option<f64>>::sse_encode(self.ms_ssim, serializer);
         <Option<f64>>::sse_encode(self.psnr, serializer);
-        <Option<f64>>::sse_encode(self.butteraugli, serializer);
+        <Option<f64>>::sse_encode(self.ssimulacra2, serializer);
     }
 }
 

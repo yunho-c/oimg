@@ -1,4 +1,5 @@
 use slimg_core::{decode, ImageData};
+use fast_ssim2::{compute_ssimulacra2, srgb_u8_to_linear, LinearRgbImage};
 use tjdistler_iqa::{ImageQualityAssessment, MsSsim};
 
 use crate::types::{PreviewQualityMetrics, PreviewQualityMetricsRequest};
@@ -31,6 +32,33 @@ pub(crate) fn compute_ms_ssim_from_bytes(
     compute_ms_ssim(&reference, &distorted)
 }
 
+pub(crate) fn compute_ssimulacra2_score(
+    reference: &ImageData,
+    distorted: &ImageData,
+) -> Option<f64> {
+    if reference.width != distorted.width || reference.height != distorted.height {
+        return None;
+    }
+
+    let width = usize::try_from(reference.width).ok()?;
+    let height = usize::try_from(reference.height).ok()?;
+    let reference_rgb = rgba_to_linear_rgb(reference, width, height);
+    let distorted_rgb = rgba_to_linear_rgb(distorted, width, height);
+
+    compute_ssimulacra2(reference_rgb, distorted_rgb)
+        .ok()
+        .filter(|value| value.is_finite())
+}
+
+pub(crate) fn compute_ssimulacra2_from_bytes(
+    reference_bytes: &[u8],
+    distorted_bytes: &[u8],
+) -> Option<f64> {
+    let (reference, _) = decode(reference_bytes).ok()?;
+    let (distorted, _) = decode(distorted_bytes).ok()?;
+    compute_ssimulacra2_score(&reference, &distorted)
+}
+
 pub(crate) fn compute_preview_quality_metrics(
     request: PreviewQualityMetricsRequest,
 ) -> crate::error::Result<PreviewQualityMetrics> {
@@ -39,11 +67,14 @@ pub(crate) fn compute_preview_quality_metrics(
     let ms_ssim = original_bytes.as_ref().and_then(|reference_bytes| {
         compute_ms_ssim_from_bytes(reference_bytes, &request.preview_encoded_bytes)
     });
+    let ssimulacra2 = original_bytes.as_ref().and_then(|reference_bytes| {
+        compute_ssimulacra2_from_bytes(reference_bytes, &request.preview_encoded_bytes)
+    });
 
     Ok(PreviewQualityMetrics {
         ms_ssim,
         psnr: None,
-        butteraugli: None,
+        ssimulacra2,
     })
 }
 
@@ -63,6 +94,33 @@ fn rgba_to_luma(image: &ImageData) -> Vec<u8> {
             ((77 * r + 150 * g + 29 * b + 128) >> 8) as u8
         })
         .collect()
+}
+
+fn rgba_to_linear_rgb(image: &ImageData, width: usize, height: usize) -> LinearRgbImage {
+    let data = image
+        .data
+        .chunks_exact(4)
+        .map(|pixel| {
+            let [r, g, b, a]: [u8; 4] = pixel.try_into().expect("pixel chunk should be RGBA");
+            let [r, g, b] = composite_onto_white(r, g, b, a);
+            [
+                srgb_u8_to_linear(r),
+                srgb_u8_to_linear(g),
+                srgb_u8_to_linear(b),
+            ]
+        })
+        .collect();
+    LinearRgbImage::new(data, width, height)
+}
+
+fn composite_onto_white(r: u8, g: u8, b: u8, a: u8) -> [u8; 3] {
+    let alpha = u32::from(a);
+    let inv_alpha = 255 - alpha;
+    [
+        ((u32::from(r) * alpha + 255 * inv_alpha) / 255) as u8,
+        ((u32::from(g) * alpha + 255 * inv_alpha) / 255) as u8,
+        ((u32::from(b) * alpha + 255 * inv_alpha) / 255) as u8,
+    ]
 }
 
 fn supported_ms_ssim_scales(width: usize, height: usize) -> Option<usize> {
@@ -128,5 +186,52 @@ mod tests {
             degraded_value < reference_value,
             "expected degraded image to score lower, got degraded={degraded_value} reference={reference_value}"
         );
+    }
+
+    #[test]
+    fn identical_images_have_high_ssimulacra2() {
+        let image = gradient_image(64, 64);
+        let value = compute_ssimulacra2_score(&image, &image).expect("metric should compute");
+        assert!(value > 99.9, "expected near-perfect similarity, got {value}");
+    }
+
+    #[test]
+    fn degraded_image_has_lower_ssimulacra2() {
+        let reference = gradient_image(64, 64);
+        let mut degraded = reference.clone();
+        for pixel in degraded.data.chunks_exact_mut(4) {
+            pixel[0] = pixel[0].saturating_add(48);
+            pixel[1] = pixel[1].saturating_sub(24);
+            pixel[2] = pixel[2].saturating_add(12);
+        }
+
+        let reference_value = compute_ssimulacra2_score(&reference, &reference)
+            .expect("reference metric should compute");
+        let degraded_value = compute_ssimulacra2_score(&reference, &degraded)
+            .expect("degraded metric should compute");
+
+        assert!(
+            degraded_value < reference_value,
+            "expected degraded image to score lower, got degraded={degraded_value} reference={reference_value}"
+        );
+    }
+
+    #[test]
+    fn alpha_compositing_allows_metric_computation() {
+        let mut reference = gradient_image(64, 64);
+        for pixel in reference.data.chunks_exact_mut(4) {
+            pixel[3] = 128;
+        }
+        let degraded = reference.clone();
+        let value =
+            compute_ssimulacra2_score(&reference, &degraded).expect("metric should compute");
+        assert!(value.is_finite());
+    }
+
+    #[test]
+    fn dimension_mismatch_returns_none_for_ssimulacra2() {
+        let reference = gradient_image(64, 64);
+        let distorted = gradient_image(32, 64);
+        assert_eq!(compute_ssimulacra2_score(&reference, &distorted), None);
     }
 }
