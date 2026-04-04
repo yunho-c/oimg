@@ -1,22 +1,34 @@
+use std::sync::Arc;
+
 use dify::diff::get_results;
-use fast_ssim2::{LinearRgbImage, compute_ssimulacra2, srgb_u8_to_linear};
+use fast_ssim2::{compute_ssimulacra2, srgb_u8_to_linear, LinearRgbImage};
 use image::RgbaImage;
-use slimg_core::ImageData;
 use tjdistler_iqa::{ImageQualityAssessment, MsSsim};
 
-use crate::types::{PreviewQualityMetricsRequest, RawImageResult};
+use crate::error::SlimgBridgeError;
+use crate::preview_artifacts::{preview_artifact_store, PreviewArtifact};
+use crate::types::{PreviewArtifactRequest, RawImageResult};
 
 const DIFY_DEFAULT_THRESHOLD: f32 = 35215.0 * 0.05 * 0.05;
 
-pub(crate) fn compute_ms_ssim(reference: &ImageData, distorted: &ImageData) -> Option<f64> {
-    if reference.width != distorted.width || reference.height != distorted.height {
+pub(crate) fn compute_ms_ssim(
+    reference_width: u32,
+    reference_height: u32,
+    reference_rgba: &[u8],
+    distorted_width: u32,
+    distorted_height: u32,
+    distorted_rgba: &[u8],
+) -> Option<f64> {
+    if reference_width != distorted_width || reference_height != distorted_height {
         return None;
     }
 
-    let width = usize::try_from(reference.width).ok()?;
-    let height = usize::try_from(reference.height).ok()?;
-    let reference_luma = rgba_to_luma(reference);
-    let distorted_luma = rgba_to_luma(distorted);
+    let width = usize::try_from(reference_width).ok()?;
+    let height = usize::try_from(reference_height).ok()?;
+    validate_rgba_len(reference_width, reference_height, reference_rgba)?;
+    validate_rgba_len(distorted_width, distorted_height, distorted_rgba)?;
+    let reference_luma = rgba_to_luma(reference_rgba);
+    let distorted_luma = rgba_to_luma(distorted_rgba);
     let scales = supported_ms_ssim_scales(width, height)?;
     let metric = MsSsim::builder().scales(scales).build();
 
@@ -28,17 +40,23 @@ pub(crate) fn compute_ms_ssim(reference: &ImageData, distorted: &ImageData) -> O
 }
 
 pub(crate) fn compute_ssimulacra2_score(
-    reference: &ImageData,
-    distorted: &ImageData,
+    reference_width: u32,
+    reference_height: u32,
+    reference_rgba: &[u8],
+    distorted_width: u32,
+    distorted_height: u32,
+    distorted_rgba: &[u8],
 ) -> Option<f64> {
-    if reference.width != distorted.width || reference.height != distorted.height {
+    if reference_width != distorted_width || reference_height != distorted_height {
         return None;
     }
 
-    let width = usize::try_from(reference.width).ok()?;
-    let height = usize::try_from(reference.height).ok()?;
-    let reference_rgb = rgba_to_linear_rgb(reference, width, height);
-    let distorted_rgb = rgba_to_linear_rgb(distorted, width, height);
+    let width = usize::try_from(reference_width).ok()?;
+    let height = usize::try_from(reference_height).ok()?;
+    validate_rgba_len(reference_width, reference_height, reference_rgba)?;
+    validate_rgba_len(distorted_width, distorted_height, distorted_rgba)?;
+    let reference_rgb = rgba_to_linear_rgb(reference_rgba, width, height);
+    let distorted_rgb = rgba_to_linear_rgb(distorted_rgba, width, height);
 
     compute_ssimulacra2(reference_rgb, distorted_rgb)
         .ok()
@@ -46,15 +64,19 @@ pub(crate) fn compute_ssimulacra2_score(
 }
 
 pub(crate) fn compute_pixel_match_percentage(
-    reference: &ImageData,
-    distorted: &ImageData,
+    reference_width: u32,
+    reference_height: u32,
+    reference_rgba: &[u8],
+    distorted_width: u32,
+    distorted_height: u32,
+    distorted_rgba: &[u8],
 ) -> Option<f64> {
-    if reference.width != distorted.width || reference.height != distorted.height {
+    if reference_width != distorted_width || reference_height != distorted_height {
         return None;
     }
 
-    let reference_image = rgba_image(reference)?;
-    let distorted_image = rgba_image(distorted)?;
+    let reference_image = rgba_image(reference_width, reference_height, reference_rgba)?;
+    let distorted_image = rgba_image(distorted_width, distorted_height, distorted_rgba)?;
     let (width, height) = reference_image.dimensions();
     let total_pixels = f64::from(width) * f64::from(height);
     if total_pixels <= 0.0 {
@@ -77,61 +99,102 @@ pub(crate) fn compute_pixel_match_percentage(
 }
 
 pub(crate) fn compute_difference_image(
-    reference: &ImageData,
-    distorted: &ImageData,
+    reference_width: u32,
+    reference_height: u32,
+    reference_rgba: &[u8],
+    distorted_width: u32,
+    distorted_height: u32,
+    distorted_rgba: &[u8],
 ) -> Option<RawImageResult> {
-    let diff = compute_difference_image_data(reference, distorted)?;
+    let rgba_bytes = compute_difference_image_data(
+        reference_width,
+        reference_height,
+        reference_rgba,
+        distorted_width,
+        distorted_height,
+        distorted_rgba,
+    )?;
     Some(RawImageResult {
-        rgba_bytes: diff.data,
-        width: diff.width,
-        height: diff.height,
+        rgba_bytes,
+        width: reference_width,
+        height: reference_height,
     })
 }
 
 pub(crate) fn compute_preview_pixel_match_percentage(
-    request: PreviewQualityMetricsRequest,
+    request: PreviewArtifactRequest,
 ) -> crate::error::Result<Option<f64>> {
-    let Some((reference, distorted)) = request_images(&request) else {
-        return Ok(None);
-    };
-    Ok(compute_pixel_match_percentage(&reference, &distorted))
+    let artifact = request_artifact(&request)?;
+    Ok(compute_pixel_match_percentage(
+        artifact.original_width,
+        artifact.original_height,
+        &artifact.original_rgba_bytes,
+        artifact.preview_width,
+        artifact.preview_height,
+        &artifact.preview_rgba_bytes,
+    ))
 }
 
 pub(crate) fn compute_preview_ms_ssim(
-    request: PreviewQualityMetricsRequest,
+    request: PreviewArtifactRequest,
 ) -> crate::error::Result<Option<f64>> {
-    let Some((reference, distorted)) = request_images(&request) else {
-        return Ok(None);
-    };
-    Ok(compute_ms_ssim(&reference, &distorted))
+    let artifact = request_artifact(&request)?;
+    Ok(compute_ms_ssim(
+        artifact.original_width,
+        artifact.original_height,
+        &artifact.original_rgba_bytes,
+        artifact.preview_width,
+        artifact.preview_height,
+        &artifact.preview_rgba_bytes,
+    ))
 }
 
 pub(crate) fn compute_preview_ssimulacra2(
-    request: PreviewQualityMetricsRequest,
+    request: PreviewArtifactRequest,
 ) -> crate::error::Result<Option<f64>> {
-    let Some((reference, distorted)) = request_images(&request) else {
-        return Ok(None);
-    };
-    Ok(compute_ssimulacra2_score(&reference, &distorted))
+    let artifact = request_artifact(&request)?;
+    Ok(compute_ssimulacra2_score(
+        artifact.original_width,
+        artifact.original_height,
+        &artifact.original_rgba_bytes,
+        artifact.preview_width,
+        artifact.preview_height,
+        &artifact.preview_rgba_bytes,
+    ))
 }
 
 pub(crate) fn compute_preview_difference_image(
-    request: PreviewQualityMetricsRequest,
+    request: PreviewArtifactRequest,
 ) -> crate::error::Result<Option<RawImageResult>> {
-    let Some((reference, distorted)) = request_images(&request) else {
-        return Ok(None);
-    };
-    Ok(compute_difference_image(&reference, &distorted))
+    let artifact = request_artifact(&request)?;
+    Ok(compute_difference_image(
+        artifact.original_width,
+        artifact.original_height,
+        &artifact.original_rgba_bytes,
+        artifact.preview_width,
+        artifact.preview_height,
+        &artifact.preview_rgba_bytes,
+    ))
 }
 
-fn rgba_to_luma(image: &ImageData) -> Vec<u8> {
+fn request_artifact(
+    request: &PreviewArtifactRequest,
+) -> crate::error::Result<Arc<PreviewArtifact>> {
+    preview_artifact_store()
+        .get(&request.artifact_id)
+        .ok_or_else(|| {
+            SlimgBridgeError::invalid_request(format!(
+                "unknown preview artifact `{}`",
+                request.artifact_id
+            ))
+        })
+}
+
+fn rgba_to_luma(image: &[u8]) -> Vec<u8> {
     image
-        .data
         .chunks_exact(4)
         .map(|pixel| {
             let [r, g, b, a]: [u8; 4] = pixel.try_into().expect("pixel chunk should be RGBA");
-            // Composite transparent pixels onto white so the grayscale value tracks
-            // the effective visible color rather than raw channel bytes.
             let alpha = u32::from(a);
             let inv_alpha = 255 - alpha;
             let r = (u32::from(r) * alpha + 255 * inv_alpha) / 255;
@@ -142,9 +205,8 @@ fn rgba_to_luma(image: &ImageData) -> Vec<u8> {
         .collect()
 }
 
-fn rgba_to_linear_rgb(image: &ImageData, width: usize, height: usize) -> LinearRgbImage {
+fn rgba_to_linear_rgb(image: &[u8], width: usize, height: usize) -> LinearRgbImage {
     let data = image
-        .data
         .chunks_exact(4)
         .map(|pixel| {
             let [r, g, b, a]: [u8; 4] = pixel.try_into().expect("pixel chunk should be RGBA");
@@ -159,8 +221,9 @@ fn rgba_to_linear_rgb(image: &ImageData, width: usize, height: usize) -> LinearR
     LinearRgbImage::new(data, width, height)
 }
 
-fn rgba_image(image: &ImageData) -> Option<RgbaImage> {
-    RgbaImage::from_raw(image.width, image.height, image.data.clone())
+fn rgba_image(width: u32, height: u32, rgba_bytes: &[u8]) -> Option<RgbaImage> {
+    validate_rgba_len(width, height, rgba_bytes)?;
+    RgbaImage::from_raw(width, height, rgba_bytes.to_vec())
 }
 
 fn composite_onto_white(r: u8, g: u8, b: u8, a: u8) -> [u8; 3] {
@@ -173,32 +236,42 @@ fn composite_onto_white(r: u8, g: u8, b: u8, a: u8) -> [u8; 3] {
     ]
 }
 
-fn compute_difference_image_data(reference: &ImageData, distorted: &ImageData) -> Option<ImageData> {
-    if reference.width != distorted.width || reference.height != distorted.height {
+fn compute_difference_image_data(
+    reference_width: u32,
+    reference_height: u32,
+    reference_rgba: &[u8],
+    distorted_width: u32,
+    distorted_height: u32,
+    distorted_rgba: &[u8],
+) -> Option<Vec<u8>> {
+    if reference_width != distorted_width || reference_height != distorted_height {
         return None;
     }
+    validate_rgba_len(reference_width, reference_height, reference_rgba)?;
+    validate_rgba_len(distorted_width, distorted_height, distorted_rgba)?;
 
-    let data = reference
-        .data
-        .chunks_exact(4)
-        .zip(distorted.data.chunks_exact(4))
-        .flat_map(|(reference_pixel, distorted_pixel)| {
-            let [reference_r, reference_g, reference_b, reference_a]: [u8; 4] =
-                reference_pixel.try_into().expect("pixel chunk should be RGBA");
-            let [distorted_r, distorted_g, distorted_b, distorted_a]: [u8; 4] =
-                distorted_pixel.try_into().expect("pixel chunk should be RGBA");
-            let reference_rgb = premultiply_rgb(reference_r, reference_g, reference_b, reference_a);
-            let distorted_rgb = premultiply_rgb(distorted_r, distorted_g, distorted_b, distorted_a);
-            [
-                distorted_rgb[0].abs_diff(reference_rgb[0]),
-                distorted_rgb[1].abs_diff(reference_rgb[1]),
-                distorted_rgb[2].abs_diff(reference_rgb[2]),
-                255,
-            ]
-        })
-        .collect();
-
-    Some(ImageData::new(reference.width, reference.height, data))
+    Some(
+        reference_rgba
+            .chunks_exact(4)
+            .zip(distorted_rgba.chunks_exact(4))
+            .flat_map(|(reference_pixel, distorted_pixel)| {
+                let [reference_r, reference_g, reference_b, reference_a]: [u8; 4] =
+                    reference_pixel.try_into().expect("pixel chunk should be RGBA");
+                let [distorted_r, distorted_g, distorted_b, distorted_a]: [u8; 4] =
+                    distorted_pixel.try_into().expect("pixel chunk should be RGBA");
+                let reference_rgb =
+                    premultiply_rgb(reference_r, reference_g, reference_b, reference_a);
+                let distorted_rgb =
+                    premultiply_rgb(distorted_r, distorted_g, distorted_b, distorted_a);
+                [
+                    distorted_rgb[0].abs_diff(reference_rgb[0]),
+                    distorted_rgb[1].abs_diff(reference_rgb[1]),
+                    distorted_rgb[2].abs_diff(reference_rgb[2]),
+                    255,
+                ]
+            })
+            .collect(),
+    )
 }
 
 fn premultiply_rgb(r: u8, g: u8, b: u8, a: u8) -> [u8; 3] {
@@ -213,26 +286,9 @@ fn premultiply_channel(value: u8, alpha: u8) -> u8 {
     ((u32::from(value) * u32::from(alpha) + 127) / 255) as u8
 }
 
-fn request_images(request: &PreviewQualityMetricsRequest) -> Option<(ImageData, ImageData)> {
-    let reference = image_from_raw_rgba(
-        request.original_width,
-        request.original_height,
-        request.original_rgba_bytes.clone(),
-    )?;
-    let distorted = image_from_raw_rgba(
-        request.preview_width,
-        request.preview_height,
-        request.preview_rgba_bytes.clone(),
-    )?;
-    Some((reference, distorted))
-}
-
-fn image_from_raw_rgba(width: u32, height: u32, rgba_bytes: Vec<u8>) -> Option<ImageData> {
+fn validate_rgba_len(width: u32, height: u32, rgba_bytes: &[u8]) -> Option<()> {
     let expected_len = width as usize * height as usize * 4;
-    if rgba_bytes.len() != expected_len {
-        return None;
-    }
-    Some(ImageData::new(width, height, rgba_bytes))
+    (rgba_bytes.len() == expected_len).then_some(())
 }
 
 fn supported_ms_ssim_scales(width: usize, height: usize) -> Option<usize> {
@@ -257,6 +313,7 @@ fn supported_ms_ssim_scales(width: usize, height: usize) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use slimg_core::ImageData;
 
     fn gradient_image(width: u32, height: u32) -> ImageData {
         let mut data = vec![0_u8; (width * height * 4) as usize];
@@ -275,7 +332,15 @@ mod tests {
     #[test]
     fn identical_images_have_near_perfect_ms_ssim() {
         let image = gradient_image(64, 64);
-        let value = compute_ms_ssim(&image, &image).expect("metric should compute");
+        let value = compute_ms_ssim(
+            image.width,
+            image.height,
+            &image.data,
+            image.width,
+            image.height,
+            &image.data,
+        )
+        .expect("metric should compute");
         assert!(value > 0.999, "expected near-perfect similarity, got {value}");
     }
 
@@ -289,10 +354,24 @@ mod tests {
             pixel[2] = pixel[2].saturating_add(12);
         }
 
-        let reference_value =
-            compute_ms_ssim(&reference, &reference).expect("reference metric should compute");
-        let degraded_value =
-            compute_ms_ssim(&reference, &degraded).expect("degraded metric should compute");
+        let reference_value = compute_ms_ssim(
+            reference.width,
+            reference.height,
+            &reference.data,
+            reference.width,
+            reference.height,
+            &reference.data,
+        )
+        .expect("reference metric should compute");
+        let degraded_value = compute_ms_ssim(
+            reference.width,
+            reference.height,
+            &reference.data,
+            degraded.width,
+            degraded.height,
+            &degraded.data,
+        )
+        .expect("degraded metric should compute");
 
         assert!(
             degraded_value < reference_value,
@@ -303,15 +382,30 @@ mod tests {
     #[test]
     fn identical_images_have_high_ssimulacra2() {
         let image = gradient_image(64, 64);
-        let value = compute_ssimulacra2_score(&image, &image).expect("metric should compute");
+        let value = compute_ssimulacra2_score(
+            image.width,
+            image.height,
+            &image.data,
+            image.width,
+            image.height,
+            &image.data,
+        )
+        .expect("metric should compute");
         assert!(value > 99.9, "expected near-perfect similarity, got {value}");
     }
 
     #[test]
     fn identical_images_have_full_pixel_match() {
         let image = gradient_image(64, 64);
-        let value =
-            compute_pixel_match_percentage(&image, &image).expect("metric should compute");
+        let value = compute_pixel_match_percentage(
+            image.width,
+            image.height,
+            &image.data,
+            image.width,
+            image.height,
+            &image.data,
+        )
+        .expect("metric should compute");
         assert_eq!(value, 100.0);
     }
 
@@ -325,10 +419,24 @@ mod tests {
             pixel[2] = pixel[2].saturating_add(12);
         }
 
-        let reference_value = compute_ssimulacra2_score(&reference, &reference)
-            .expect("reference metric should compute");
-        let degraded_value = compute_ssimulacra2_score(&reference, &degraded)
-            .expect("degraded metric should compute");
+        let reference_value = compute_ssimulacra2_score(
+            reference.width,
+            reference.height,
+            &reference.data,
+            reference.width,
+            reference.height,
+            &reference.data,
+        )
+        .expect("reference metric should compute");
+        let degraded_value = compute_ssimulacra2_score(
+            reference.width,
+            reference.height,
+            &reference.data,
+            degraded.width,
+            degraded.height,
+            &degraded.data,
+        )
+        .expect("degraded metric should compute");
 
         assert!(
             degraded_value < reference_value,
@@ -346,10 +454,24 @@ mod tests {
             pixel[2] = pixel[2].saturating_add(12);
         }
 
-        let reference_value = compute_pixel_match_percentage(&reference, &reference)
-            .expect("reference metric should compute");
-        let degraded_value = compute_pixel_match_percentage(&reference, &degraded)
-            .expect("degraded metric should compute");
+        let reference_value = compute_pixel_match_percentage(
+            reference.width,
+            reference.height,
+            &reference.data,
+            reference.width,
+            reference.height,
+            &reference.data,
+        )
+        .expect("reference metric should compute");
+        let degraded_value = compute_pixel_match_percentage(
+            reference.width,
+            reference.height,
+            &reference.data,
+            degraded.width,
+            degraded.height,
+            &degraded.data,
+        )
+        .expect("degraded metric should compute");
 
         assert!(
             degraded_value < reference_value,
@@ -364,8 +486,15 @@ mod tests {
             pixel[3] = 128;
         }
         let degraded = reference.clone();
-        let value =
-            compute_ssimulacra2_score(&reference, &degraded).expect("metric should compute");
+        let value = compute_ssimulacra2_score(
+            reference.width,
+            reference.height,
+            &reference.data,
+            degraded.width,
+            degraded.height,
+            &degraded.data,
+        )
+        .expect("metric should compute");
         assert!(value.is_finite());
     }
 
@@ -376,16 +505,31 @@ mod tests {
             pixel[3] = 128;
         }
         let degraded = reference.clone();
-        let value = compute_pixel_match_percentage(&reference, &degraded)
-            .expect("metric should compute");
+        let value = compute_pixel_match_percentage(
+            reference.width,
+            reference.height,
+            &reference.data,
+            degraded.width,
+            degraded.height,
+            &degraded.data,
+        )
+        .expect("metric should compute");
         assert!(value.is_finite());
     }
 
     #[test]
     fn identical_images_produce_black_difference_image() {
         let image = gradient_image(16, 16);
-        let diff = compute_difference_image_data(&image, &image).expect("diff should compute");
-        for pixel in diff.data.chunks_exact(4) {
+        let diff = compute_difference_image_data(
+            image.width,
+            image.height,
+            &image.data,
+            image.width,
+            image.height,
+            &image.data,
+        )
+        .expect("diff should compute");
+        for pixel in diff.chunks_exact(4) {
             assert_eq!(pixel, [0, 0, 0, 255]);
         }
     }
@@ -398,10 +542,17 @@ mod tests {
             pixel[0] = pixel[0].saturating_add(32);
         }
 
-        let diff = compute_difference_image_data(&reference, &distorted).expect("diff should compute");
+        let diff = compute_difference_image_data(
+            reference.width,
+            reference.height,
+            &reference.data,
+            distorted.width,
+            distorted.height,
+            &distorted.data,
+        )
+        .expect("diff should compute");
         assert!(
-            diff.data
-                .chunks_exact(4)
+            diff.chunks_exact(4)
                 .any(|pixel| pixel[0] > 0 || pixel[1] > 0 || pixel[2] > 0),
             "expected at least one visible difference pixel"
         );
@@ -414,29 +565,64 @@ mod tests {
             pixel[3] = 128;
         }
 
-        let diff = compute_difference_image_data(&reference, &reference).expect("diff should compute");
-        assert_eq!(diff.width, 16);
-        assert_eq!(diff.height, 16);
+        let diff = compute_difference_image_data(
+            reference.width,
+            reference.height,
+            &reference.data,
+            reference.width,
+            reference.height,
+            &reference.data,
+        )
+        .expect("diff should compute");
+        assert_eq!(diff.len(), 16 * 16 * 4);
     }
 
     #[test]
     fn dimension_mismatch_returns_none_for_ssimulacra2() {
         let reference = gradient_image(64, 64);
         let distorted = gradient_image(32, 64);
-        assert_eq!(compute_ssimulacra2_score(&reference, &distorted), None);
+        assert_eq!(
+            compute_ssimulacra2_score(
+                reference.width,
+                reference.height,
+                &reference.data,
+                distorted.width,
+                distorted.height,
+                &distorted.data,
+            ),
+            None
+        );
     }
 
     #[test]
     fn dimension_mismatch_returns_none_for_pixel_match_percentage() {
         let reference = gradient_image(64, 64);
         let distorted = gradient_image(32, 64);
-        assert_eq!(compute_pixel_match_percentage(&reference, &distorted), None);
+        assert_eq!(
+            compute_pixel_match_percentage(
+                reference.width,
+                reference.height,
+                &reference.data,
+                distorted.width,
+                distorted.height,
+                &distorted.data,
+            ),
+            None
+        );
     }
 
     #[test]
     fn dimension_mismatch_returns_none_for_difference_image() {
         let reference = gradient_image(64, 64);
         let distorted = gradient_image(32, 64);
-        assert!(compute_difference_image_data(&reference, &distorted).is_none());
+        assert!(compute_difference_image_data(
+            reference.width,
+            reference.height,
+            &reference.data,
+            distorted.width,
+            distorted.height,
+            &distorted.data,
+        )
+        .is_none());
     }
 }

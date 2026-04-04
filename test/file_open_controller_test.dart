@@ -224,8 +224,7 @@ class _FakeSlimgApi implements SlimgApi {
   Future<PreviewResult> previewFile({required PreviewFileRequest request}) async {
     return PreviewResult(
       encodedBytes: Uint8List(0),
-      sourceRgbaBytes: Uint8List(48 * 32 * 4),
-      previewRgbaBytes: Uint8List(48 * 32 * 4),
+      artifactId: 'preview-artifact-test',
       format: 'png',
       width: 48,
       height: 32,
@@ -235,31 +234,34 @@ class _FakeSlimgApi implements SlimgApi {
 
   @override
   Future<double?> computePreviewPixelMatchPercentage({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   }) async {
     return null;
   }
 
   @override
   Future<double?> computePreviewMsSsim({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   }) async {
     return null;
   }
 
   @override
   Future<double?> computePreviewSsimulacra2({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   }) async {
     return null;
   }
 
   @override
   Future<RawImageResult?> computePreviewDifferenceImage({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   }) async {
     return null;
   }
+
+  @override
+  Future<void> disposePreviewArtifact({required String artifactId}) async {}
 
   @override
   Future<ProcessResult> processFile({required ProcessFileRequest request}) {

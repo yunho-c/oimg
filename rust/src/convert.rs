@@ -11,6 +11,7 @@ use slimg_core::{
 use crate::codec::format_to_string;
 use crate::error::{Result, SlimgBridgeError};
 use crate::fs::{derive_output_path, safe_write_bytes, to_path_buf};
+use crate::preview_artifacts::{preview_artifact_store, PreviewArtifact};
 use crate::types::{
     BatchItemResult, BatchProcessRequest, ConvertOptions, CropSpec, EncodedImageResult, ExtendSpec,
     FillSpec, ImageMetadata, ImageOperation, OptimizeOptions, PreviewResult, ProcessBytesRequest,
@@ -81,8 +82,14 @@ pub(crate) fn preview_file(request: crate::types::PreviewFileRequest) -> Result<
 
         Ok(PreviewResult {
             encoded_bytes: output.data.clone(),
-            source_rgba_bytes: source_image.data,
-            preview_rgba_bytes: output.preview_rgba_bytes,
+            artifact_id: preview_artifact_store().insert(PreviewArtifact {
+                original_width: source_image.width,
+                original_height: source_image.height,
+                preview_width: output.width,
+                preview_height: output.height,
+                original_rgba_bytes: source_image.data,
+                preview_rgba_bytes: output.preview_rgba_bytes,
+            }),
             format: format_to_string(output.format),
             width: output.width,
             height: output.height,

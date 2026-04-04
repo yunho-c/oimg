@@ -370,6 +370,22 @@ class OptimizeOptions {
           writeOnlyIfSmaller == other.writeOnlyIfSmaller;
 }
 
+class PreviewArtifactRequest {
+  final String artifactId;
+
+  const PreviewArtifactRequest({required this.artifactId});
+
+  @override
+  int get hashCode => artifactId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PreviewArtifactRequest &&
+          runtimeType == other.runtimeType &&
+          artifactId == other.artifactId;
+}
+
 class PreviewFileRequest {
   final String inputPath;
   final ImageOperation operation;
@@ -388,49 +404,9 @@ class PreviewFileRequest {
           operation == other.operation;
 }
 
-class PreviewQualityMetricsRequest {
-  final Uint8List originalRgbaBytes;
-  final int originalWidth;
-  final int originalHeight;
-  final Uint8List previewRgbaBytes;
-  final int previewWidth;
-  final int previewHeight;
-
-  const PreviewQualityMetricsRequest({
-    required this.originalRgbaBytes,
-    required this.originalWidth,
-    required this.originalHeight,
-    required this.previewRgbaBytes,
-    required this.previewWidth,
-    required this.previewHeight,
-  });
-
-  @override
-  int get hashCode =>
-      originalRgbaBytes.hashCode ^
-      originalWidth.hashCode ^
-      originalHeight.hashCode ^
-      previewRgbaBytes.hashCode ^
-      previewWidth.hashCode ^
-      previewHeight.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is PreviewQualityMetricsRequest &&
-          runtimeType == other.runtimeType &&
-          originalRgbaBytes == other.originalRgbaBytes &&
-          originalWidth == other.originalWidth &&
-          originalHeight == other.originalHeight &&
-          previewRgbaBytes == other.previewRgbaBytes &&
-          previewWidth == other.previewWidth &&
-          previewHeight == other.previewHeight;
-}
-
 class PreviewResult {
   final Uint8List encodedBytes;
-  final Uint8List sourceRgbaBytes;
-  final Uint8List previewRgbaBytes;
+  final String artifactId;
   final String format;
   final int width;
   final int height;
@@ -438,8 +414,7 @@ class PreviewResult {
 
   const PreviewResult({
     required this.encodedBytes,
-    required this.sourceRgbaBytes,
-    required this.previewRgbaBytes,
+    required this.artifactId,
     required this.format,
     required this.width,
     required this.height,
@@ -449,8 +424,7 @@ class PreviewResult {
   @override
   int get hashCode =>
       encodedBytes.hashCode ^
-      sourceRgbaBytes.hashCode ^
-      previewRgbaBytes.hashCode ^
+      artifactId.hashCode ^
       format.hashCode ^
       width.hashCode ^
       height.hashCode ^
@@ -462,8 +436,7 @@ class PreviewResult {
       other is PreviewResult &&
           runtimeType == other.runtimeType &&
           encodedBytes == other.encodedBytes &&
-          sourceRgbaBytes == other.sourceRgbaBytes &&
-          previewRgbaBytes == other.previewRgbaBytes &&
+          artifactId == other.artifactId &&
           format == other.format &&
           width == other.width &&
           height == other.height &&

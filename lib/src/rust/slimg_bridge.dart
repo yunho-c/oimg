@@ -23,20 +23,23 @@ class SlimgBridge {
       bridge_api.previewFile(request: request);
 
   Future<double?> computePreviewPixelMatchPercentage({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   }) => bridge_api.computePreviewPixelMatchPercentage(request: request);
 
   Future<double?> computePreviewMsSsim({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   }) => bridge_api.computePreviewMsSsim(request: request);
 
   Future<double?> computePreviewSsimulacra2({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   }) => bridge_api.computePreviewSsimulacra2(request: request);
 
   Future<RawImageResult?> computePreviewDifferenceImage({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   }) => bridge_api.computePreviewDifferenceImage(request: request);
+
+  Future<void> disposePreviewArtifact({required String artifactId}) =>
+      bridge_api.disposePreviewArtifact(artifactId: artifactId);
 
   Future<ProcessResult> processFile({required ProcessFileRequest request}) =>
       bridge_api.processFile(request: request);

@@ -90,7 +90,23 @@ final currentPreviewProvider = FutureProvider.autoDispose<OptimizationPreview?>(
 ) async {
   final requestId = ++_previewRequestSequence;
   final totalStopwatch = Stopwatch()..start();
+  final slimgApi = ref.read(slimgApiProvider);
+  String? artifactId;
   ref.onDispose(() {
+    final currentArtifactId = artifactId;
+    if (currentArtifactId != null) {
+      unawaited(
+        slimgApi
+            .disposePreviewArtifact(artifactId: currentArtifactId)
+            .catchError((Object error, StackTrace stackTrace) {
+              DeveloperDiagnostics.logTimingError(
+                'preview-artifact-dispose:$requestId',
+                error,
+                stackTrace,
+              );
+            }),
+      );
+    }
     DeveloperDiagnostics.logTiming(
       'preview:$requestId',
       'disposed total=${totalStopwatch.elapsedMilliseconds}ms',
@@ -128,6 +144,7 @@ final currentPreviewProvider = FutureProvider.autoDispose<OptimizationPreview?>(
       'preview:$requestId',
       'preview=${previewStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms format=${result.format} size=${result.sizeBytes}',
     );
+    artifactId = result.artifactId;
 
     return OptimizationPreview(
       sourceFile: plan.sourceFile,
@@ -192,7 +209,7 @@ final currentPreviewDisplayModeProvider =
     });
 
 final _currentPreviewMetricRequestProvider =
-    FutureProvider.autoDispose<PreviewQualityMetricsRequest?>((ref) async {
+    FutureProvider.autoDispose<PreviewArtifactRequest?>((ref) async {
       final controller = ref.watch(fileOpenControllerProvider);
       if (controller.isFolderSelected) {
         return null;
@@ -201,14 +218,7 @@ final _currentPreviewMetricRequestProvider =
       if (preview == null) {
         return null;
       }
-      return PreviewQualityMetricsRequest(
-        originalRgbaBytes: preview.result.sourceRgbaBytes,
-        originalWidth: preview.sourceFile.metadata.width,
-        originalHeight: preview.sourceFile.metadata.height,
-        previewRgbaBytes: preview.result.previewRgbaBytes,
-        previewWidth: preview.result.width,
-        previewHeight: preview.result.height,
-      );
+      return PreviewArtifactRequest(artifactId: preview.result.artifactId);
     });
 
 final currentPreviewDifferenceProvider =
@@ -235,7 +245,7 @@ final currentPreviewDifferenceProvider =
 
         DeveloperDiagnostics.logTiming(
           'preview-diff:$requestId',
-          'start width=${request.previewWidth} height=${request.previewHeight}',
+          'start artifact=${request.artifactId}',
         );
         final diffStopwatch = Stopwatch()..start();
         final result = await ref
@@ -294,7 +304,7 @@ final currentPreviewPixelMatchProvider =
 
         DeveloperDiagnostics.logTiming(
           'preview-metric:pixel-match:$requestId',
-          'start width=${request.previewWidth} height=${request.previewHeight}',
+          'start artifact=${request.artifactId}',
         );
         final metricStopwatch = Stopwatch()..start();
         final result = await ref
@@ -336,7 +346,7 @@ final currentPreviewMsSsimProvider =
 
         DeveloperDiagnostics.logTiming(
           'preview-metric:ms-ssim:$requestId',
-          'start width=${request.previewWidth} height=${request.previewHeight}',
+          'start artifact=${request.artifactId}',
         );
         final metricStopwatch = Stopwatch()..start();
         final result = await ref
@@ -378,7 +388,7 @@ final currentPreviewSsimulacra2Provider =
 
         DeveloperDiagnostics.logTiming(
           'preview-metric:ssimulacra2:$requestId',
-          'start width=${request.previewWidth} height=${request.previewHeight}',
+          'start artifact=${request.artifactId}',
         );
         final metricStopwatch = Stopwatch()..start();
         final result = await ref

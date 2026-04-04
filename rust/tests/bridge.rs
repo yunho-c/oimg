@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 use oimg_rust::api::bridge::{
     self, BatchJobState, BatchProcessRequest, ConvertOptions, CropOptions, CropSpec,
-    ImageOperation, OptimizeOptions, PreviewFileRequest, PreviewQualityMetricsRequest,
+    ImageOperation, OptimizeOptions, PreviewArtifactRequest, PreviewFileRequest,
     ProcessBytesRequest, ProcessFileBatchRequest, ProcessFileRequest, ResizeOptions, ResizeSpec,
 };
 use slimg_core::{convert, decode, Format, ImageData, PipelineOptions};
@@ -142,13 +142,8 @@ fn preview_metric_rpcs_return_values_for_same_dimension_preview() {
     })
     .unwrap();
 
-    let request = PreviewQualityMetricsRequest {
-        original_rgba_bytes: preview.source_rgba_bytes.clone(),
-        original_width: 48,
-        original_height: 32,
-        preview_rgba_bytes: preview.preview_rgba_bytes.clone(),
-        preview_width: preview.width,
-        preview_height: preview.height,
+    let request = PreviewArtifactRequest {
+        artifact_id: preview.artifact_id.clone(),
     };
 
     let pixel_match = bridge::compute_preview_pixel_match_percentage(request.clone())
@@ -181,6 +176,7 @@ fn preview_metric_rpcs_return_values_for_same_dimension_preview() {
     assert_eq!(diff.width, 48);
     assert_eq!(diff.height, 32);
     assert_eq!(diff.rgba_bytes.len(), 48 * 32 * 4);
+    bridge::dispose_preview_artifact(preview.artifact_id).unwrap();
 }
 
 #[test]
@@ -189,7 +185,7 @@ fn preview_metric_rpcs_return_none_when_metric_cannot_be_computed() {
     let input_path = dir.path().join("source.png");
     fs::write(&input_path, png_bytes()).unwrap();
 
-    let _preview = bridge::preview_file(PreviewFileRequest {
+    let preview = bridge::preview_file(PreviewFileRequest {
         input_path: input_path.to_string_lossy().into_owned(),
         operation: ImageOperation::Resize(ResizeOptions {
             resize: ResizeSpec::Width { value: 24 },
@@ -199,13 +195,8 @@ fn preview_metric_rpcs_return_none_when_metric_cannot_be_computed() {
     })
     .unwrap();
 
-    let request = PreviewQualityMetricsRequest {
-        original_rgba_bytes: gradient_image(48, 32).data,
-        original_width: 48,
-        original_height: 32,
-        preview_rgba_bytes: gradient_image(24, 16).data,
-        preview_width: 24,
-        preview_height: 16,
+    let request = PreviewArtifactRequest {
+        artifact_id: preview.artifact_id.clone(),
     };
 
     assert_eq!(
@@ -215,6 +206,34 @@ fn preview_metric_rpcs_return_none_when_metric_cannot_be_computed() {
     assert_eq!(bridge::compute_preview_ms_ssim(request.clone()).unwrap(), None);
     assert_eq!(bridge::compute_preview_ssimulacra2(request.clone()).unwrap(), None);
     assert_eq!(bridge::compute_preview_difference_image(request).unwrap(), None);
+    bridge::dispose_preview_artifact(preview.artifact_id).unwrap();
+}
+
+#[test]
+fn dispose_preview_artifact_invalidates_followup_requests() {
+    let dir = tempdir().unwrap();
+    let input_path = dir.path().join("source.png");
+    fs::write(&input_path, png_bytes()).unwrap();
+
+    let preview = bridge::preview_file(PreviewFileRequest {
+        input_path: input_path.to_string_lossy().into_owned(),
+        operation: ImageOperation::Convert(ConvertOptions {
+            target_format: "jpeg".to_string(),
+            quality: 80,
+        }),
+    })
+    .unwrap();
+
+    let request = PreviewArtifactRequest {
+        artifact_id: preview.artifact_id.clone(),
+    };
+    bridge::dispose_preview_artifact(preview.artifact_id).unwrap();
+
+    let error = bridge::compute_preview_ms_ssim(request).unwrap_err();
+    assert!(
+        error.to_string().contains("unknown preview artifact"),
+        "unexpected error: {error}"
+    );
 }
 
 #[test]

@@ -28,26 +28,31 @@ Future<PreviewResult> previewFile({required PreviewFileRequest request}) =>
     RustLib.instance.api.crateApiBridgePreviewFile(request: request);
 
 Future<double?> computePreviewPixelMatchPercentage({
-  required PreviewQualityMetricsRequest request,
+  required PreviewArtifactRequest request,
 }) => RustLib.instance.api.crateApiBridgeComputePreviewPixelMatchPercentage(
   request: request,
 );
 
 Future<double?> computePreviewMsSsim({
-  required PreviewQualityMetricsRequest request,
+  required PreviewArtifactRequest request,
 }) => RustLib.instance.api.crateApiBridgeComputePreviewMsSsim(request: request);
 
 Future<double?> computePreviewSsimulacra2({
-  required PreviewQualityMetricsRequest request,
+  required PreviewArtifactRequest request,
 }) => RustLib.instance.api.crateApiBridgeComputePreviewSsimulacra2(
   request: request,
 );
 
 Future<RawImageResult?> computePreviewDifferenceImage({
-  required PreviewQualityMetricsRequest request,
+  required PreviewArtifactRequest request,
 }) => RustLib.instance.api.crateApiBridgeComputePreviewDifferenceImage(
   request: request,
 );
+
+Future<void> disposePreviewArtifact({required String artifactId}) => RustLib
+    .instance
+    .api
+    .crateApiBridgeDisposePreviewArtifact(artifactId: artifactId);
 
 Future<ProcessResult> processFile({required ProcessFileRequest request}) =>
     RustLib.instance.api.crateApiBridgeProcessFile(request: request);

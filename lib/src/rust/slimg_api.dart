@@ -12,20 +12,22 @@ abstract class SlimgApi {
   Future<PreviewResult> previewFile({required PreviewFileRequest request});
 
   Future<double?> computePreviewPixelMatchPercentage({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   });
 
   Future<double?> computePreviewMsSsim({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   });
 
   Future<double?> computePreviewSsimulacra2({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   });
 
   Future<RawImageResult?> computePreviewDifferenceImage({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   });
+
+  Future<void> disposePreviewArtifact({required String artifactId});
 
   Future<ProcessResult> processFile({required ProcessFileRequest request});
 
@@ -88,12 +90,12 @@ class FrbSlimgApi implements SlimgApi {
 
   @override
   Future<double?> computePreviewPixelMatchPercentage({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   }) {
     final stopwatch = Stopwatch()..start();
     DeveloperDiagnostics.logTiming(
       'preview-metric:pixel-match',
-      'start width=${request.previewWidth} height=${request.previewHeight}',
+      'start artifact=${request.artifactId}',
     );
     return _bridge
         .computePreviewPixelMatchPercentage(request: request)
@@ -120,12 +122,12 @@ class FrbSlimgApi implements SlimgApi {
 
   @override
   Future<double?> computePreviewMsSsim({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   }) {
     final stopwatch = Stopwatch()..start();
     DeveloperDiagnostics.logTiming(
       'preview-metric:ms-ssim',
-      'start width=${request.previewWidth} height=${request.previewHeight}',
+      'start artifact=${request.artifactId}',
     );
     return _bridge
         .computePreviewMsSsim(request: request)
@@ -152,12 +154,12 @@ class FrbSlimgApi implements SlimgApi {
 
   @override
   Future<double?> computePreviewSsimulacra2({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   }) {
     final stopwatch = Stopwatch()..start();
     DeveloperDiagnostics.logTiming(
       'preview-metric:ssimulacra2',
-      'start width=${request.previewWidth} height=${request.previewHeight}',
+      'start artifact=${request.artifactId}',
     );
     return _bridge
         .computePreviewSsimulacra2(request: request)
@@ -184,12 +186,12 @@ class FrbSlimgApi implements SlimgApi {
 
   @override
   Future<RawImageResult?> computePreviewDifferenceImage({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   }) {
     final stopwatch = Stopwatch()..start();
     DeveloperDiagnostics.logTiming(
       'preview-diff',
-      'start width=${request.previewWidth} height=${request.previewHeight}',
+      'start artifact=${request.artifactId}',
     );
     return _bridge
         .computePreviewDifferenceImage(request: request)
@@ -212,6 +214,11 @@ class FrbSlimgApi implements SlimgApi {
             throw error;
           },
         );
+  }
+
+  @override
+  Future<void> disposePreviewArtifact({required String artifactId}) {
+    return _bridge.disposePreviewArtifact(artifactId: artifactId);
   }
 
   @override

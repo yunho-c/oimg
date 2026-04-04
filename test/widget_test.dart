@@ -629,8 +629,7 @@ class _FakeSlimgApi implements SlimgApi {
     }
     return PreviewResult(
       encodedBytes: _previewBytes,
-      sourceRgbaBytes: Uint8List(48 * 32 * 4),
-      previewRgbaBytes: Uint8List(48 * 32 * 4),
+      artifactId: 'preview-artifact-1',
       format: 'jpeg',
       width: 48,
       height: 32,
@@ -645,7 +644,7 @@ class _FakeSlimgApi implements SlimgApi {
 
   @override
   Future<double?> computePreviewPixelMatchPercentage({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   }) async {
     if (pixelMatchDelay > Duration.zero) {
       await Future<void>.delayed(pixelMatchDelay);
@@ -655,7 +654,7 @@ class _FakeSlimgApi implements SlimgApi {
 
   @override
   Future<double?> computePreviewMsSsim({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   }) async {
     if (msSsimDelay > Duration.zero) {
       await Future<void>.delayed(msSsimDelay);
@@ -665,7 +664,7 @@ class _FakeSlimgApi implements SlimgApi {
 
   @override
   Future<double?> computePreviewSsimulacra2({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   }) async {
     if (ssimulacra2Delay > Duration.zero) {
       await Future<void>.delayed(ssimulacra2Delay);
@@ -675,7 +674,7 @@ class _FakeSlimgApi implements SlimgApi {
 
   @override
   Future<RawImageResult?> computePreviewDifferenceImage({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   }) async {
     differenceCallCount += 1;
     if (differenceDelay > Duration.zero) {
@@ -687,6 +686,9 @@ class _FakeSlimgApi implements SlimgApi {
       height: 32,
     );
   }
+
+  @override
+  Future<void> disposePreviewArtifact({required String artifactId}) async {}
 
   @override
   Future<ProcessResult> processFile({required ProcessFileRequest request}) {

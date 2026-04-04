@@ -4,8 +4,8 @@ pub use crate::error::SlimgBridgeError;
 pub use crate::types::{
     BatchItemResult, BatchJobHandle, BatchJobSnapshot, BatchJobState, BatchProcessRequest,
     ConvertOptions, CropOptions, CropSpec, EncodedImageResult, ExtendOptions, ExtendSpec, FillSpec,
-    FormatInfo, ImageMetadata, ImageOperation, OptimizeOptions, PreviewFileRequest,
-    PreviewQualityMetricsRequest, PreviewResult, ProcessBytesRequest, RawImageResult,
+    FormatInfo, ImageMetadata, ImageOperation, OptimizeOptions, PreviewArtifactRequest,
+    PreviewFileRequest, PreviewResult, ProcessBytesRequest, RawImageResult,
     ProcessFileBatchRequest, ProcessFileRequest, ProcessResult, ResizeOptions, ResizeSpec,
 };
 
@@ -44,23 +44,30 @@ pub fn preview_file(request: PreviewFileRequest) -> Result<PreviewResult> {
 }
 
 pub fn compute_preview_pixel_match_percentage(
-    request: PreviewQualityMetricsRequest,
+    request: PreviewArtifactRequest,
 ) -> Result<Option<f64>> {
     with_internal(|| crate::metrics::compute_preview_pixel_match_percentage(request))
 }
 
-pub fn compute_preview_ms_ssim(request: PreviewQualityMetricsRequest) -> Result<Option<f64>> {
+pub fn compute_preview_ms_ssim(request: PreviewArtifactRequest) -> Result<Option<f64>> {
     with_internal(|| crate::metrics::compute_preview_ms_ssim(request))
 }
 
-pub fn compute_preview_ssimulacra2(request: PreviewQualityMetricsRequest) -> Result<Option<f64>> {
+pub fn compute_preview_ssimulacra2(request: PreviewArtifactRequest) -> Result<Option<f64>> {
     with_internal(|| crate::metrics::compute_preview_ssimulacra2(request))
 }
 
 pub fn compute_preview_difference_image(
-    request: PreviewQualityMetricsRequest,
+    request: PreviewArtifactRequest,
 ) -> Result<Option<RawImageResult>> {
     with_internal(|| crate::metrics::compute_preview_difference_image(request))
+}
+
+pub fn dispose_preview_artifact(artifact_id: String) -> Result<()> {
+    with_internal(|| {
+        crate::preview_artifacts::preview_artifact_store().remove(&artifact_id);
+        Ok(())
+    })
 }
 
 pub fn process_file(request: ProcessFileRequest) -> Result<ProcessResult> {

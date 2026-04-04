@@ -68,7 +68,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -1760960813;
+  int get rustContentHash => 1563726728;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -82,19 +82,23 @@ abstract class RustLibApi extends BaseApi {
   Future<void> crateApiBridgeCancelProcessFileBatchJob({required String jobId});
 
   Future<RawImageResult?> crateApiBridgeComputePreviewDifferenceImage({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   });
 
   Future<double?> crateApiBridgeComputePreviewMsSsim({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   });
 
   Future<double?> crateApiBridgeComputePreviewPixelMatchPercentage({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   });
 
   Future<double?> crateApiBridgeComputePreviewSsimulacra2({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
+  });
+
+  Future<void> crateApiBridgeDisposePreviewArtifact({
+    required String artifactId,
   });
 
   Future<void> crateApiBridgeDisposeProcessFileBatchJob({
@@ -185,16 +189,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @override
   Future<RawImageResult?> crateApiBridgeComputePreviewDifferenceImage({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   }) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_box_autoadd_preview_quality_metrics_request(
-            request,
-            serializer,
-          );
+          sse_encode_box_autoadd_preview_artifact_request(request, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
@@ -221,16 +222,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @override
   Future<double?> crateApiBridgeComputePreviewMsSsim({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   }) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_box_autoadd_preview_quality_metrics_request(
-            request,
-            serializer,
-          );
+          sse_encode_box_autoadd_preview_artifact_request(request, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
@@ -257,16 +255,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @override
   Future<double?> crateApiBridgeComputePreviewPixelMatchPercentage({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   }) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_box_autoadd_preview_quality_metrics_request(
-            request,
-            serializer,
-          );
+          sse_encode_box_autoadd_preview_artifact_request(request, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
@@ -294,16 +289,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @override
   Future<double?> crateApiBridgeComputePreviewSsimulacra2({
-    required PreviewQualityMetricsRequest request,
+    required PreviewArtifactRequest request,
   }) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_box_autoadd_preview_quality_metrics_request(
-            request,
-            serializer,
-          );
+          sse_encode_box_autoadd_preview_artifact_request(request, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
@@ -329,6 +321,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<void> crateApiBridgeDisposePreviewArtifact({
+    required String artifactId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(artifactId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 6,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiBridgeDisposePreviewArtifactConstMeta,
+        argValues: [artifactId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBridgeDisposePreviewArtifactConstMeta =>
+      const TaskConstMeta(
+        debugName: "dispose_preview_artifact",
+        argNames: ["artifactId"],
+      );
+
+  @override
   Future<void> crateApiBridgeDisposeProcessFileBatchJob({
     required String jobId,
   }) {
@@ -340,7 +365,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 7,
             port: port_,
           );
         },
@@ -373,7 +398,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 8,
             port: port_,
           );
         },
@@ -403,7 +428,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 9,
             port: port_,
           );
         },
@@ -431,7 +456,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 10,
             port: port_,
           );
         },
@@ -459,7 +484,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 11,
             port: port_,
           );
         },
@@ -489,7 +514,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 12,
             port: port_,
           );
         },
@@ -519,7 +544,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 13,
             port: port_,
           );
         },
@@ -549,7 +574,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 14,
             port: port_,
           );
         },
@@ -582,7 +607,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 15,
             port: port_,
           );
         },
@@ -615,7 +640,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 16,
             port: port_,
           );
         },
@@ -640,7 +665,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_bool(enabled, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 17)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -674,7 +699,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 18,
             port: port_,
           );
         },
@@ -701,7 +726,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 18)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 19)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_format_info,
@@ -723,7 +748,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 19)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 20)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -863,16 +888,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  PreviewFileRequest dco_decode_box_autoadd_preview_file_request(dynamic raw) {
+  PreviewArtifactRequest dco_decode_box_autoadd_preview_artifact_request(
+    dynamic raw,
+  ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dco_decode_preview_file_request(raw);
+    return dco_decode_preview_artifact_request(raw);
   }
 
   @protected
-  PreviewQualityMetricsRequest
-  dco_decode_box_autoadd_preview_quality_metrics_request(dynamic raw) {
+  PreviewFileRequest dco_decode_box_autoadd_preview_file_request(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dco_decode_preview_quality_metrics_request(raw);
+    return dco_decode_preview_file_request(raw);
   }
 
   @protected
@@ -1196,6 +1222,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PreviewArtifactRequest dco_decode_preview_artifact_request(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 1)
+      throw Exception('unexpected arr length: expect 1 but see ${arr.length}');
+    return PreviewArtifactRequest(artifactId: dco_decode_String(arr[0]));
+  }
+
+  @protected
   PreviewFileRequest dco_decode_preview_file_request(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -1208,37 +1243,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  PreviewQualityMetricsRequest dco_decode_preview_quality_metrics_request(
-    dynamic raw,
-  ) {
+  PreviewResult dco_decode_preview_result(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
     if (arr.length != 6)
       throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
-    return PreviewQualityMetricsRequest(
-      originalRgbaBytes: dco_decode_list_prim_u_8_strict(arr[0]),
-      originalWidth: dco_decode_u_32(arr[1]),
-      originalHeight: dco_decode_u_32(arr[2]),
-      previewRgbaBytes: dco_decode_list_prim_u_8_strict(arr[3]),
-      previewWidth: dco_decode_u_32(arr[4]),
-      previewHeight: dco_decode_u_32(arr[5]),
-    );
-  }
-
-  @protected
-  PreviewResult dco_decode_preview_result(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 7)
-      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
     return PreviewResult(
       encodedBytes: dco_decode_list_prim_u_8_strict(arr[0]),
-      sourceRgbaBytes: dco_decode_list_prim_u_8_strict(arr[1]),
-      previewRgbaBytes: dco_decode_list_prim_u_8_strict(arr[2]),
-      format: dco_decode_String(arr[3]),
-      width: dco_decode_u_32(arr[4]),
-      height: dco_decode_u_32(arr[5]),
-      sizeBytes: dco_decode_u_64(arr[6]),
+      artifactId: dco_decode_String(arr[1]),
+      format: dco_decode_String(arr[2]),
+      width: dco_decode_u_32(arr[3]),
+      height: dco_decode_u_32(arr[4]),
+      sizeBytes: dco_decode_u_64(arr[5]),
     );
   }
 
@@ -1554,20 +1570,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PreviewArtifactRequest sse_decode_box_autoadd_preview_artifact_request(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_preview_artifact_request(deserializer));
+  }
+
+  @protected
   PreviewFileRequest sse_decode_box_autoadd_preview_file_request(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_preview_file_request(deserializer));
-  }
-
-  @protected
-  PreviewQualityMetricsRequest
-  sse_decode_box_autoadd_preview_quality_metrics_request(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return (sse_decode_preview_quality_metrics_request(deserializer));
   }
 
   @protected
@@ -1978,6 +1993,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PreviewArtifactRequest sse_decode_preview_artifact_request(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_artifactId = sse_decode_String(deserializer);
+    return PreviewArtifactRequest(artifactId: var_artifactId);
+  }
+
+  @protected
   PreviewFileRequest sse_decode_preview_file_request(
     SseDeserializer deserializer,
   ) {
@@ -1991,40 +2015,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  PreviewQualityMetricsRequest sse_decode_preview_quality_metrics_request(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_originalRgbaBytes = sse_decode_list_prim_u_8_strict(deserializer);
-    var var_originalWidth = sse_decode_u_32(deserializer);
-    var var_originalHeight = sse_decode_u_32(deserializer);
-    var var_previewRgbaBytes = sse_decode_list_prim_u_8_strict(deserializer);
-    var var_previewWidth = sse_decode_u_32(deserializer);
-    var var_previewHeight = sse_decode_u_32(deserializer);
-    return PreviewQualityMetricsRequest(
-      originalRgbaBytes: var_originalRgbaBytes,
-      originalWidth: var_originalWidth,
-      originalHeight: var_originalHeight,
-      previewRgbaBytes: var_previewRgbaBytes,
-      previewWidth: var_previewWidth,
-      previewHeight: var_previewHeight,
-    );
-  }
-
-  @protected
   PreviewResult sse_decode_preview_result(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_encodedBytes = sse_decode_list_prim_u_8_strict(deserializer);
-    var var_sourceRgbaBytes = sse_decode_list_prim_u_8_strict(deserializer);
-    var var_previewRgbaBytes = sse_decode_list_prim_u_8_strict(deserializer);
+    var var_artifactId = sse_decode_String(deserializer);
     var var_format = sse_decode_String(deserializer);
     var var_width = sse_decode_u_32(deserializer);
     var var_height = sse_decode_u_32(deserializer);
     var var_sizeBytes = sse_decode_u_64(deserializer);
     return PreviewResult(
       encodedBytes: var_encodedBytes,
-      sourceRgbaBytes: var_sourceRgbaBytes,
-      previewRgbaBytes: var_previewRgbaBytes,
+      artifactId: var_artifactId,
       format: var_format,
       width: var_width,
       height: var_height,
@@ -2358,21 +2359,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_preview_artifact_request(
+    PreviewArtifactRequest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_preview_artifact_request(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_preview_file_request(
     PreviewFileRequest self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_preview_file_request(self, serializer);
-  }
-
-  @protected
-  void sse_encode_box_autoadd_preview_quality_metrics_request(
-    PreviewQualityMetricsRequest self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_preview_quality_metrics_request(self, serializer);
   }
 
   @protected
@@ -2750,6 +2751,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_preview_artifact_request(
+    PreviewArtifactRequest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.artifactId, serializer);
+  }
+
+  @protected
   void sse_encode_preview_file_request(
     PreviewFileRequest self,
     SseSerializer serializer,
@@ -2760,25 +2770,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_preview_quality_metrics_request(
-    PreviewQualityMetricsRequest self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_list_prim_u_8_strict(self.originalRgbaBytes, serializer);
-    sse_encode_u_32(self.originalWidth, serializer);
-    sse_encode_u_32(self.originalHeight, serializer);
-    sse_encode_list_prim_u_8_strict(self.previewRgbaBytes, serializer);
-    sse_encode_u_32(self.previewWidth, serializer);
-    sse_encode_u_32(self.previewHeight, serializer);
-  }
-
-  @protected
   void sse_encode_preview_result(PreviewResult self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_prim_u_8_strict(self.encodedBytes, serializer);
-    sse_encode_list_prim_u_8_strict(self.sourceRgbaBytes, serializer);
-    sse_encode_list_prim_u_8_strict(self.previewRgbaBytes, serializer);
+    sse_encode_String(self.artifactId, serializer);
     sse_encode_String(self.format, serializer);
     sse_encode_u_32(self.width, serializer);
     sse_encode_u_32(self.height, serializer);

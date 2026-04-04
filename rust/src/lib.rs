@@ -9,5 +9,6 @@ mod frb_generated;
 mod fs;
 mod metrics;
 mod preview;
+mod preview_artifacts;
 mod service_ffi;
 mod types;
