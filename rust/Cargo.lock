@@ -671,6 +671,7 @@ dependencies = [
  "archmage",
  "magetypes",
  "num-traits",
+ "rayon",
  "thiserror",
  "yuvxyb",
  "yuvxyb-math",
