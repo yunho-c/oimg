@@ -354,6 +354,41 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
   });
 
+  testWidgets('savings tile toggles between percent and ratio', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('50.0%'), findsOneWidget);
+    expect(find.text('2.0x'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('bottom-stat-Savings')));
+    await tester.pump();
+
+    expect(find.text('2.0x'), findsOneWidget);
+    expect(find.text('50.0%'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('bottom-stat-Savings')));
+    await tester.pump();
+
+    expect(find.text('50.0%'), findsOneWidget);
+  });
+
   testWidgets('toggles advanced mode in the settings sidebar', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));

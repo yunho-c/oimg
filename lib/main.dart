@@ -35,6 +35,24 @@ const _defaultBottomSidebarHeight = 188.0;
 const _minBottomSidebarHeight = 140.0;
 const _maxBottomSidebarHeight = 320.0;
 
+enum _SavingsDisplayMode { percent, ratio }
+
+class _SavingsDisplayModeNotifier extends Notifier<_SavingsDisplayMode> {
+  @override
+  _SavingsDisplayMode build() => _SavingsDisplayMode.percent;
+
+  void toggle() {
+    state = state == _SavingsDisplayMode.percent
+        ? _SavingsDisplayMode.ratio
+        : _SavingsDisplayMode.percent;
+  }
+}
+
+final _savingsDisplayModeProvider =
+    NotifierProvider<_SavingsDisplayModeNotifier, _SavingsDisplayMode>(
+  _SavingsDisplayModeNotifier.new,
+);
+
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   await _configureWindow();
@@ -2422,16 +2440,23 @@ class _BottomStatRow extends StatelessWidget {
   }
 }
 
-class _BottomStatTile extends StatelessWidget {
+class _BottomStatTile extends ConsumerWidget {
   const _BottomStatTile({required this.stat});
 
   final _BottomStatData stat;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final savingsDisplayMode = ref.watch(_savingsDisplayModeProvider);
+    final isToggleable = stat.toggleable && !stat.loading;
+    final displayedValue = stat.toggleable &&
+            savingsDisplayMode == _SavingsDisplayMode.ratio
+        ? (stat.alternateValue ?? stat.value)
+        : stat.value;
 
-    return Container(
+    final tile = Container(
+      key: ValueKey('bottom-stat-${stat.label}'),
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
       decoration: BoxDecoration(
         color: theme.colorScheme.secondary.withValues(alpha: 0.2),
@@ -2453,7 +2478,7 @@ class _BottomStatTile extends StatelessWidget {
             )
           else
             Text(
-              stat.value,
+              displayedValue,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -2463,6 +2488,21 @@ class _BottomStatTile extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+
+    if (!isToggleable) {
+      return tile;
+    }
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          ref.read(_savingsDisplayModeProvider.notifier).toggle();
+        },
+        child: tile,
       ),
     );
   }
@@ -2800,7 +2840,9 @@ class _BottomSummaryViewModel {
         _BottomStatData(
           label: 'Savings',
           value: _formatNullablePercentValue(savingsPercent),
+          alternateValue: _formatSavingsRatio(originalBytes, newBytes),
           color: const Color(0xFF16A34A),
+          toggleable: true,
         ),
         const _BottomStatData(
           label: 'Similarity',
@@ -2872,7 +2914,9 @@ class _BottomSummaryViewModel {
         _BottomStatData(
           label: 'Savings',
           value: _formatNullablePercentValue(savingsPercent),
+          alternateValue: _formatSavingsRatio(originalBytes, newBytes),
           color: const Color(0xFF16A34A),
+          toggleable: true,
         ),
         const _BottomStatData(
           label: 'Similarity',
@@ -2920,13 +2964,17 @@ class _BottomStatData {
     required this.label,
     required this.value,
     required this.color,
+    this.alternateValue,
     this.loading = false,
+    this.toggleable = false,
   });
 
   final String label;
   final String value;
   final Color color;
+  final String? alternateValue;
   final bool loading;
+  final bool toggleable;
 }
 
 class _BottomInfoRowData {
@@ -3051,6 +3099,15 @@ String _formatNullableMetric(double? value, {int digits = 3}) {
 
 String _formatNullableMetricPercent(double? value) {
   return _formatNullablePercent(value) ?? 'N/A';
+}
+
+String _formatSavingsRatio(int? originalBytes, int? newBytes) {
+  if (originalBytes == null || newBytes == null || originalBytes <= 0 || newBytes <= 0) {
+    return '—';
+  }
+
+  final ratio = originalBytes / newBytes;
+  return '${ratio.toStringAsFixed(1)}x';
 }
 
 String _formatMetricTimingTooltip(int elapsedMilliseconds) {
