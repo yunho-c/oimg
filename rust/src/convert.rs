@@ -68,7 +68,8 @@ pub(crate) fn preview_file(request: crate::types::PreviewFileRequest) -> Result<
         let read_elapsed = read_start.elapsed();
 
         let operation_start = Instant::now();
-        let output = run_operation(&data, &request.operation, None)?;
+        let (source_image, source_format) = decode(&data)?;
+        let output = run_preview_operation(&source_image, source_format, &request.operation, None)?;
         let operation_elapsed = operation_start.elapsed();
         crate::diagnostics::timing_log(format!(
             "preview path={} read={}ms operation={}ms input_bytes={}",
@@ -80,6 +81,8 @@ pub(crate) fn preview_file(request: crate::types::PreviewFileRequest) -> Result<
 
         Ok(PreviewResult {
             encoded_bytes: output.data.clone(),
+            source_rgba_bytes: source_image.data,
+            preview_rgba_bytes: output.preview_rgba_bytes,
             format: format_to_string(output.format),
             width: output.width,
             height: output.height,
@@ -132,6 +135,14 @@ struct OperationOutput {
     width: u32,
     height: u32,
     should_write: bool,
+}
+
+struct PreviewOperationOutput {
+    data: Vec<u8>,
+    preview_rgba_bytes: Vec<u8>,
+    format: Format,
+    width: u32,
+    height: u32,
 }
 
 pub(crate) fn process_file_request_with_threads(
@@ -267,6 +278,102 @@ fn run_operation(
             })
         }),
     }
+}
+
+fn run_preview_operation(
+    image: &slimg_core::ImageData,
+    source_format: Format,
+    operation: &ImageOperation,
+    threads: Option<usize>,
+) -> Result<PreviewOperationOutput> {
+    let output = match operation {
+        ImageOperation::Convert(options) => {
+            let quality = validate_quality(options.quality)?;
+            let target_format = crate::codec::parse_format(&options.target_format)?;
+            let result = core_convert(
+                image,
+                &PipelineOptions {
+                    format: target_format,
+                    quality,
+                    threads,
+                    resize: None,
+                    crop: None,
+                    extend: None,
+                    fill_color: None,
+                },
+            )?;
+            (result.data, result.format, result.width, result.height)
+        }
+        ImageOperation::Optimize(options) => {
+            let quality = validate_quality(options.quality)?;
+            let codec = get_codec(source_format);
+            let encoded = codec.encode(image, &EncodeOptions { quality, threads })?;
+            (encoded, source_format, image.width, image.height)
+        }
+        ImageOperation::Resize(options) => {
+            let result = core_convert(
+                image,
+                &PipelineOptions {
+                    format: resolve_optional_target_format(
+                        options.target_format.as_deref(),
+                        source_format,
+                    )?,
+                    quality: validate_quality(options.quality)?,
+                    threads,
+                    resize: Some(map_resize_spec(&options.resize)?),
+                    crop: None,
+                    extend: None,
+                    fill_color: None,
+                },
+            )?;
+            (result.data, result.format, result.width, result.height)
+        }
+        ImageOperation::Crop(options) => {
+            let result = core_convert(
+                image,
+                &PipelineOptions {
+                    format: resolve_optional_target_format(
+                        options.target_format.as_deref(),
+                        source_format,
+                    )?,
+                    quality: validate_quality(options.quality)?,
+                    threads,
+                    resize: None,
+                    crop: Some(map_crop_spec(&options.crop)?),
+                    extend: None,
+                    fill_color: None,
+                },
+            )?;
+            (result.data, result.format, result.width, result.height)
+        }
+        ImageOperation::Extend(options) => {
+            let result = core_convert(
+                image,
+                &PipelineOptions {
+                    format: resolve_optional_target_format(
+                        options.target_format.as_deref(),
+                        source_format,
+                    )?,
+                    quality: validate_quality(options.quality)?,
+                    threads,
+                    resize: None,
+                    crop: None,
+                    extend: Some(map_extend_spec(&options.extend)?),
+                    fill_color: map_fill_spec(options.fill.as_ref()),
+                },
+            )?;
+            (result.data, result.format, result.width, result.height)
+        }
+    };
+
+    let (preview_image, _) = decode(&output.0)?;
+    Ok(PreviewOperationOutput {
+        data: output.0,
+        preview_rgba_bytes: preview_image.data,
+        format: output.1,
+        width: output.2,
+        height: output.3,
+    })
 }
 
 fn convert_bytes(

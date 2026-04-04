@@ -54,9 +54,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   CropOptions dco_decode_box_autoadd_crop_options(dynamic raw);
 
   @protected
-  EncodedImageResult dco_decode_box_autoadd_encoded_image_result(dynamic raw);
-
-  @protected
   ExtendOptions dco_decode_box_autoadd_extend_options(dynamic raw);
 
   @protected
@@ -88,6 +85,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ProcessResult dco_decode_box_autoadd_process_result(dynamic raw);
+
+  @protected
+  RawImageResult dco_decode_box_autoadd_raw_image_result(dynamic raw);
 
   @protected
   ResizeOptions dco_decode_box_autoadd_resize_options(dynamic raw);
@@ -156,11 +156,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? dco_decode_opt_String(dynamic raw);
 
   @protected
-  EncodedImageResult? dco_decode_opt_box_autoadd_encoded_image_result(
-    dynamic raw,
-  );
-
-  @protected
   double? dco_decode_opt_box_autoadd_f_64(dynamic raw);
 
   @protected
@@ -168,6 +163,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ProcessResult? dco_decode_opt_box_autoadd_process_result(dynamic raw);
+
+  @protected
+  RawImageResult? dco_decode_opt_box_autoadd_raw_image_result(dynamic raw);
 
   @protected
   SlimgBridgeError? dco_decode_opt_box_autoadd_slimg_bridge_error(dynamic raw);
@@ -200,6 +198,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ProcessResult dco_decode_process_result(dynamic raw);
+
+  @protected
+  RawImageResult dco_decode_raw_image_result(dynamic raw);
 
   @protected
   ResizeOptions dco_decode_resize_options(dynamic raw);
@@ -262,11 +263,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   CropOptions sse_decode_box_autoadd_crop_options(SseDeserializer deserializer);
 
   @protected
-  EncodedImageResult sse_decode_box_autoadd_encoded_image_result(
-    SseDeserializer deserializer,
-  );
-
-  @protected
   ExtendOptions sse_decode_box_autoadd_extend_options(
     SseDeserializer deserializer,
   );
@@ -310,6 +306,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ProcessResult sse_decode_box_autoadd_process_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RawImageResult sse_decode_box_autoadd_raw_image_result(
     SseDeserializer deserializer,
   );
 
@@ -390,11 +391,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? sse_decode_opt_String(SseDeserializer deserializer);
 
   @protected
-  EncodedImageResult? sse_decode_opt_box_autoadd_encoded_image_result(
-    SseDeserializer deserializer,
-  );
-
-  @protected
   double? sse_decode_opt_box_autoadd_f_64(SseDeserializer deserializer);
 
   @protected
@@ -402,6 +398,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ProcessResult? sse_decode_opt_box_autoadd_process_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RawImageResult? sse_decode_opt_box_autoadd_raw_image_result(
     SseDeserializer deserializer,
   );
 
@@ -446,6 +447,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ProcessResult sse_decode_process_result(SseDeserializer deserializer);
+
+  @protected
+  RawImageResult sse_decode_raw_image_result(SseDeserializer deserializer);
 
   @protected
   ResizeOptions sse_decode_resize_options(SseDeserializer deserializer);
@@ -526,12 +530,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_box_autoadd_encoded_image_result(
-    EncodedImageResult self,
-    SseSerializer serializer,
-  );
-
-  @protected
   void sse_encode_box_autoadd_extend_options(
     ExtendOptions self,
     SseSerializer serializer,
@@ -585,6 +583,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_process_result(
     ProcessResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_raw_image_result(
+    RawImageResult self,
     SseSerializer serializer,
   );
 
@@ -682,12 +686,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_String(String? self, SseSerializer serializer);
 
   @protected
-  void sse_encode_opt_box_autoadd_encoded_image_result(
-    EncodedImageResult? self,
-    SseSerializer serializer,
-  );
-
-  @protected
   void sse_encode_opt_box_autoadd_f_64(double? self, SseSerializer serializer);
 
   @protected
@@ -699,6 +697,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_opt_box_autoadd_process_result(
     ProcessResult? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_raw_image_result(
+    RawImageResult? self,
     SseSerializer serializer,
   );
 
@@ -752,6 +756,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_process_result(ProcessResult self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_raw_image_result(
+    RawImageResult self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_resize_options(ResizeOptions self, SseSerializer serializer);

@@ -1106,17 +1106,6 @@ impl SseDecode for Option<String> {
     }
 }
 
-impl SseDecode for Option<crate::types::EncodedImageResult> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        if (<bool>::sse_decode(deserializer)) {
-            return Some(<crate::types::EncodedImageResult>::sse_decode(deserializer));
-        } else {
-            return None;
-        }
-    }
-}
-
 impl SseDecode for Option<f64> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1144,6 +1133,17 @@ impl SseDecode for Option<crate::types::ProcessResult> {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         if (<bool>::sse_decode(deserializer)) {
             return Some(<crate::types::ProcessResult>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<crate::types::RawImageResult> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::types::RawImageResult>::sse_decode(deserializer));
         } else {
             return None;
         }
@@ -1199,11 +1199,19 @@ impl SseDecode for crate::types::PreviewFileRequest {
 impl SseDecode for crate::types::PreviewQualityMetricsRequest {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_inputPath = <String>::sse_decode(deserializer);
-        let mut var_previewEncodedBytes = <Vec<u8>>::sse_decode(deserializer);
+        let mut var_originalRgbaBytes = <Vec<u8>>::sse_decode(deserializer);
+        let mut var_originalWidth = <u32>::sse_decode(deserializer);
+        let mut var_originalHeight = <u32>::sse_decode(deserializer);
+        let mut var_previewRgbaBytes = <Vec<u8>>::sse_decode(deserializer);
+        let mut var_previewWidth = <u32>::sse_decode(deserializer);
+        let mut var_previewHeight = <u32>::sse_decode(deserializer);
         return crate::types::PreviewQualityMetricsRequest {
-            input_path: var_inputPath,
-            preview_encoded_bytes: var_previewEncodedBytes,
+            original_rgba_bytes: var_originalRgbaBytes,
+            original_width: var_originalWidth,
+            original_height: var_originalHeight,
+            preview_rgba_bytes: var_previewRgbaBytes,
+            preview_width: var_previewWidth,
+            preview_height: var_previewHeight,
         };
     }
 }
@@ -1212,12 +1220,16 @@ impl SseDecode for crate::types::PreviewResult {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_encodedBytes = <Vec<u8>>::sse_decode(deserializer);
+        let mut var_sourceRgbaBytes = <Vec<u8>>::sse_decode(deserializer);
+        let mut var_previewRgbaBytes = <Vec<u8>>::sse_decode(deserializer);
         let mut var_format = <String>::sse_decode(deserializer);
         let mut var_width = <u32>::sse_decode(deserializer);
         let mut var_height = <u32>::sse_decode(deserializer);
         let mut var_sizeBytes = <u64>::sse_decode(deserializer);
         return crate::types::PreviewResult {
             encoded_bytes: var_encodedBytes,
+            source_rgba_bytes: var_sourceRgbaBytes,
+            preview_rgba_bytes: var_previewRgbaBytes,
             format: var_format,
             width: var_width,
             height: var_height,
@@ -1284,6 +1296,20 @@ impl SseDecode for crate::types::ProcessResult {
             original_size: var_originalSize,
             new_size: var_newSize,
             did_write: var_didWrite,
+        };
+    }
+}
+
+impl SseDecode for crate::types::RawImageResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_rgbaBytes = <Vec<u8>>::sse_decode(deserializer);
+        let mut var_width = <u32>::sse_decode(deserializer);
+        let mut var_height = <u32>::sse_decode(deserializer);
+        return crate::types::RawImageResult {
+            rgba_bytes: var_rgbaBytes,
+            width: var_width,
+            height: var_height,
         };
     }
 }
@@ -1915,8 +1941,12 @@ impl flutter_rust_bridge::IntoIntoDart<crate::types::PreviewFileRequest>
 impl flutter_rust_bridge::IntoDart for crate::types::PreviewQualityMetricsRequest {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
-            self.input_path.into_into_dart().into_dart(),
-            self.preview_encoded_bytes.into_into_dart().into_dart(),
+            self.original_rgba_bytes.into_into_dart().into_dart(),
+            self.original_width.into_into_dart().into_dart(),
+            self.original_height.into_into_dart().into_dart(),
+            self.preview_rgba_bytes.into_into_dart().into_dart(),
+            self.preview_width.into_into_dart().into_dart(),
+            self.preview_height.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -1937,6 +1967,8 @@ impl flutter_rust_bridge::IntoDart for crate::types::PreviewResult {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.encoded_bytes.into_into_dart().into_dart(),
+            self.source_rgba_bytes.into_into_dart().into_dart(),
+            self.preview_rgba_bytes.into_into_dart().into_dart(),
             self.format.into_into_dart().into_dart(),
             self.width.into_into_dart().into_dart(),
             self.height.into_into_dart().into_dart(),
@@ -2038,6 +2070,25 @@ impl flutter_rust_bridge::IntoIntoDart<crate::types::ProcessResult>
     for crate::types::ProcessResult
 {
     fn into_into_dart(self) -> crate::types::ProcessResult {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::types::RawImageResult {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.rgba_bytes.into_into_dart().into_dart(),
+            self.width.into_into_dart().into_dart(),
+            self.height.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::types::RawImageResult {}
+impl flutter_rust_bridge::IntoIntoDart<crate::types::RawImageResult>
+    for crate::types::RawImageResult
+{
+    fn into_into_dart(self) -> crate::types::RawImageResult {
         self
     }
 }
@@ -2471,16 +2522,6 @@ impl SseEncode for Option<String> {
     }
 }
 
-impl SseEncode for Option<crate::types::EncodedImageResult> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <bool>::sse_encode(self.is_some(), serializer);
-        if let Some(value) = self {
-            <crate::types::EncodedImageResult>::sse_encode(value, serializer);
-        }
-    }
-}
-
 impl SseEncode for Option<f64> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2507,6 +2548,16 @@ impl SseEncode for Option<crate::types::ProcessResult> {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
             <crate::types::ProcessResult>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<crate::types::RawImageResult> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::types::RawImageResult>::sse_encode(value, serializer);
         }
     }
 }
@@ -2550,8 +2601,12 @@ impl SseEncode for crate::types::PreviewFileRequest {
 impl SseEncode for crate::types::PreviewQualityMetricsRequest {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <String>::sse_encode(self.input_path, serializer);
-        <Vec<u8>>::sse_encode(self.preview_encoded_bytes, serializer);
+        <Vec<u8>>::sse_encode(self.original_rgba_bytes, serializer);
+        <u32>::sse_encode(self.original_width, serializer);
+        <u32>::sse_encode(self.original_height, serializer);
+        <Vec<u8>>::sse_encode(self.preview_rgba_bytes, serializer);
+        <u32>::sse_encode(self.preview_width, serializer);
+        <u32>::sse_encode(self.preview_height, serializer);
     }
 }
 
@@ -2559,6 +2614,8 @@ impl SseEncode for crate::types::PreviewResult {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <Vec<u8>>::sse_encode(self.encoded_bytes, serializer);
+        <Vec<u8>>::sse_encode(self.source_rgba_bytes, serializer);
+        <Vec<u8>>::sse_encode(self.preview_rgba_bytes, serializer);
         <String>::sse_encode(self.format, serializer);
         <u32>::sse_encode(self.width, serializer);
         <u32>::sse_encode(self.height, serializer);
@@ -2602,6 +2659,15 @@ impl SseEncode for crate::types::ProcessResult {
         <u64>::sse_encode(self.original_size, serializer);
         <u64>::sse_encode(self.new_size, serializer);
         <bool>::sse_encode(self.did_write, serializer);
+    }
+}
+
+impl SseEncode for crate::types::RawImageResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Vec<u8>>::sse_encode(self.rgba_bytes, serializer);
+        <u32>::sse_encode(self.width, serializer);
+        <u32>::sse_encode(self.height, serializer);
     }
 }
 

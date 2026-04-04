@@ -23,7 +23,7 @@ abstract class SlimgApi {
     required PreviewQualityMetricsRequest request,
   });
 
-  Future<EncodedImageResult?> computePreviewDifferenceImage({
+  Future<RawImageResult?> computePreviewDifferenceImage({
     required PreviewQualityMetricsRequest request,
   });
 
@@ -93,7 +93,7 @@ class FrbSlimgApi implements SlimgApi {
     final stopwatch = Stopwatch()..start();
     DeveloperDiagnostics.logTiming(
       'preview-metric:pixel-match',
-      'start path=${request.inputPath}',
+      'start width=${request.previewWidth} height=${request.previewHeight}',
     );
     return _bridge
         .computePreviewPixelMatchPercentage(request: request)
@@ -102,7 +102,7 @@ class FrbSlimgApi implements SlimgApi {
             stopwatch.stop();
             DeveloperDiagnostics.logTiming(
               'preview-metric:pixel-match',
-              'done path=${request.inputPath} total=${stopwatch.elapsedMilliseconds}ms value=$result',
+              'done total=${stopwatch.elapsedMilliseconds}ms value=$result',
             );
             return result;
           },
@@ -125,7 +125,7 @@ class FrbSlimgApi implements SlimgApi {
     final stopwatch = Stopwatch()..start();
     DeveloperDiagnostics.logTiming(
       'preview-metric:ms-ssim',
-      'start path=${request.inputPath}',
+      'start width=${request.previewWidth} height=${request.previewHeight}',
     );
     return _bridge
         .computePreviewMsSsim(request: request)
@@ -134,7 +134,7 @@ class FrbSlimgApi implements SlimgApi {
             stopwatch.stop();
             DeveloperDiagnostics.logTiming(
               'preview-metric:ms-ssim',
-              'done path=${request.inputPath} total=${stopwatch.elapsedMilliseconds}ms value=$result',
+              'done total=${stopwatch.elapsedMilliseconds}ms value=$result',
             );
             return result;
           },
@@ -157,7 +157,7 @@ class FrbSlimgApi implements SlimgApi {
     final stopwatch = Stopwatch()..start();
     DeveloperDiagnostics.logTiming(
       'preview-metric:ssimulacra2',
-      'start path=${request.inputPath}',
+      'start width=${request.previewWidth} height=${request.previewHeight}',
     );
     return _bridge
         .computePreviewSsimulacra2(request: request)
@@ -166,7 +166,7 @@ class FrbSlimgApi implements SlimgApi {
             stopwatch.stop();
             DeveloperDiagnostics.logTiming(
               'preview-metric:ssimulacra2',
-              'done path=${request.inputPath} total=${stopwatch.elapsedMilliseconds}ms value=$result',
+              'done total=${stopwatch.elapsedMilliseconds}ms value=$result',
             );
             return result;
           },
@@ -183,13 +183,13 @@ class FrbSlimgApi implements SlimgApi {
   }
 
   @override
-  Future<EncodedImageResult?> computePreviewDifferenceImage({
+  Future<RawImageResult?> computePreviewDifferenceImage({
     required PreviewQualityMetricsRequest request,
   }) {
     final stopwatch = Stopwatch()..start();
     DeveloperDiagnostics.logTiming(
       'preview-diff',
-      'start path=${request.inputPath}',
+      'start width=${request.previewWidth} height=${request.previewHeight}',
     );
     return _bridge
         .computePreviewDifferenceImage(request: request)
@@ -198,7 +198,7 @@ class FrbSlimgApi implements SlimgApi {
             stopwatch.stop();
             DeveloperDiagnostics.logTiming(
               'preview-diff',
-              'done path=${request.inputPath} total=${stopwatch.elapsedMilliseconds}ms available=${result != null}',
+              'done total=${stopwatch.elapsedMilliseconds}ms available=${result != null}',
             );
             return result;
           },

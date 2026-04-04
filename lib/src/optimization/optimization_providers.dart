@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oimg/src/file_open/file_open_providers.dart';
@@ -201,13 +202,17 @@ final _currentPreviewMetricRequestProvider =
         return null;
       }
       return PreviewQualityMetricsRequest(
-        inputPath: preview.sourceFile.path,
-        previewEncodedBytes: preview.result.encodedBytes,
+        originalRgbaBytes: preview.result.sourceRgbaBytes,
+        originalWidth: preview.sourceFile.metadata.width,
+        originalHeight: preview.sourceFile.metadata.height,
+        previewRgbaBytes: preview.result.previewRgbaBytes,
+        previewWidth: preview.result.width,
+        previewHeight: preview.result.height,
       );
     });
 
 final currentPreviewDifferenceProvider =
-    FutureProvider.autoDispose<EncodedImageResult?>((ref) async {
+    FutureProvider.autoDispose<ui.Image?>((ref) async {
       if (ref.watch(currentPreviewDisplayModeProvider) !=
           PreviewDisplayMode.difference) {
         return null;
@@ -230,7 +235,7 @@ final currentPreviewDifferenceProvider =
 
         DeveloperDiagnostics.logTiming(
           'preview-diff:$requestId',
-          'start path=${request.inputPath}',
+          'start width=${request.previewWidth} height=${request.previewHeight}',
         );
         final diffStopwatch = Stopwatch()..start();
         final result = await ref
@@ -242,7 +247,12 @@ final currentPreviewDifferenceProvider =
           'preview-diff:$requestId',
           'done diff=${diffStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms available=${result != null}',
         );
-        return result;
+        if (result == null) {
+          return null;
+        }
+        final image = await _decodeRawImage(result);
+        ref.onDispose(image.dispose);
+        return image;
       } on Object catch (error, stackTrace) {
         DeveloperDiagnostics.logTimingError(
           'preview-diff:$requestId',
@@ -252,6 +262,18 @@ final currentPreviewDifferenceProvider =
         rethrow;
       }
     });
+
+Future<ui.Image> _decodeRawImage(RawImageResult result) {
+  final completer = Completer<ui.Image>();
+  ui.decodeImageFromPixels(
+    result.rgbaBytes,
+    result.width,
+    result.height,
+    ui.PixelFormat.rgba8888,
+    completer.complete,
+  );
+  return completer.future;
+}
 
 final currentPreviewPixelMatchProvider =
     FutureProvider.autoDispose<double?>((ref) async {
@@ -272,7 +294,7 @@ final currentPreviewPixelMatchProvider =
 
         DeveloperDiagnostics.logTiming(
           'preview-metric:pixel-match:$requestId',
-          'start path=${request.inputPath}',
+          'start width=${request.previewWidth} height=${request.previewHeight}',
         );
         final metricStopwatch = Stopwatch()..start();
         final result = await ref
@@ -314,7 +336,7 @@ final currentPreviewMsSsimProvider =
 
         DeveloperDiagnostics.logTiming(
           'preview-metric:ms-ssim:$requestId',
-          'start path=${request.inputPath}',
+          'start width=${request.previewWidth} height=${request.previewHeight}',
         );
         final metricStopwatch = Stopwatch()..start();
         final result = await ref
@@ -356,7 +378,7 @@ final currentPreviewSsimulacra2Provider =
 
         DeveloperDiagnostics.logTiming(
           'preview-metric:ssimulacra2:$requestId',
-          'start path=${request.inputPath}',
+          'start width=${request.previewWidth} height=${request.previewHeight}',
         );
         final metricStopwatch = Stopwatch()..start();
         final result = await ref

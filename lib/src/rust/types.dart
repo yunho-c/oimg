@@ -389,28 +389,48 @@ class PreviewFileRequest {
 }
 
 class PreviewQualityMetricsRequest {
-  final String inputPath;
-  final Uint8List previewEncodedBytes;
+  final Uint8List originalRgbaBytes;
+  final int originalWidth;
+  final int originalHeight;
+  final Uint8List previewRgbaBytes;
+  final int previewWidth;
+  final int previewHeight;
 
   const PreviewQualityMetricsRequest({
-    required this.inputPath,
-    required this.previewEncodedBytes,
+    required this.originalRgbaBytes,
+    required this.originalWidth,
+    required this.originalHeight,
+    required this.previewRgbaBytes,
+    required this.previewWidth,
+    required this.previewHeight,
   });
 
   @override
-  int get hashCode => inputPath.hashCode ^ previewEncodedBytes.hashCode;
+  int get hashCode =>
+      originalRgbaBytes.hashCode ^
+      originalWidth.hashCode ^
+      originalHeight.hashCode ^
+      previewRgbaBytes.hashCode ^
+      previewWidth.hashCode ^
+      previewHeight.hashCode;
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is PreviewQualityMetricsRequest &&
           runtimeType == other.runtimeType &&
-          inputPath == other.inputPath &&
-          previewEncodedBytes == other.previewEncodedBytes;
+          originalRgbaBytes == other.originalRgbaBytes &&
+          originalWidth == other.originalWidth &&
+          originalHeight == other.originalHeight &&
+          previewRgbaBytes == other.previewRgbaBytes &&
+          previewWidth == other.previewWidth &&
+          previewHeight == other.previewHeight;
 }
 
 class PreviewResult {
   final Uint8List encodedBytes;
+  final Uint8List sourceRgbaBytes;
+  final Uint8List previewRgbaBytes;
   final String format;
   final int width;
   final int height;
@@ -418,6 +438,8 @@ class PreviewResult {
 
   const PreviewResult({
     required this.encodedBytes,
+    required this.sourceRgbaBytes,
+    required this.previewRgbaBytes,
     required this.format,
     required this.width,
     required this.height,
@@ -427,6 +449,8 @@ class PreviewResult {
   @override
   int get hashCode =>
       encodedBytes.hashCode ^
+      sourceRgbaBytes.hashCode ^
+      previewRgbaBytes.hashCode ^
       format.hashCode ^
       width.hashCode ^
       height.hashCode ^
@@ -438,6 +462,8 @@ class PreviewResult {
       other is PreviewResult &&
           runtimeType == other.runtimeType &&
           encodedBytes == other.encodedBytes &&
+          sourceRgbaBytes == other.sourceRgbaBytes &&
+          previewRgbaBytes == other.previewRgbaBytes &&
           format == other.format &&
           width == other.width &&
           height == other.height &&
@@ -555,6 +581,30 @@ class ProcessResult {
           originalSize == other.originalSize &&
           newSize == other.newSize &&
           didWrite == other.didWrite;
+}
+
+class RawImageResult {
+  final Uint8List rgbaBytes;
+  final int width;
+  final int height;
+
+  const RawImageResult({
+    required this.rgbaBytes,
+    required this.width,
+    required this.height,
+  });
+
+  @override
+  int get hashCode => rgbaBytes.hashCode ^ width.hashCode ^ height.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RawImageResult &&
+          runtimeType == other.runtimeType &&
+          rgbaBytes == other.rgbaBytes &&
+          width == other.width &&
+          height == other.height;
 }
 
 class ResizeOptions {

@@ -34,7 +34,7 @@ class SlimgBridge {
     required PreviewQualityMetricsRequest request,
   }) => bridge_api.computePreviewSsimulacra2(request: request);
 
-  Future<EncodedImageResult?> computePreviewDifferenceImage({
+  Future<RawImageResult?> computePreviewDifferenceImage({
     required PreviewQualityMetricsRequest request,
   }) => bridge_api.computePreviewDifferenceImage(request: request);
 

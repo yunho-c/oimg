@@ -5,7 +5,7 @@ pub use crate::types::{
     BatchItemResult, BatchJobHandle, BatchJobSnapshot, BatchJobState, BatchProcessRequest,
     ConvertOptions, CropOptions, CropSpec, EncodedImageResult, ExtendOptions, ExtendSpec, FillSpec,
     FormatInfo, ImageMetadata, ImageOperation, OptimizeOptions, PreviewFileRequest,
-    PreviewQualityMetricsRequest, PreviewResult, ProcessBytesRequest,
+    PreviewQualityMetricsRequest, PreviewResult, ProcessBytesRequest, RawImageResult,
     ProcessFileBatchRequest, ProcessFileRequest, ProcessResult, ResizeOptions, ResizeSpec,
 };
 
@@ -59,7 +59,7 @@ pub fn compute_preview_ssimulacra2(request: PreviewQualityMetricsRequest) -> Res
 
 pub fn compute_preview_difference_image(
     request: PreviewQualityMetricsRequest,
-) -> Result<Option<EncodedImageResult>> {
+) -> Result<Option<RawImageResult>> {
     with_internal(|| crate::metrics::compute_preview_difference_image(request))
 }
 

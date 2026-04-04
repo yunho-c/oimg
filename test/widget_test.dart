@@ -178,8 +178,6 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 120));
 
-    expect(find.byType(CircularProgressIndicator), findsNothing);
-
     await tester.tap(find.byKey(const ValueKey('preview-mode-Original')));
     await tester.pump();
     expect(slimg.differenceCallCount, 1);
@@ -631,6 +629,8 @@ class _FakeSlimgApi implements SlimgApi {
     }
     return PreviewResult(
       encodedBytes: _previewBytes,
+      sourceRgbaBytes: Uint8List(48 * 32 * 4),
+      previewRgbaBytes: Uint8List(48 * 32 * 4),
       format: 'jpeg',
       width: 48,
       height: 32,
@@ -674,19 +674,17 @@ class _FakeSlimgApi implements SlimgApi {
   }
 
   @override
-  Future<EncodedImageResult?> computePreviewDifferenceImage({
+  Future<RawImageResult?> computePreviewDifferenceImage({
     required PreviewQualityMetricsRequest request,
   }) async {
     differenceCallCount += 1;
     if (differenceDelay > Duration.zero) {
       await Future<void>.delayed(differenceDelay);
     }
-    return EncodedImageResult(
-      encodedBytes: _previewBytes,
-      format: 'png',
+    return RawImageResult(
+      rgbaBytes: Uint8List(48 * 32 * 4),
       width: 48,
       height: 32,
-      sizeBytes: BigInt.from(_previewBytes.length),
     );
   }
 

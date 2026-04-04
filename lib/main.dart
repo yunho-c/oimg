@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oimg/src/file_open/file_open_channel.dart';
@@ -654,9 +655,7 @@ class _ImageStage extends ConsumerWidget {
                           }
                           return _PreviewCanvas(
                             fileName: fileName,
-                            encodedBytes: diff.encodedBytes,
-                            unavailableMessage:
-                                'Unable to render difference preview.',
+                            rawImage: diff,
                           );
                         },
                         loading: () => const Center(child: CircularProgressIndicator()),
@@ -767,17 +766,24 @@ class _PreviewCanvas extends StatelessWidget {
     required this.fileName,
     this.path,
     this.encodedBytes,
+    this.rawImage,
     this.unavailableMessage,
   });
 
   final String fileName;
   final String? path;
   final Uint8List? encodedBytes;
+  final ui.Image? rawImage;
   final String? unavailableMessage;
 
   @override
   Widget build(BuildContext context) {
-    assert((path == null) != (encodedBytes == null));
+    final populated = [
+      path != null,
+      encodedBytes != null,
+      rawImage != null,
+    ].where((value) => value).length;
+    assert(populated == 1);
 
     return InteractiveViewer(
       minScale: 0.5,
@@ -791,6 +797,11 @@ class _PreviewCanvas extends StatelessWidget {
                 errorBuilder: (context, error, stackTrace) {
                   return _ImageLoadError(fileName: fileName);
                 },
+              )
+            : rawImage != null
+            ? RawImage(
+                image: rawImage,
+                fit: BoxFit.contain,
               )
             : Image.memory(
                 encodedBytes!,

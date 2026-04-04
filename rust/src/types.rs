@@ -18,6 +18,8 @@ pub struct ImageMetadata {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreviewResult {
     pub encoded_bytes: Vec<u8>,
+    pub source_rgba_bytes: Vec<u8>,
+    pub preview_rgba_bytes: Vec<u8>,
     pub format: String,
     pub width: u32,
     pub height: u32,
@@ -26,8 +28,12 @@ pub struct PreviewResult {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreviewQualityMetricsRequest {
-    pub input_path: String,
-    pub preview_encoded_bytes: Vec<u8>,
+    pub original_rgba_bytes: Vec<u8>,
+    pub original_width: u32,
+    pub original_height: u32,
+    pub preview_rgba_bytes: Vec<u8>,
+    pub preview_width: u32,
+    pub preview_height: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -37,6 +43,13 @@ pub struct EncodedImageResult {
     pub width: u32,
     pub height: u32,
     pub size_bytes: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RawImageResult {
+    pub rgba_bytes: Vec<u8>,
+    pub width: u32,
+    pub height: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

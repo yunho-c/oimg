@@ -1,11 +1,10 @@
 use dify::diff::get_results;
 use fast_ssim2::{LinearRgbImage, compute_ssimulacra2, srgb_u8_to_linear};
 use image::RgbaImage;
-use slimg_core::codec::{EncodeOptions, get_codec};
-use slimg_core::{Format, ImageData, decode};
+use slimg_core::ImageData;
 use tjdistler_iqa::{ImageQualityAssessment, MsSsim};
 
-use crate::types::{EncodedImageResult, PreviewQualityMetricsRequest};
+use crate::types::{PreviewQualityMetricsRequest, RawImageResult};
 
 const DIFY_DEFAULT_THRESHOLD: f32 = 35215.0 * 0.05 * 0.05;
 
@@ -28,15 +27,6 @@ pub(crate) fn compute_ms_ssim(reference: &ImageData, distorted: &ImageData) -> O
         .filter(|value| value.is_finite())
 }
 
-pub(crate) fn compute_ms_ssim_from_bytes(
-    reference_bytes: &[u8],
-    distorted_bytes: &[u8],
-) -> Option<f64> {
-    let (reference, _) = decode(reference_bytes).ok()?;
-    let (distorted, _) = decode(distorted_bytes).ok()?;
-    compute_ms_ssim(&reference, &distorted)
-}
-
 pub(crate) fn compute_ssimulacra2_score(
     reference: &ImageData,
     distorted: &ImageData,
@@ -53,15 +43,6 @@ pub(crate) fn compute_ssimulacra2_score(
     compute_ssimulacra2(reference_rgb, distorted_rgb)
         .ok()
         .filter(|value| value.is_finite())
-}
-
-pub(crate) fn compute_ssimulacra2_from_bytes(
-    reference_bytes: &[u8],
-    distorted_bytes: &[u8],
-) -> Option<f64> {
-    let (reference, _) = decode(reference_bytes).ok()?;
-    let (distorted, _) = decode(distorted_bytes).ok()?;
-    compute_ssimulacra2_score(&reference, &distorted)
 }
 
 pub(crate) fn compute_pixel_match_percentage(
@@ -95,87 +76,52 @@ pub(crate) fn compute_pixel_match_percentage(
         .filter(|value| value.is_finite())
 }
 
-pub(crate) fn compute_pixel_match_percentage_from_bytes(
-    reference_bytes: &[u8],
-    distorted_bytes: &[u8],
-) -> Option<f64> {
-    let (reference, _) = decode(reference_bytes).ok()?;
-    let (distorted, _) = decode(distorted_bytes).ok()?;
-    compute_pixel_match_percentage(&reference, &distorted)
-}
-
 pub(crate) fn compute_difference_image(
     reference: &ImageData,
     distorted: &ImageData,
-) -> Option<EncodedImageResult> {
+) -> Option<RawImageResult> {
     let diff = compute_difference_image_data(reference, distorted)?;
-    let codec = get_codec(Format::Png);
-    let encoded = codec
-        .encode(
-            &diff,
-            &EncodeOptions {
-                quality: 100,
-                threads: None,
-            },
-        )
-        .ok()?;
-    let size_bytes = encoded.len() as u64;
-
-    Some(EncodedImageResult {
-        encoded_bytes: encoded,
-        format: Format::Png.extension().to_string(),
+    Some(RawImageResult {
+        rgba_bytes: diff.data,
         width: diff.width,
         height: diff.height,
-        size_bytes,
     })
-}
-
-pub(crate) fn compute_difference_image_from_bytes(
-    reference_bytes: &[u8],
-    distorted_bytes: &[u8],
-) -> Option<EncodedImageResult> {
-    let (reference, _) = decode(reference_bytes).ok()?;
-    let (distorted, _) = decode(distorted_bytes).ok()?;
-    compute_difference_image(&reference, &distorted)
 }
 
 pub(crate) fn compute_preview_pixel_match_percentage(
     request: PreviewQualityMetricsRequest,
 ) -> crate::error::Result<Option<f64>> {
-    let original_bytes = std::fs::read(&request.input_path).ok();
-    Ok(original_bytes.as_ref().and_then(|reference_bytes| {
-        compute_pixel_match_percentage_from_bytes(
-            reference_bytes,
-            &request.preview_encoded_bytes,
-        )
-    }))
+    let Some((reference, distorted)) = request_images(&request) else {
+        return Ok(None);
+    };
+    Ok(compute_pixel_match_percentage(&reference, &distorted))
 }
 
 pub(crate) fn compute_preview_ms_ssim(
     request: PreviewQualityMetricsRequest,
 ) -> crate::error::Result<Option<f64>> {
-    let original_bytes = std::fs::read(&request.input_path).ok();
-    Ok(original_bytes.as_ref().and_then(|reference_bytes| {
-        compute_ms_ssim_from_bytes(reference_bytes, &request.preview_encoded_bytes)
-    }))
+    let Some((reference, distorted)) = request_images(&request) else {
+        return Ok(None);
+    };
+    Ok(compute_ms_ssim(&reference, &distorted))
 }
 
 pub(crate) fn compute_preview_ssimulacra2(
     request: PreviewQualityMetricsRequest,
 ) -> crate::error::Result<Option<f64>> {
-    let original_bytes = std::fs::read(&request.input_path).ok();
-    Ok(original_bytes.as_ref().and_then(|reference_bytes| {
-        compute_ssimulacra2_from_bytes(reference_bytes, &request.preview_encoded_bytes)
-    }))
+    let Some((reference, distorted)) = request_images(&request) else {
+        return Ok(None);
+    };
+    Ok(compute_ssimulacra2_score(&reference, &distorted))
 }
 
 pub(crate) fn compute_preview_difference_image(
     request: PreviewQualityMetricsRequest,
-) -> crate::error::Result<Option<EncodedImageResult>> {
-    let original_bytes = std::fs::read(&request.input_path).ok();
-    Ok(original_bytes.as_ref().and_then(|reference_bytes| {
-        compute_difference_image_from_bytes(reference_bytes, &request.preview_encoded_bytes)
-    }))
+) -> crate::error::Result<Option<RawImageResult>> {
+    let Some((reference, distorted)) = request_images(&request) else {
+        return Ok(None);
+    };
+    Ok(compute_difference_image(&reference, &distorted))
 }
 
 fn rgba_to_luma(image: &ImageData) -> Vec<u8> {
@@ -265,6 +211,28 @@ fn premultiply_rgb(r: u8, g: u8, b: u8, a: u8) -> [u8; 3] {
 
 fn premultiply_channel(value: u8, alpha: u8) -> u8 {
     ((u32::from(value) * u32::from(alpha) + 127) / 255) as u8
+}
+
+fn request_images(request: &PreviewQualityMetricsRequest) -> Option<(ImageData, ImageData)> {
+    let reference = image_from_raw_rgba(
+        request.original_width,
+        request.original_height,
+        request.original_rgba_bytes.clone(),
+    )?;
+    let distorted = image_from_raw_rgba(
+        request.preview_width,
+        request.preview_height,
+        request.preview_rgba_bytes.clone(),
+    )?;
+    Some((reference, distorted))
+}
+
+fn image_from_raw_rgba(width: u32, height: u32, rgba_bytes: Vec<u8>) -> Option<ImageData> {
+    let expected_len = width as usize * height as usize * 4;
+    if rgba_bytes.len() != expected_len {
+        return None;
+    }
+    Some(ImageData::new(width, height, rgba_bytes))
 }
 
 fn supported_ms_ssim_scales(width: usize, height: usize) -> Option<usize> {
