@@ -10,8 +10,8 @@ pub(crate) struct PreviewArtifact {
     pub original_height: u32,
     pub preview_width: u32,
     pub preview_height: u32,
-    pub original_rgba_bytes: Vec<u8>,
-    pub preview_rgba_bytes: Vec<u8>,
+    pub original_rgba_bytes: Arc<[u8]>,
+    pub preview_rgba_bytes: Arc<[u8]>,
     pub pixel_match_percentage: OnceLock<Option<f64>>,
     pub ms_ssim: OnceLock<Option<f64>>,
     pub ssimulacra2: OnceLock<Option<f64>>,
@@ -24,8 +24,8 @@ impl PreviewArtifact {
         original_height: u32,
         preview_width: u32,
         preview_height: u32,
-        original_rgba_bytes: Vec<u8>,
-        preview_rgba_bytes: Vec<u8>,
+        original_rgba_bytes: Arc<[u8]>,
+        preview_rgba_bytes: Arc<[u8]>,
     ) -> Self {
         Self {
             original_width,

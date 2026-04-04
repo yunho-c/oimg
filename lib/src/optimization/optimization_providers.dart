@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,7 @@ import 'package:oimg/src/file_open/file_open_providers.dart';
 import 'package:oimg/src/file_open/opened_image_file.dart';
 import 'package:oimg/src/rust/slimg_api.dart';
 import 'package:oimg/src/rust/types.dart';
+import 'package:oimg/src/settings/app_settings.dart';
 import 'package:oimg/src/settings/app_settings_controller.dart';
 import 'package:oimg/src/settings/developer_diagnostics.dart';
 
@@ -17,6 +19,20 @@ int _previewDifferenceRequestSequence = 0;
 int _previewPixelMatchRequestSequence = 0;
 int _previewMsSsimRequestSequence = 0;
 int _previewSsimulacra2RequestSequence = 0;
+int _analyzeRequestSequence = 0;
+const List<int> _analyzeSweepQualities = <int>[
+  0,
+  10,
+  20,
+  30,
+  40,
+  50,
+  60,
+  70,
+  80,
+  90,
+  100,
+];
 
 enum PreviewDisplayMode { original, optimized, difference }
 
@@ -51,6 +67,153 @@ class PreviewDifferenceRequestNotifier extends Notifier<String?> {
   }
 }
 
+class AnalyzeConfig {
+  const AnalyzeConfig({
+    required this.inputPath,
+    required this.operation,
+  });
+
+  final String inputPath;
+  final ImageOperation operation;
+
+  AnalyzeFileRequest toRequest() {
+    return AnalyzeFileRequest(
+      inputPath: inputPath,
+      operation: operation,
+      qualities: Uint8List.fromList(_analyzeSweepQualities),
+    );
+  }
+}
+
+enum AnalyzeAvailabilityStatus { loading, disabled, enabled }
+
+class AnalyzeAvailability {
+  const AnalyzeAvailability._({
+    required this.status,
+    this.reason,
+    this.config,
+  });
+
+  const AnalyzeAvailability.loading()
+    : this._(status: AnalyzeAvailabilityStatus.loading);
+
+  const AnalyzeAvailability.disabled(String reason)
+    : this._(
+        status: AnalyzeAvailabilityStatus.disabled,
+        reason: reason,
+      );
+
+  const AnalyzeAvailability.enabled(AnalyzeConfig config)
+    : this._(
+        status: AnalyzeAvailabilityStatus.enabled,
+        config: config,
+      );
+
+  final AnalyzeAvailabilityStatus status;
+  final String? reason;
+  final AnalyzeConfig? config;
+
+  bool get isEnabled => status == AnalyzeAvailabilityStatus.enabled;
+}
+
+class OptimizedPreviewDisplay {
+  const OptimizedPreviewDisplay({
+    required this.artifactId,
+    required this.format,
+    required this.width,
+    required this.height,
+    required this.sizeBytes,
+    this.encodedBytes,
+    this.outputPath,
+  });
+
+  final String artifactId;
+  final String format;
+  final int width;
+  final int height;
+  final BigInt sizeBytes;
+  final Uint8List? encodedBytes;
+  final String? outputPath;
+
+  bool get usesOutputPath => outputPath != null;
+}
+
+class AnalyzeRunState {
+  const AnalyzeRunState({
+    required this.availability,
+    this.jobId,
+    this.jobState,
+    this.completedCount = 0,
+    this.totalCount = 0,
+    this.currentQuality,
+    this.samples = const <AnalyzeSampleResult>[],
+    this.selectedArtifactId,
+    this.globalError,
+  });
+
+  final AnalyzeAvailability availability;
+  final String? jobId;
+  final BatchJobState? jobState;
+  final int completedCount;
+  final int totalCount;
+  final int? currentQuality;
+  final List<AnalyzeSampleResult> samples;
+  final String? selectedArtifactId;
+  final String? globalError;
+
+  bool get isRunning =>
+      jobState == BatchJobState.running ||
+      jobState == BatchJobState.cancelRequested;
+
+  bool get isCancelRequested => jobState == BatchJobState.cancelRequested;
+
+  AnalyzeSampleResult? get selectedSample {
+    final artifactId = selectedArtifactId;
+    if (artifactId == null) {
+      return null;
+    }
+    for (final sample in samples) {
+      if (sample.artifactId == artifactId) {
+        return sample;
+      }
+    }
+    return null;
+  }
+
+  AnalyzeRunState copyWith({
+    AnalyzeAvailability? availability,
+    String? jobId,
+    BatchJobState? jobState,
+    int? completedCount,
+    int? totalCount,
+    int? currentQuality,
+    List<AnalyzeSampleResult>? samples,
+    String? selectedArtifactId,
+    String? globalError,
+    bool clearJobId = false,
+    bool clearJobState = false,
+    bool clearCurrentQuality = false,
+    bool clearSelectedArtifactId = false,
+    bool clearGlobalError = false,
+  }) {
+    return AnalyzeRunState(
+      availability: availability ?? this.availability,
+      jobId: clearJobId ? null : (jobId ?? this.jobId),
+      jobState: clearJobState ? null : (jobState ?? this.jobState),
+      completedCount: completedCount ?? this.completedCount,
+      totalCount: totalCount ?? this.totalCount,
+      currentQuality: clearCurrentQuality
+          ? null
+          : (currentQuality ?? this.currentQuality),
+      samples: samples ?? this.samples,
+      selectedArtifactId: clearSelectedArtifactId
+          ? null
+          : (selectedArtifactId ?? this.selectedArtifactId),
+      globalError: clearGlobalError ? null : (globalError ?? this.globalError),
+    );
+  }
+}
+
 final currentOptimizationPlanProvider =
     FutureProvider.autoDispose<OptimizationPlan?>((ref) async {
       final controller = ref.watch(fileOpenControllerProvider);
@@ -61,6 +224,229 @@ final currentOptimizationPlanProvider =
 
       final settings = await ref.watch(appSettingsProvider.future);
       return buildOptimizationPlan(file: currentFile, settings: settings);
+    });
+
+final analyzeAvailabilityProvider = Provider.autoDispose<AnalyzeAvailability>((
+  ref,
+) {
+  final controller = ref.watch(fileOpenControllerProvider);
+  if (controller.isFolderSelected) {
+    return const AnalyzeAvailability.disabled('Select a file to analyze.');
+  }
+
+  final currentFile = controller.currentFile;
+  if (currentFile == null) {
+    return const AnalyzeAvailability.disabled('Select a file to analyze.');
+  }
+
+  final settings = ref.watch(appSettingsProvider);
+  final plan = ref.watch(currentOptimizationPlanProvider);
+  final settingsData = settings.asData?.value;
+  final planData = plan.asData?.value;
+
+  if (settings.isLoading || plan.isLoading) {
+    return const AnalyzeAvailability.loading();
+  }
+  if (settings.hasError || plan.hasError || settingsData == null || planData == null) {
+    return const AnalyzeAvailability.disabled('Unavailable right now.');
+  }
+  if (!settingsData.showsQualityControl) {
+    return const AnalyzeAvailability.disabled('Unavailable for this format.');
+  }
+  if (planData.targetCodec == PreferredCodec.png) {
+    return const AnalyzeAvailability.disabled('Unavailable for PNG.');
+  }
+
+  return AnalyzeAvailability.enabled(
+    AnalyzeConfig(
+      inputPath: planData.sourceFile.path,
+      operation: planData.processRequest.operation,
+    ),
+  );
+});
+
+final analyzeRunControllerProvider =
+    NotifierProvider.autoDispose<AnalyzeRunController, AnalyzeRunState>(
+      AnalyzeRunController.new,
+    );
+
+class AnalyzeRunController extends Notifier<AnalyzeRunState> {
+  String? _activeJobId;
+
+  @override
+  AnalyzeRunState build() {
+    final availability = ref.watch(analyzeAvailabilityProvider);
+    ref.onDispose(() {
+      final jobId = _activeJobId;
+      if (jobId != null) {
+        unawaited(_disposeJob(jobId));
+      }
+    });
+    return AnalyzeRunState(availability: availability);
+  }
+
+  Future<void> startAnalyze() async {
+    if (state.isRunning || !state.availability.isEnabled) {
+      return;
+    }
+
+    final config = state.availability.config;
+    if (config == null) {
+      return;
+    }
+
+    if (state.jobId case final existingJobId?) {
+      await _disposeJob(existingJobId);
+    }
+
+    final requestId = ++_analyzeRequestSequence;
+    DeveloperDiagnostics.logTiming(
+      'analyze:$requestId',
+      'start input=${config.inputPath}',
+    );
+
+    try {
+      final handle = await ref
+          .read(slimgApiProvider)
+          .startAnalyzeFileJob(request: config.toRequest());
+      state = AnalyzeRunState(
+        availability: state.availability,
+        jobId: handle.jobId,
+        jobState: BatchJobState.running,
+        totalCount: _analyzeSweepQualities.length,
+      );
+      _activeJobId = handle.jobId;
+      unawaited(_pollJob(handle.jobId, requestId));
+    } on Object catch (error, stackTrace) {
+      DeveloperDiagnostics.logTimingError('analyze:$requestId', error, stackTrace);
+      _activeJobId = null;
+      state = AnalyzeRunState(
+        availability: state.availability,
+        globalError: error.toString(),
+      );
+    }
+  }
+
+  Future<void> cancelAnalyze() async {
+    if (!state.isRunning || state.isCancelRequested || state.jobId == null) {
+      return;
+    }
+
+    final jobId = state.jobId!;
+    state = state.copyWith(
+      jobState: BatchJobState.cancelRequested,
+      clearGlobalError: true,
+    );
+    await ref.read(slimgApiProvider).cancelAnalyzeFileJob(jobId: jobId);
+  }
+
+  void selectSample(AnalyzeSampleResult sample) {
+    state = state.copyWith(selectedArtifactId: sample.artifactId);
+  }
+
+  Future<void> _pollJob(String jobId, int requestId) async {
+    while (state.jobId == jobId) {
+      try {
+        final snapshot = await ref.read(slimgApiProvider).getAnalyzeFileJob(
+          jobId: jobId,
+        );
+        if (state.jobId != jobId) {
+          return;
+        }
+
+        final priorSelection = state.selectedArtifactId;
+        final selectedArtifactId = priorSelection != null &&
+                snapshot.results.any((sample) => sample.artifactId == priorSelection)
+            ? priorSelection
+            : null;
+
+        state = state.copyWith(
+          jobState: snapshot.state,
+          completedCount: snapshot.completedCount,
+          totalCount: snapshot.totalCount,
+          currentQuality: snapshot.currentQuality,
+          samples: snapshot.results,
+          selectedArtifactId: selectedArtifactId,
+          globalError: snapshot.error?.toString(),
+        );
+
+        if (_isTerminalAnalyzeState(snapshot.state)) {
+          DeveloperDiagnostics.logTiming(
+            'analyze:$requestId',
+            'done state=${snapshot.state.name} completed=${snapshot.completedCount}/${snapshot.totalCount}',
+          );
+          return;
+        }
+      } on Object catch (error, stackTrace) {
+        DeveloperDiagnostics.logTimingError('analyze:$requestId', error, stackTrace);
+        state = AnalyzeRunState(
+          availability: state.availability,
+          samples: state.samples,
+          selectedArtifactId: state.selectedArtifactId,
+          globalError: error.toString(),
+        );
+        _activeJobId = null;
+        return;
+      }
+
+      await Future<void>.delayed(const Duration(milliseconds: 140));
+    }
+  }
+
+  Future<void> _disposeJob(String jobId) async {
+    try {
+      await ref.read(slimgApiProvider).disposeAnalyzeFileJob(jobId: jobId);
+    } on Object catch (error, stackTrace) {
+      DeveloperDiagnostics.logTimingError('analyze-dispose', error, stackTrace);
+    } finally {
+      if (_activeJobId == jobId) {
+        _activeJobId = null;
+      }
+    }
+  }
+}
+
+bool _isTerminalAnalyzeState(BatchJobState state) {
+  return switch (state) {
+    BatchJobState.completed ||
+    BatchJobState.canceled ||
+    BatchJobState.failed => true,
+    _ => false,
+  };
+}
+
+final selectedAnalyzeSampleProvider = Provider.autoDispose<AnalyzeSampleResult?>((
+  ref,
+) {
+  return ref.watch(analyzeRunControllerProvider).selectedSample;
+});
+
+final currentOptimizedDisplayProvider =
+    Provider.autoDispose<OptimizedPreviewDisplay?>((ref) {
+      final selectedAnalyzeSample = ref.watch(selectedAnalyzeSampleProvider);
+      if (selectedAnalyzeSample != null) {
+        return OptimizedPreviewDisplay(
+          artifactId: selectedAnalyzeSample.artifactId,
+          format: selectedAnalyzeSample.format,
+          width: selectedAnalyzeSample.width,
+          height: selectedAnalyzeSample.height,
+          sizeBytes: selectedAnalyzeSample.sizeBytes,
+          outputPath: selectedAnalyzeSample.tempOutputPath,
+        );
+      }
+
+      final preview = ref.watch(currentPreviewProvider).asData?.value;
+      if (preview == null) {
+        return null;
+      }
+      return OptimizedPreviewDisplay(
+        artifactId: preview.result.artifactId,
+        format: preview.result.format,
+        width: preview.result.width,
+        height: preview.result.height,
+        sizeBytes: preview.result.sizeBytes,
+        encodedBytes: preview.result.encodedBytes,
+      );
     });
 
 class OptimizationPreview {
@@ -185,20 +571,17 @@ final currentPreviewDisplayModeProvider =
       }
 
       final manualSelection = ref.watch(previewDisplaySelectionProvider);
-      final preview = ref.watch(currentPreviewProvider).maybeWhen(
-        data: (value) => value,
-        orElse: () => null,
-      );
+      final optimizedDisplay = ref.watch(currentOptimizedDisplayProvider);
       final plan = ref.watch(currentOptimizationPlanProvider).maybeWhen(
         data: (value) => value,
         orElse: () => null,
       );
 
-      final hasPreview = preview != null;
+      final hasPreview = optimizedDisplay != null;
       final supportsDifference =
           hasPreview &&
-          preview.result.width == currentFile.metadata.width &&
-          preview.result.height == currentFile.metadata.height;
+          optimizedDisplay.width == currentFile.metadata.width &&
+          optimizedDisplay.height == currentFile.metadata.height;
 
       if (manualSelection != null && manualSelection.filePath == currentFile.path) {
         switch (manualSelection.mode) {
@@ -227,6 +610,10 @@ final _currentPreviewMetricRequestProvider =
       final controller = ref.watch(fileOpenControllerProvider);
       if (controller.isFolderSelected) {
         return null;
+      }
+      final analyzeSample = ref.watch(selectedAnalyzeSampleProvider);
+      if (analyzeSample != null) {
+        return PreviewArtifactRequest(artifactId: analyzeSample.artifactId);
       }
       final preview = await ref.watch(currentPreviewProvider.future);
       if (preview == null) {

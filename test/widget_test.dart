@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:oimg/main.dart';
@@ -185,6 +186,40 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('preview-mode-Difference')));
     await tester.pump();
     expect(slimg.differenceCallCount, 1);
+  });
+
+  testWidgets('analyze sweep populates the chart without changing the slider', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+    )..analyzeSampleDelay = const Duration(milliseconds: 20);
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.widgetWithText(OutlineButton, 'Analyze'), findsOneWidget);
+    expect(find.byType(LineChart), findsNothing);
+    expect(find.text('80'), findsWidgets);
+
+    await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 260));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LineChart), findsOneWidget);
+    expect(find.text('11 samples'), findsOneWidget);
+    expect(find.text('80'), findsWidgets);
   });
 
   testWidgets('later openFiles event replaces the session', (tester) async {
@@ -605,7 +640,9 @@ class _FakeSlimgApi implements SlimgApi {
   int previewCallCount = 0;
   int differenceCallCount = 0;
   int _nextJobId = 0;
+  int _nextAnalyzeJobId = 0;
   final Map<String, _FakeBatchJob> _jobs = {};
+  final Map<String, _FakeAnalyzeJob> _analyzeJobs = {};
 
   static final Uint8List _previewBytes = base64Decode(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==',
@@ -645,6 +682,7 @@ class _FakeSlimgApi implements SlimgApi {
   Duration msSsimDelay = Duration.zero;
   Duration ssimulacra2Delay = Duration.zero;
   Duration differenceDelay = Duration.zero;
+  Duration analyzeSampleDelay = Duration.zero;
 
   @override
   Future<double?> computePreviewPixelMatchPercentage({
@@ -780,6 +818,58 @@ class _FakeSlimgApi implements SlimgApi {
     _jobs.remove(jobId);
   }
 
+  @override
+  Future<AnalyzeFileJobHandle> startAnalyzeFileJob({
+    required AnalyzeFileRequest request,
+  }) async {
+    final jobId = 'analyze-${++_nextAnalyzeJobId}';
+    final snapshot = AnalyzeFileJobSnapshot(
+      jobId: jobId,
+      state: BatchJobState.running,
+      totalCount: request.qualities.length,
+      completedCount: 0,
+      results: const [],
+    );
+    final job = _FakeAnalyzeJob(snapshot: snapshot);
+    _analyzeJobs[jobId] = job;
+    unawaited(_runAnalyzeJob(jobId, request));
+    return AnalyzeFileJobHandle(jobId: jobId);
+  }
+
+  @override
+  Future<AnalyzeFileJobSnapshot> getAnalyzeFileJob({required String jobId}) async {
+    final job = _analyzeJobs[jobId];
+    if (job == null) {
+      throw StateError('unknown analyze job');
+    }
+    return job.snapshot;
+  }
+
+  @override
+  Future<void> cancelAnalyzeFileJob({required String jobId}) async {
+    final job = _analyzeJobs[jobId];
+    if (job == null) {
+      throw StateError('unknown analyze job');
+    }
+    job.cancelRequested = true;
+    if (job.snapshot.state == BatchJobState.running) {
+      job.snapshot = AnalyzeFileJobSnapshot(
+        jobId: job.snapshot.jobId,
+        state: BatchJobState.cancelRequested,
+        totalCount: job.snapshot.totalCount,
+        completedCount: job.snapshot.completedCount,
+        currentQuality: job.snapshot.currentQuality,
+        results: job.snapshot.results,
+        error: job.snapshot.error,
+      );
+    }
+  }
+
+  @override
+  Future<void> disposeAnalyzeFileJob({required String jobId}) async {
+    _analyzeJobs.remove(jobId);
+  }
+
   Future<void> _runJob(String jobId, ProcessFileBatchRequest request) async {
     final job = _jobs[jobId];
     if (job == null) {
@@ -853,11 +943,91 @@ class _FakeSlimgApi implements SlimgApi {
       error: job.snapshot.error,
     );
   }
+
+  Future<void> _runAnalyzeJob(String jobId, AnalyzeFileRequest request) async {
+    final job = _analyzeJobs[jobId];
+    if (job == null) {
+      return;
+    }
+
+    for (final quality in request.qualities) {
+      if (job.cancelRequested) {
+        job.snapshot = AnalyzeFileJobSnapshot(
+          jobId: job.snapshot.jobId,
+          state: BatchJobState.canceled,
+          totalCount: job.snapshot.totalCount,
+          completedCount: job.snapshot.completedCount,
+          results: job.snapshot.results,
+          error: job.snapshot.error,
+        );
+        return;
+      }
+
+      job.snapshot = AnalyzeFileJobSnapshot(
+        jobId: job.snapshot.jobId,
+        state: job.cancelRequested
+            ? BatchJobState.cancelRequested
+            : BatchJobState.running,
+        totalCount: job.snapshot.totalCount,
+        completedCount: job.snapshot.completedCount,
+        currentQuality: quality,
+        results: job.snapshot.results,
+        error: job.snapshot.error,
+      );
+
+      if (analyzeSampleDelay > Duration.zero) {
+        await Future<void>.delayed(analyzeSampleDelay);
+      }
+
+      final results = List<AnalyzeSampleResult>.from(job.snapshot.results)
+        ..add(
+          AnalyzeSampleResult(
+            quality: quality,
+            tempOutputPath: '/tmp/analyze-$quality.jpeg',
+            format: 'jpeg',
+            width: 48,
+            height: 32,
+            sizeBytes: BigInt.from(1500 - (quality * 8)),
+            pixelMatch: (80 + quality / 5).clamp(0, 100).toDouble(),
+            ssimulacra2: (65 + quality / 3).clamp(0, 100).toDouble(),
+            artifactId: 'analyze-artifact-$quality',
+          ),
+        );
+
+      job.snapshot = AnalyzeFileJobSnapshot(
+        jobId: job.snapshot.jobId,
+        state: job.cancelRequested
+            ? BatchJobState.cancelRequested
+            : BatchJobState.running,
+        totalCount: job.snapshot.totalCount,
+        completedCount: results.length,
+        currentQuality: quality,
+        results: results,
+        error: job.snapshot.error,
+      );
+    }
+
+    job.snapshot = AnalyzeFileJobSnapshot(
+      jobId: job.snapshot.jobId,
+      state: BatchJobState.completed,
+      totalCount: job.snapshot.totalCount,
+      completedCount: job.snapshot.completedCount,
+      results: job.snapshot.results,
+      error: job.snapshot.error,
+    );
+  }
 }
 
 class _FakeBatchJob {
   _FakeBatchJob({required this.snapshot});
 
   BatchJobSnapshot snapshot;
+  bool cancelRequested = false;
+}
+
+class _FakeAnalyzeJob {
+  _FakeAnalyzeJob({required this.snapshot});
+
+  AnalyzeFileJobSnapshot snapshot;
   bool cancelRequested = false;
 }

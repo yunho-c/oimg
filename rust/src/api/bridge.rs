@@ -2,11 +2,12 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 
 pub use crate::error::SlimgBridgeError;
 pub use crate::types::{
+    AnalyzeFileJobHandle, AnalyzeFileJobSnapshot, AnalyzeFileRequest, AnalyzeSampleResult,
     BatchItemResult, BatchJobHandle, BatchJobSnapshot, BatchJobState, BatchProcessRequest,
     ConvertOptions, CropOptions, CropSpec, EncodedImageResult, ExtendOptions, ExtendSpec, FillSpec,
     FormatInfo, ImageMetadata, ImageOperation, OptimizeOptions, PreviewArtifactRequest,
-    PreviewFileRequest, PreviewResult, ProcessBytesRequest, RawImageResult,
-    ProcessFileBatchRequest, ProcessFileRequest, ProcessResult, ResizeOptions, ResizeSpec,
+    PreviewFileRequest, PreviewResult, ProcessBytesRequest, ProcessFileBatchRequest,
+    ProcessFileRequest, ProcessResult, RawImageResult, ResizeOptions, ResizeSpec,
 };
 
 use crate::error::{panic_message, Result};
@@ -100,6 +101,22 @@ pub fn cancel_process_file_batch_job(job_id: String) -> Result<()> {
 
 pub fn dispose_process_file_batch_job(job_id: String) -> Result<()> {
     with_internal(|| crate::batch_jobs::dispose_process_file_batch_job(job_id))
+}
+
+pub fn start_analyze_file_job(request: AnalyzeFileRequest) -> Result<AnalyzeFileJobHandle> {
+    with_internal(|| crate::analyze_jobs::start_analyze_file_job(request))
+}
+
+pub fn get_analyze_file_job(job_id: String) -> Result<AnalyzeFileJobSnapshot> {
+    with_internal(|| crate::analyze_jobs::get_analyze_file_job(job_id))
+}
+
+pub fn cancel_analyze_file_job(job_id: String) -> Result<()> {
+    with_internal(|| crate::analyze_jobs::cancel_analyze_file_job(job_id))
+}
+
+pub fn dispose_analyze_file_job(job_id: String) -> Result<()> {
+    with_internal(|| crate::analyze_jobs::dispose_analyze_file_job(job_id))
 }
 
 fn with_internal<T, F>(func: F) -> Result<T>

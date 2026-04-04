@@ -83,3 +83,16 @@ Future<void> cancelProcessFileBatchJob({required String jobId}) =>
 
 Future<void> disposeProcessFileBatchJob({required String jobId}) =>
     RustLib.instance.api.crateApiBridgeDisposeProcessFileBatchJob(jobId: jobId);
+
+Future<AnalyzeFileJobHandle> startAnalyzeFileJob({
+  required AnalyzeFileRequest request,
+}) => RustLib.instance.api.crateApiBridgeStartAnalyzeFileJob(request: request);
+
+Future<AnalyzeFileJobSnapshot> getAnalyzeFileJob({required String jobId}) =>
+    RustLib.instance.api.crateApiBridgeGetAnalyzeFileJob(jobId: jobId);
+
+Future<void> cancelAnalyzeFileJob({required String jobId}) =>
+    RustLib.instance.api.crateApiBridgeCancelAnalyzeFileJob(jobId: jobId);
+
+Future<void> disposeAnalyzeFileJob({required String jobId}) =>
+    RustLib.instance.api.crateApiBridgeDisposeAnalyzeFileJob(jobId: jobId);

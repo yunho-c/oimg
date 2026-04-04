@@ -296,4 +296,26 @@ class _FakeSlimgApi implements SlimgApi {
   Future<void> disposeProcessFileBatchJob({required String jobId}) {
     throw UnimplementedError();
   }
+
+  @override
+  Future<AnalyzeFileJobHandle> startAnalyzeFileJob({
+    required AnalyzeFileRequest request,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<AnalyzeFileJobSnapshot> getAnalyzeFileJob({required String jobId}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> cancelAnalyzeFileJob({required String jobId}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> disposeAnalyzeFileJob({required String jobId}) {
+    throw UnimplementedError();
+  }
 }

@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oimg/src/file_open/file_open_channel.dart';
 import 'package:oimg/src/file_open/file_open_controller.dart';
@@ -13,6 +14,7 @@ import 'package:oimg/src/optimization/optimization_plan.dart';
 import 'package:oimg/src/optimization/optimization_providers.dart';
 import 'package:oimg/src/rust/frb_generated.dart';
 import 'package:oimg/src/rust/slimg_api.dart';
+import 'package:oimg/src/rust/types.dart';
 import 'package:oimg/src/settings/app_settings.dart';
 import 'package:oimg/src/settings/app_settings_controller.dart';
 import 'package:oimg/src/settings/developer_diagnostics.dart';
@@ -643,17 +645,14 @@ class _ImageStage extends ConsumerWidget {
     final theme = Theme.of(context);
     final plan = ref.watch(currentOptimizationPlanProvider);
     final preview = ref.watch(currentPreviewProvider);
+    final optimizedDisplay = ref.watch(currentOptimizedDisplayProvider);
     final displayMode = ref.watch(currentPreviewDisplayModeProvider);
     final difference = ref.watch(currentPreviewDifferenceProvider);
-    final previewData = preview.maybeWhen(
-      data: (value) => value,
-      orElse: () => null,
-    );
-    final hasOptimizedPreview = previewData != null;
+    final hasOptimizedPreview = optimizedDisplay != null;
     final supportsDifference =
         hasOptimizedPreview &&
-        previewData.result.width == currentFile.metadata.width &&
-        previewData.result.height == currentFile.metadata.height;
+        optimizedDisplay.width == currentFile.metadata.width &&
+        optimizedDisplay.height == currentFile.metadata.height;
 
     return Card(
       padding: EdgeInsets.zero,
@@ -716,21 +715,27 @@ class _ImageStage extends ConsumerWidget {
                         path: currentFile.path,
                       );
                     case PreviewDisplayMode.optimized:
-                      return preview.when(
-                        data: (preview) {
-                          if (preview == null) {
-                            return _PreviewCanvas(
-                              fileName: fileName,
-                              path: currentFile.path,
-                            );
-                          }
+                      if (optimizedDisplay != null) {
+                        if (optimizedDisplay.usesOutputPath) {
                           return _PreviewCanvas(
                             fileName: fileName,
-                            encodedBytes: preview.result.encodedBytes,
+                            path: optimizedDisplay.outputPath,
                             unavailableMessage:
                                 'Unable to render optimized preview.',
                           );
-                        },
+                        }
+                        return _PreviewCanvas(
+                          fileName: fileName,
+                          encodedBytes: optimizedDisplay.encodedBytes,
+                          unavailableMessage:
+                              'Unable to render optimized preview.',
+                        );
+                      }
+                      return preview.when(
+                        data: (_) => _PreviewCanvas(
+                          fileName: fileName,
+                          path: currentFile.path,
+                        ),
                         loading: () =>
                             const Center(child: CircularProgressIndicator()),
                         error: (_, _) => _PreviewCanvas(
@@ -775,6 +780,7 @@ class _ImageStage extends ConsumerWidget {
               displayMode: displayMode,
               hasOptimizedPreview: hasOptimizedPreview,
               supportsDifference: supportsDifference,
+              optimizedArtifactId: optimizedDisplay?.artifactId,
             ),
           ),
         ],
@@ -1105,21 +1111,22 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
     required this.displayMode,
     required this.hasOptimizedPreview,
     required this.supportsDifference,
+    required this.optimizedArtifactId,
   });
 
   final String filePath;
   final PreviewDisplayMode displayMode;
   final bool hasOptimizedPreview;
   final bool supportsDifference;
+  final String? optimizedArtifactId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final preview = ref.watch(currentPreviewProvider);
     final difference = ref.watch(currentPreviewDifferenceProvider);
-    final previewData = preview.maybeWhen(
-      data: (value) => value,
-      orElse: () => null,
-    );
+    final analyzeState = ref.watch(analyzeRunControllerProvider);
+    final analyzeAvailability = ref.watch(analyzeAvailabilityProvider);
+    final analyzeController = ref.read(analyzeRunControllerProvider.notifier);
     final optimizedLoading = preview.isLoading && !hasOptimizedPreview;
     final differenceLoading =
         displayMode == PreviewDisplayMode.difference && difference.isLoading;
@@ -1157,7 +1164,7 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
           enabled: supportsDifference,
           loading: differenceLoading,
           onPressed: () {
-            final artifactId = previewData?.result.artifactId;
+            final artifactId = optimizedArtifactId;
             if (artifactId != null) {
               ref
                   .read(previewDifferenceRequestProvider.notifier)
@@ -1171,6 +1178,26 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
                 );
           },
         ),
+        const Spacer(),
+        analyzeState.isCancelRequested
+            ? OutlineButton(
+                alignment: Alignment.center,
+                onPressed: null,
+                child: const Text('Canceling...'),
+              )
+            : analyzeState.isRunning
+            ? Button.destructive(
+                alignment: Alignment.center,
+                onPressed: analyzeController.cancelAnalyze,
+                child: const Text('Cancel Analyze'),
+              )
+            : OutlineButton(
+                alignment: Alignment.center,
+                onPressed: analyzeAvailability.isEnabled
+                    ? analyzeController.startAnalyze
+                    : null,
+                child: const Text('Analyze'),
+              ),
       ],
     );
   }
@@ -1373,6 +1400,12 @@ class _SettingsSidebar extends ConsumerWidget {
     final settings = ref.watch(appSettingsProvider);
     final notifier = ref.read(appSettingsProvider.notifier);
     final runState = ref.watch(optimizationRunControllerProvider);
+    final analyzeState = ref.watch(analyzeRunControllerProvider);
+    final controlsLocked = runState.isRunning || analyzeState.isRunning;
+    final showAnalyzePanel =
+        analyzeState.isRunning ||
+        analyzeState.samples.isNotEmpty ||
+        analyzeState.globalError != null;
 
     return Card(
       padding: EdgeInsets.zero,
@@ -1409,7 +1442,7 @@ class _SettingsSidebar extends ConsumerWidget {
                         const SizedBox(width: 8),
                         Switch(
                           value: settings.advancedMode,
-                          onChanged: runState.isRunning
+                          onChanged: controlsLocked
                               ? null
                               : notifier.setAdvancedMode,
                         ),
@@ -1424,70 +1457,88 @@ class _SettingsSidebar extends ConsumerWidget {
           ),
           const Divider(),
           Expanded(
-            child: SingleChildScrollView(
+            child: Padding(
               padding: const EdgeInsets.all(12),
-              child: settings.when(
-                data: (settings) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _SettingsModeSwitcher(
-                        settings: settings,
-                        runState: runState,
-                        notifier: notifier,
-                      ),
-                      const SizedBox(height: 12),
-                      if (settings.showsQualityControl) ...[
-                        _SettingsLabel('Quality'),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Text('0').xSmall().muted(),
-                            const Spacer(),
-                            Text(
-                              _qualityValueLabel(settings),
-                            ).xSmall().medium().muted(),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Slider(
-                          value: SliderValue.single(
-                            settings.quality.toDouble(),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: settings.when(
+                        data: (settings) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _SettingsModeSwitcher(
+                                settings: settings,
+                                controlsLocked: controlsLocked,
+                                notifier: notifier,
+                              ),
+                              const SizedBox(height: 12),
+                              if (settings.showsQualityControl) ...[
+                                _SettingsLabel('Quality'),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Text('0').xSmall().muted(),
+                                    const Spacer(),
+                                    Text(
+                                      _qualityValueLabel(settings),
+                                    ).xSmall().medium().muted(),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Slider(
+                                  value: SliderValue.single(
+                                    settings.quality.toDouble(),
+                                  ),
+                                  min: 0,
+                                  max: 100,
+                                  divisions: 100,
+                                  onChanged: controlsLocked
+                                      ? null
+                                      : (value) {
+                                          notifier.setQuality(value.value.round());
+                                        },
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                              if (runState.globalError case final error?)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(error).xSmall().muted(),
+                                ),
+                            ],
+                          );
+                        },
+                        loading: () => Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: const Text('Loading settings').small(),
                           ),
-                          min: 0,
-                          max: 100,
-                          divisions: 100,
-                          onChanged: runState.isRunning
-                              ? null
-                              : (value) {
-                                  notifier.setQuality(value.value.round());
-                                },
                         ),
-                        const SizedBox(height: 12),
-                      ],
-                      if (runState.globalError case final error?)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(error).xSmall().muted(),
-                        ),
-                    ],
-                  );
-                },
-                loading: () => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: const Text('Loading settings').small(),
+                        error: (_, _) {
+                          return Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: const Text(
+                              'Unable to load settings',
+                            ).small().muted(),
+                          );
+                        },
+                      ),
+                    ),
                   ),
-                ),
-                error: (_, _) {
-                  return Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: const Text(
-                      'Unable to load settings',
-                    ).small().muted(),
-                  );
-                },
+                  if (showAnalyzePanel) ...[
+                    const SizedBox(height: 12),
+                    Container(height: 1, color: theme.colorScheme.border),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: _AnalyzePanel(
+                        state: analyzeState,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
@@ -1500,12 +1551,12 @@ class _SettingsSidebar extends ConsumerWidget {
 class _SettingsModeSwitcher extends StatelessWidget {
   const _SettingsModeSwitcher({
     required this.settings,
-    required this.runState,
+    required this.controlsLocked,
     required this.notifier,
   });
 
   final AppSettings settings;
-  final OptimizationRunState runState;
+  final bool controlsLocked;
   final AppSettingsController notifier;
 
   @override
@@ -1560,13 +1611,13 @@ class _SettingsModeSwitcher extends StatelessWidget {
             ? _AdvancedSettingsModeSection(
                 key: activeKey,
                 settings: settings,
-                runState: runState,
+                controlsLocked: controlsLocked,
                 notifier: notifier,
               )
             : _BasicSettingsModeSection(
                 key: activeKey,
                 settings: settings,
-                runState: runState,
+                controlsLocked: controlsLocked,
                 notifier: notifier,
               ),
       ),
@@ -1578,12 +1629,12 @@ class _AdvancedSettingsModeSection extends StatelessWidget {
   const _AdvancedSettingsModeSection({
     super.key,
     required this.settings,
-    required this.runState,
+    required this.controlsLocked,
     required this.notifier,
   });
 
   final AppSettings settings;
-  final OptimizationRunState runState;
+  final bool controlsLocked;
   final AppSettingsController notifier;
 
   @override
@@ -1597,7 +1648,7 @@ class _AdvancedSettingsModeSection extends StatelessWidget {
         const SizedBox(height: 8),
         RadioGroup<PreferredCodec>(
           value: settings.preferredCodec,
-          onChanged: runState.isRunning ? null : notifier.setPreferredCodec,
+          onChanged: controlsLocked ? null : notifier.setPreferredCodec,
           child: LayoutBuilder(
             builder: (context, constraints) {
               final cardWidth = (constraints.maxWidth - 8) / 2;
@@ -1628,12 +1679,12 @@ class _BasicSettingsModeSection extends StatelessWidget {
   const _BasicSettingsModeSection({
     super.key,
     required this.settings,
-    required this.runState,
+    required this.controlsLocked,
     required this.notifier,
   });
 
   final AppSettings settings;
-  final OptimizationRunState runState;
+  final bool controlsLocked;
   final AppSettingsController notifier;
 
   @override
@@ -1647,7 +1698,7 @@ class _BasicSettingsModeSection extends StatelessWidget {
         const SizedBox(height: 8),
         RadioGroup<CompressionMethod>(
           value: settings.compressionMethod,
-          onChanged: runState.isRunning ? null : notifier.setCompressionMethod,
+          onChanged: controlsLocked ? null : notifier.setCompressionMethod,
           child: Row(
             children: [
               Expanded(
@@ -1671,7 +1722,7 @@ class _BasicSettingsModeSection extends StatelessWidget {
         const SizedBox(height: 8),
         RadioGroup<CompressionPriority>(
           value: settings.compressionPriority,
-          onChanged: runState.isRunning
+          onChanged: controlsLocked
               ? null
               : notifier.setCompressionPriority,
           child: Row(
@@ -1692,6 +1743,294 @@ class _BasicSettingsModeSection extends StatelessWidget {
             ],
           ),
         ),
+      ],
+    );
+  }
+}
+
+class _AnalyzePanel extends ConsumerWidget {
+  const _AnalyzePanel({
+    required this.state,
+  });
+
+  final AnalyzeRunState state;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final controller = ref.read(analyzeRunControllerProvider.notifier);
+    final displayMode = ref.watch(currentPreviewDisplayModeProvider);
+    final currentFilePath = ref.watch(fileOpenControllerProvider).currentPath;
+    final samples = [...state.samples]
+      ..sort((a, b) => a.sizeBytes.compareTo(b.sizeBytes));
+    final selectedSample = state.selectedSample;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.secondary.withValues(alpha: 0.2),
+        borderRadius: theme.borderRadiusLg,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Analyze',
+                  style: TextStyle(
+                    color: theme.colorScheme.mutedForeground,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.6,
+                  ),
+                ).xSmall(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (state.isRunning || samples.isNotEmpty) ...[
+            Row(
+              children: [
+                Text(
+                  state.isRunning
+                      ? 'Sampling ${state.completedCount} / ${state.totalCount}'
+                      : '${samples.length} samples',
+                ).xSmall().muted(),
+                const Spacer(),
+                if (state.currentQuality case final quality?)
+                  Text('Q$quality').xSmall().muted(),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: samples.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : _AnalyzeChart(
+                      samples: samples,
+                      selectedArtifactId: state.selectedArtifactId,
+                      onSelectSample: (sample) {
+                        controller.selectSample(sample);
+                        if (currentFilePath != null) {
+                          ref
+                              .read(previewDisplaySelectionProvider.notifier)
+                              .select(
+                                filePath: currentFilePath,
+                                mode: PreviewDisplayMode.optimized,
+                              );
+                        }
+                        if (displayMode == PreviewDisplayMode.difference) {
+                          ref
+                              .read(previewDifferenceRequestProvider.notifier)
+                              .requestForArtifact(sample.artifactId);
+                        }
+                      },
+                    ),
+            ),
+            const SizedBox(height: 8),
+            if (selectedSample != null)
+              _AnalyzeSelectionSummary(sample: selectedSample)
+          ],
+          if (state.globalError case final error?) ...[
+            const SizedBox(height: 8),
+            Text(error).xSmall().muted(),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AnalyzeChart extends StatelessWidget {
+  const _AnalyzeChart({
+    required this.samples,
+    required this.selectedArtifactId,
+    required this.onSelectSample,
+  });
+
+  final List<AnalyzeSampleResult> samples;
+  final String? selectedArtifactId;
+  final ValueChanged<AnalyzeSampleResult> onSelectSample;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final pixelMatchPoints = _metricPoints(
+      samples,
+      (sample) => sample.pixelMatch,
+    );
+    final ssimulacra2Points = _metricPoints(
+      samples,
+      (sample) => sample.ssimulacra2,
+    );
+    final maxX = samples.fold<double>(
+      0,
+      (current, sample) => math.max(current, sample.sizeBytes.toDouble()),
+    );
+
+    return LineChart(
+      LineChartData(
+        minY: 0,
+        maxY: 100,
+        minX: 0,
+        maxX: maxX <= 0 ? 1 : maxX * 1.05,
+        gridData: FlGridData(
+          drawVerticalLine: true,
+          horizontalInterval: 20,
+          verticalInterval: maxX <= 0 ? 1 : maxX / 4,
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: theme.colorScheme.border,
+            strokeWidth: 1,
+          ),
+          getDrawingVerticalLine: (value) => FlLine(
+            color: theme.colorScheme.border.withValues(alpha: 0.6),
+            strokeWidth: 1,
+          ),
+        ),
+        titlesData: FlTitlesData(
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 30,
+              interval: 20,
+              getTitlesWidget: (value, meta) => Text(
+                value.toInt().toString(),
+              ).xSmall().muted(),
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 26,
+              interval: maxX <= 0 ? 1 : maxX / 4,
+              getTitlesWidget: (value, meta) => Text(
+                _formatBytes(value.round()),
+              ).xSmall().muted(),
+            ),
+          ),
+        ),
+        borderData: FlBorderData(
+          show: true,
+          border: Border.all(color: theme.colorScheme.border),
+        ),
+        lineTouchData: LineTouchData(
+          handleBuiltInTouches: true,
+          touchCallback: (event, response) {
+            final touchedSpots = response?.lineBarSpots;
+            if (touchedSpots == null ||
+                touchedSpots.isEmpty ||
+                !event.isInterestedForInteractions) {
+              return;
+            }
+            final touched = touchedSpots.first;
+            final point = switch (touched.barIndex) {
+              0 => pixelMatchPoints[touched.spotIndex],
+              _ => ssimulacra2Points[touched.spotIndex],
+            };
+            onSelectSample(point.sample);
+          },
+          touchTooltipData: LineTouchTooltipData(
+            fitInsideHorizontally: true,
+            fitInsideVertically: true,
+            getTooltipItems: (spots) {
+              return spots.map((spot) {
+                final point = switch (spot.barIndex) {
+                  0 => pixelMatchPoints[spot.spotIndex],
+                  _ => ssimulacra2Points[spot.spotIndex],
+                };
+                final sample = point.sample;
+                return LineTooltipItem(
+                  'Q${sample.quality}\n${_formatBytes(sample.sizeBytes.toInt())}\nPixel ${_formatNullableMetricPercent(sample.pixelMatch)}\nSSIM ${_formatNullableMetric(sample.ssimulacra2, digits: 1)}',
+                  TextStyle(color: theme.colorScheme.foreground, fontSize: 10),
+                );
+              }).toList(growable: false);
+            },
+          ),
+        ),
+        lineBarsData: [
+          _buildAnalyzeLine(
+            points: pixelMatchPoints,
+            color: const Color(0xFF2563EB),
+            selectedArtifactId: selectedArtifactId,
+          ),
+          _buildAnalyzeLine(
+            points: ssimulacra2Points,
+            color: const Color(0xFF16A34A),
+            selectedArtifactId: selectedArtifactId,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AnalyzeMetricPoint {
+  const _AnalyzeMetricPoint({required this.sample, required this.spot});
+
+  final AnalyzeSampleResult sample;
+  final FlSpot spot;
+}
+
+List<_AnalyzeMetricPoint> _metricPoints(
+  List<AnalyzeSampleResult> samples,
+  double? Function(AnalyzeSampleResult sample) metric,
+) {
+  return samples
+      .where((sample) => metric(sample) != null)
+      .map(
+        (sample) => _AnalyzeMetricPoint(
+          sample: sample,
+          spot: FlSpot(sample.sizeBytes.toDouble(), metric(sample)!),
+        ),
+      )
+      .toList(growable: false);
+}
+
+LineChartBarData _buildAnalyzeLine({
+  required List<_AnalyzeMetricPoint> points,
+  required Color color,
+  required String? selectedArtifactId,
+}) {
+  return LineChartBarData(
+    spots: points.map((point) => point.spot).toList(growable: false),
+    isCurved: false,
+    color: color,
+    barWidth: 2,
+    dotData: FlDotData(
+      show: true,
+      getDotPainter: (spot, percent, barData, index) {
+        final selected = selectedArtifactId != null &&
+            points[index].sample.artifactId == selectedArtifactId;
+        return FlDotCirclePainter(
+          radius: selected ? 4 : 2.5,
+          color: color,
+          strokeWidth: selected ? 2 : 0,
+          strokeColor: Colors.white,
+        );
+      },
+    ),
+  );
+}
+
+class _AnalyzeSelectionSummary extends StatelessWidget {
+  const _AnalyzeSelectionSummary({required this.sample});
+
+  final AnalyzeSampleResult sample;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            'Q${sample.quality}  ${_formatBytes(sample.sizeBytes.toInt())}',
+          ).xSmall().medium(),
+        ),
+        Text(
+          'Pixel ${_formatNullableMetricPercent(sample.pixelMatch)}  SSIM ${_formatNullableMetric(sample.ssimulacra2, digits: 1)}',
+        ).xSmall().muted(),
       ],
     );
   }
@@ -1871,7 +2210,9 @@ class _BottomSidebar extends ConsumerWidget {
         .watch(appSettingsProvider)
         .maybeWhen(data: (value) => value, orElse: () => null);
     final runState = ref.watch(optimizationRunControllerProvider);
+    final analyzeState = ref.watch(analyzeRunControllerProvider);
     final runController = ref.read(optimizationRunControllerProvider.notifier);
+    final selectedAnalyzeSample = ref.watch(selectedAnalyzeSampleProvider);
     final progressValue = runState.totalCount > 0
         ? (runState.completedCount / runState.totalCount).clamp(0.0, 1.0)
         : 0.0;
@@ -1880,6 +2221,7 @@ class _BottomSidebar extends ConsumerWidget {
       currentFile: currentFile,
       runState: runState,
       preview: preview,
+      analyzeSample: selectedAnalyzeSample,
       isPreviewPending: previewState.isLoading,
       plan: plan,
       settings: settings,
@@ -1979,7 +2321,10 @@ class _BottomSidebar extends ConsumerWidget {
                                 )
                               : PrimaryButton(
                                   alignment: Alignment.center,
-                                  onPressed: runController.optimizeAll,
+                                  onPressed: analyzeState.isRunning ||
+                                          analyzeState.isCancelRequested
+                                      ? null
+                                      : runController.optimizeAll,
                                   child: const Text(
                                     'Optimize',
                                     textAlign: TextAlign.center,
@@ -1987,10 +2332,16 @@ class _BottomSidebar extends ConsumerWidget {
                                   ),
                                 ),
                         ),
-                        if (runState.isRunning) ...[
+                        if (runState.isRunning || analyzeState.isRunning) ...[
                           const SizedBox(height: 8),
                           LinearProgressIndicator(
-                            value: progressValue,
+                            value: analyzeState.isRunning
+                                ? (analyzeState.totalCount > 0
+                                      ? (analyzeState.completedCount /
+                                                analyzeState.totalCount)
+                                            .clamp(0.0, 1.0)
+                                      : 0.0)
+                                : progressValue,
                             minHeight: 6,
                             borderRadius: theme.borderRadiusLg,
                           ),
@@ -2343,6 +2694,7 @@ class _BottomSummaryViewModel {
     required OpenedImageFile currentFile,
     required OptimizationRunState runState,
     required OptimizationPreview? preview,
+    required AnalyzeSampleResult? analyzeSample,
     required bool isPreviewPending,
     required OptimizationPlan? plan,
     required AppSettings? settings,
@@ -2359,6 +2711,7 @@ class _BottomSummaryViewModel {
       file: currentFile,
       runState: runState,
       preview: preview,
+      analyzeSample: analyzeSample,
       isPreviewPending: isPreviewPending,
       plan: plan,
     );
@@ -2368,14 +2721,16 @@ class _BottomSummaryViewModel {
     required OpenedImageFile file,
     required OptimizationRunState runState,
     required OptimizationPreview? preview,
+    required AnalyzeSampleResult? analyzeSample,
     required bool isPreviewPending,
     required OptimizationPlan? plan,
   }) {
     final originalBytes = _originalFileSizeBytes(file);
     final hasSavedResult = file.lastResult != null;
     final isOptimizedPreviewPending =
-        preview == null && isPreviewPending && !hasSavedResult;
+        analyzeSample == null && preview == null && isPreviewPending && !hasSavedResult;
     final newBytes =
+        analyzeSample?.sizeBytes.toInt() ??
         preview?.result.sizeBytes.toInt() ??
         (isOptimizedPreviewPending ? null : _effectiveFileSizeBytes(file));
     final originalBpp = _bitsPerPixel(
@@ -2386,10 +2741,12 @@ class _BottomSummaryViewModel {
     final optimizedBpp = _bitsPerPixel(
       bytes: newBytes,
       width:
+          analyzeSample?.width ??
           preview?.result.width ??
           file.lastResult?.width ??
           file.metadata.width,
       height:
+          analyzeSample?.height ??
           preview?.result.height ??
           file.lastResult?.height ??
           file.metadata.height,
@@ -2402,6 +2759,7 @@ class _BottomSummaryViewModel {
         ? (savingsBytes / originalBytes) * 100
         : null;
     final outputFormat =
+        analyzeSample?.format ??
         file.lastResult?.format ??
         (plan == null ? null : codecIdOf(plan.targetCodec));
     return _BottomSummaryViewModel(

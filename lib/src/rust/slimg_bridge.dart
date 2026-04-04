@@ -68,4 +68,17 @@ class SlimgBridge {
 
   Future<void> disposeProcessFileBatchJob({required String jobId}) =>
       bridge_api.disposeProcessFileBatchJob(jobId: jobId);
+
+  Future<AnalyzeFileJobHandle> startAnalyzeFileJob({
+    required AnalyzeFileRequest request,
+  }) => bridge_api.startAnalyzeFileJob(request: request);
+
+  Future<AnalyzeFileJobSnapshot> getAnalyzeFileJob({required String jobId}) =>
+      bridge_api.getAnalyzeFileJob(jobId: jobId);
+
+  Future<void> cancelAnalyzeFileJob({required String jobId}) =>
+      bridge_api.cancelAnalyzeFileJob(jobId: jobId);
+
+  Future<void> disposeAnalyzeFileJob({required String jobId}) =>
+      bridge_api.disposeAnalyzeFileJob(jobId: jobId);
 }

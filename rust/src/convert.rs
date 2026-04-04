@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::Instant;
 
 use slimg_core::{
@@ -87,8 +88,8 @@ pub(crate) fn preview_file(request: crate::types::PreviewFileRequest) -> Result<
                 source_image.height,
                 output.width,
                 output.height,
-                source_image.data,
-                output.preview_rgba_bytes,
+                Arc::<[u8]>::from(source_image.data),
+                Arc::<[u8]>::from(output.preview_rgba_bytes),
             )),
             format: format_to_string(output.format),
             width: output.width,
@@ -144,12 +145,12 @@ struct OperationOutput {
     should_write: bool,
 }
 
-struct PreviewOperationOutput {
-    data: Vec<u8>,
-    preview_rgba_bytes: Vec<u8>,
-    format: Format,
-    width: u32,
-    height: u32,
+pub(crate) struct PreviewOperationOutput {
+    pub(crate) data: Vec<u8>,
+    pub(crate) preview_rgba_bytes: Vec<u8>,
+    pub(crate) format: Format,
+    pub(crate) width: u32,
+    pub(crate) height: u32,
 }
 
 pub(crate) fn process_file_request_with_threads(
@@ -287,7 +288,7 @@ fn run_operation(
     }
 }
 
-fn run_preview_operation(
+pub(crate) fn run_preview_operation(
     image: &slimg_core::ImageData,
     source_format: Format,
     operation: &ImageOperation,

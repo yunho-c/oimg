@@ -70,6 +70,11 @@ pub struct BatchJobHandle {
     pub job_id: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AnalyzeFileJobHandle {
+    pub job_id: String,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BatchJobState {
     Running,
@@ -87,6 +92,37 @@ pub struct BatchJobSnapshot {
     pub completed_count: u32,
     pub current_input_path: Option<String>,
     pub results: Vec<BatchItemResult>,
+    pub error: Option<SlimgBridgeError>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AnalyzeSampleResult {
+    pub quality: u8,
+    pub temp_output_path: String,
+    pub format: String,
+    pub width: u32,
+    pub height: u32,
+    pub size_bytes: u64,
+    pub pixel_match: Option<f64>,
+    pub ssimulacra2: Option<f64>,
+    pub artifact_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AnalyzeFileRequest {
+    pub input_path: String,
+    pub operation: ImageOperation,
+    pub qualities: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AnalyzeFileJobSnapshot {
+    pub job_id: String,
+    pub state: BatchJobState,
+    pub total_count: u32,
+    pub completed_count: u32,
+    pub current_quality: Option<u8>,
+    pub results: Vec<AnalyzeSampleResult>,
     pub error: Option<SlimgBridgeError>,
 }
 
@@ -211,6 +247,35 @@ impl ImageOperation {
             Self::Resize(_) => "resized",
             Self::Crop(_) => "cropped",
             Self::Extend(_) => "extended",
+        }
+    }
+
+    pub(crate) fn with_quality(&self, quality: u8) -> Self {
+        match self {
+            Self::Convert(options) => Self::Convert(ConvertOptions {
+                target_format: options.target_format.clone(),
+                quality,
+            }),
+            Self::Optimize(options) => Self::Optimize(OptimizeOptions {
+                quality,
+                write_only_if_smaller: options.write_only_if_smaller,
+            }),
+            Self::Resize(options) => Self::Resize(ResizeOptions {
+                resize: options.resize.clone(),
+                target_format: options.target_format.clone(),
+                quality,
+            }),
+            Self::Crop(options) => Self::Crop(CropOptions {
+                crop: options.crop.clone(),
+                target_format: options.target_format.clone(),
+                quality,
+            }),
+            Self::Extend(options) => Self::Extend(ExtendOptions {
+                extend: options.extend.clone(),
+                fill: options.fill.clone(),
+                target_format: options.target_format.clone(),
+                quality,
+            }),
         }
     }
 }

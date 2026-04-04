@@ -27,6 +27,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String dco_decode_String(dynamic raw);
 
   @protected
+  AnalyzeFileJobHandle dco_decode_analyze_file_job_handle(dynamic raw);
+
+  @protected
+  AnalyzeFileJobSnapshot dco_decode_analyze_file_job_snapshot(dynamic raw);
+
+  @protected
+  AnalyzeFileRequest dco_decode_analyze_file_request(dynamic raw);
+
+  @protected
+  AnalyzeSampleResult dco_decode_analyze_sample_result(dynamic raw);
+
+  @protected
   BatchItemResult dco_decode_batch_item_result(dynamic raw);
 
   @protected
@@ -43,6 +55,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   bool dco_decode_bool(dynamic raw);
+
+  @protected
+  AnalyzeFileRequest dco_decode_box_autoadd_analyze_file_request(dynamic raw);
 
   @protected
   BatchProcessRequest dco_decode_box_autoadd_batch_process_request(dynamic raw);
@@ -100,6 +115,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt dco_decode_box_autoadd_u_64(dynamic raw);
 
   @protected
+  int dco_decode_box_autoadd_u_8(dynamic raw);
+
+  @protected
   ConvertOptions dco_decode_convert_options(dynamic raw);
 
   @protected
@@ -139,6 +157,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<String> dco_decode_list_String(dynamic raw);
 
   @protected
+  List<AnalyzeSampleResult> dco_decode_list_analyze_sample_result(dynamic raw);
+
+  @protected
   List<BatchItemResult> dco_decode_list_batch_item_result(dynamic raw);
 
   @protected
@@ -173,6 +194,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   BigInt? dco_decode_opt_box_autoadd_u_64(dynamic raw);
+
+  @protected
+  int? dco_decode_opt_box_autoadd_u_8(dynamic raw);
 
   @protected
   OptimizeOptions dco_decode_optimize_options(dynamic raw);
@@ -229,6 +253,26 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
+  AnalyzeFileJobHandle sse_decode_analyze_file_job_handle(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  AnalyzeFileJobSnapshot sse_decode_analyze_file_job_snapshot(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  AnalyzeFileRequest sse_decode_analyze_file_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  AnalyzeSampleResult sse_decode_analyze_sample_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   BatchItemResult sse_decode_batch_item_result(SseDeserializer deserializer);
 
   @protected
@@ -247,6 +291,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   bool sse_decode_bool(SseDeserializer deserializer);
+
+  @protected
+  AnalyzeFileRequest sse_decode_box_autoadd_analyze_file_request(
+    SseDeserializer deserializer,
+  );
 
   @protected
   BatchProcessRequest sse_decode_box_autoadd_batch_process_request(
@@ -326,6 +375,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt sse_decode_box_autoadd_u_64(SseDeserializer deserializer);
 
   @protected
+  int sse_decode_box_autoadd_u_8(SseDeserializer deserializer);
+
+  @protected
   ConvertOptions sse_decode_convert_options(SseDeserializer deserializer);
 
   @protected
@@ -365,6 +417,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<AnalyzeSampleResult> sse_decode_list_analyze_sample_result(
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<BatchItemResult> sse_decode_list_batch_item_result(
@@ -411,6 +468,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   BigInt? sse_decode_opt_box_autoadd_u_64(SseDeserializer deserializer);
+
+  @protected
+  int? sse_decode_opt_box_autoadd_u_8(SseDeserializer deserializer);
 
   @protected
   OptimizeOptions sse_decode_optimize_options(SseDeserializer deserializer);
@@ -480,6 +540,30 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
+  void sse_encode_analyze_file_job_handle(
+    AnalyzeFileJobHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_analyze_file_job_snapshot(
+    AnalyzeFileJobSnapshot self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_analyze_file_request(
+    AnalyzeFileRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_analyze_sample_result(
+    AnalyzeSampleResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_batch_item_result(
     BatchItemResult self,
     SseSerializer serializer,
@@ -508,6 +592,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_analyze_file_request(
+    AnalyzeFileRequest self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_box_autoadd_batch_process_request(
@@ -606,6 +696,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_box_autoadd_u_64(BigInt self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_u_8(int self, SseSerializer serializer);
+
+  @protected
   void sse_encode_convert_options(
     ConvertOptions self,
     SseSerializer serializer,
@@ -652,6 +745,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_analyze_sample_result(
+    List<AnalyzeSampleResult> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_batch_item_result(
@@ -712,6 +811,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_opt_box_autoadd_u_64(BigInt? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_u_8(int? self, SseSerializer serializer);
 
   @protected
   void sse_encode_optimize_options(

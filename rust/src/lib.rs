@@ -1,4 +1,5 @@
 pub mod api;
+mod analyze_jobs;
 mod batch_jobs;
 mod codec;
 mod convert;

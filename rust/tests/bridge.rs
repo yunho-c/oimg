@@ -3,8 +3,8 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use oimg_rust::api::bridge::{
-    self, BatchJobState, BatchProcessRequest, ConvertOptions, CropOptions, CropSpec,
-    ImageOperation, OptimizeOptions, PreviewArtifactRequest, PreviewFileRequest,
+    self, AnalyzeFileRequest, BatchJobState, BatchProcessRequest, ConvertOptions, CropOptions,
+    CropSpec, ImageOperation, OptimizeOptions, PreviewArtifactRequest, PreviewFileRequest,
     ProcessBytesRequest, ProcessFileBatchRequest, ProcessFileRequest, ResizeOptions, ResizeSpec,
 };
 use slimg_core::{convert, decode, Format, ImageData, PipelineOptions};
@@ -74,6 +74,22 @@ fn wait_for_job(job_id: &str) -> oimg_rust::api::bridge::BatchJobSnapshot {
         }
 
         assert!(Instant::now() < deadline, "timed out waiting for batch job");
+        thread::sleep(Duration::from_millis(20));
+    }
+}
+
+fn wait_for_analyze_job(job_id: &str) -> oimg_rust::api::bridge::AnalyzeFileJobSnapshot {
+    let deadline = Instant::now() + Duration::from_secs(20);
+    loop {
+        let snapshot = bridge::get_analyze_file_job(job_id.to_string()).unwrap();
+        if matches!(
+            snapshot.state,
+            BatchJobState::Completed | BatchJobState::Canceled | BatchJobState::Failed
+        ) {
+            return snapshot;
+        }
+
+        assert!(Instant::now() < deadline, "timed out waiting for analyze job");
         thread::sleep(Duration::from_millis(20));
     }
 }
@@ -203,9 +219,18 @@ fn preview_metric_rpcs_return_none_when_metric_cannot_be_computed() {
         bridge::compute_preview_pixel_match_percentage(request.clone()).unwrap(),
         None
     );
-    assert_eq!(bridge::compute_preview_ms_ssim(request.clone()).unwrap(), None);
-    assert_eq!(bridge::compute_preview_ssimulacra2(request.clone()).unwrap(), None);
-    assert_eq!(bridge::compute_preview_difference_image(request).unwrap(), None);
+    assert_eq!(
+        bridge::compute_preview_ms_ssim(request.clone()).unwrap(),
+        None
+    );
+    assert_eq!(
+        bridge::compute_preview_ssimulacra2(request.clone()).unwrap(),
+        None
+    );
+    assert_eq!(
+        bridge::compute_preview_difference_image(request).unwrap(),
+        None
+    );
     bridge::dispose_preview_artifact(preview.artifact_id).unwrap();
 }
 
@@ -469,4 +494,68 @@ fn cancel_process_file_batch_job_stops_remaining_files() {
     }
 
     bridge::dispose_process_file_batch_job(handle.job_id).unwrap();
+}
+
+#[test]
+fn analyze_file_job_returns_sweep_samples() {
+    let dir = tempdir().unwrap();
+    let input_path = dir.path().join("source.png");
+    fs::write(&input_path, png_bytes()).unwrap();
+
+    let handle = bridge::start_analyze_file_job(AnalyzeFileRequest {
+        input_path: input_path.to_string_lossy().into_owned(),
+        operation: ImageOperation::Convert(ConvertOptions {
+            target_format: "jpeg".to_string(),
+            quality: 80,
+        }),
+        qualities: vec![0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+    })
+    .unwrap();
+
+    let snapshot = wait_for_analyze_job(&handle.job_id);
+    assert_eq!(snapshot.state, BatchJobState::Completed);
+    assert_eq!(snapshot.results.len(), 11);
+    assert_eq!(snapshot.results.first().unwrap().quality, 0);
+    assert_eq!(snapshot.results.last().unwrap().quality, 100);
+    assert!(snapshot
+        .results
+        .iter()
+        .all(|sample| !sample.artifact_id.is_empty()));
+    assert!(snapshot
+        .results
+        .iter()
+        .all(|sample| fs::metadata(&sample.temp_output_path).is_ok()));
+
+    bridge::dispose_analyze_file_job(handle.job_id).unwrap();
+}
+
+#[test]
+fn dispose_analyze_file_job_cleans_temp_outputs() {
+    let dir = tempdir().unwrap();
+    let input_path = dir.path().join("source.png");
+    fs::write(&input_path, png_bytes()).unwrap();
+
+    let handle = bridge::start_analyze_file_job(AnalyzeFileRequest {
+        input_path: input_path.to_string_lossy().into_owned(),
+        operation: ImageOperation::Optimize(OptimizeOptions {
+            quality: 80,
+            write_only_if_smaller: true,
+        }),
+        qualities: vec![0, 50, 100],
+    })
+    .unwrap();
+
+    let snapshot = wait_for_analyze_job(&handle.job_id);
+    let sample_path = snapshot.results.first().unwrap().temp_output_path.clone();
+    let artifact_id = snapshot.results.first().unwrap().artifact_id.clone();
+
+    bridge::dispose_analyze_file_job(handle.job_id).unwrap();
+
+    assert!(fs::metadata(&sample_path).is_err());
+    let error = bridge::compute_preview_difference_image(PreviewArtifactRequest { artifact_id })
+        .unwrap_err();
+    assert!(
+        error.to_string().contains("unknown preview artifact"),
+        "unexpected error: {error}"
+    );
 }
