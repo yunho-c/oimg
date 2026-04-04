@@ -2642,6 +2642,8 @@ class _BottomQualitySection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text('Quality').xSmall().medium().muted(),
+          const SizedBox(height: 10),
           for (var index = 0; index < rows.length; index++) ...[
             _BottomMetricRow(row: rows[index]),
             if (index + 1 < rows.length) const SizedBox(height: 8),
