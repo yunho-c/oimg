@@ -11,7 +11,15 @@ abstract class SlimgApi {
 
   Future<PreviewResult> previewFile({required PreviewFileRequest request});
 
-  Future<PreviewQualityMetrics> computePreviewQualityMetrics({
+  Future<double?> computePreviewPixelMatchPercentage({
+    required PreviewQualityMetricsRequest request,
+  });
+
+  Future<double?> computePreviewMsSsim({
+    required PreviewQualityMetricsRequest request,
+  });
+
+  Future<double?> computePreviewSsimulacra2({
     required PreviewQualityMetricsRequest request,
   });
 
@@ -75,28 +83,96 @@ class FrbSlimgApi implements SlimgApi {
   }
 
   @override
-  Future<PreviewQualityMetrics> computePreviewQualityMetrics({
+  Future<double?> computePreviewPixelMatchPercentage({
     required PreviewQualityMetricsRequest request,
   }) {
     final stopwatch = Stopwatch()..start();
     DeveloperDiagnostics.logTiming(
-      'slimg-api',
-      'preview-metrics start path=${request.inputPath}',
+      'preview-metric:pixel-match',
+      'start path=${request.inputPath}',
     );
     return _bridge
-        .computePreviewQualityMetrics(request: request)
+        .computePreviewPixelMatchPercentage(request: request)
         .then(
           (result) {
             stopwatch.stop();
             DeveloperDiagnostics.logTiming(
-              'slimg-api',
-              'preview-metrics done path=${request.inputPath} total=${stopwatch.elapsedMilliseconds}ms pixelMatchPercentage=${result.pixelMatchPercentage} msSsim=${result.msSsim} ssimulacra2=${result.ssimulacra2}',
+              'preview-metric:pixel-match',
+              'done path=${request.inputPath} total=${stopwatch.elapsedMilliseconds}ms value=$result',
             );
             return result;
           },
           onError: (Object error, StackTrace stackTrace) {
             stopwatch.stop();
-            DeveloperDiagnostics.logTimingError('slimg-api', error, stackTrace);
+            DeveloperDiagnostics.logTimingError(
+              'preview-metric:pixel-match',
+              error,
+              stackTrace,
+            );
+            throw error;
+          },
+        );
+  }
+
+  @override
+  Future<double?> computePreviewMsSsim({
+    required PreviewQualityMetricsRequest request,
+  }) {
+    final stopwatch = Stopwatch()..start();
+    DeveloperDiagnostics.logTiming(
+      'preview-metric:ms-ssim',
+      'start path=${request.inputPath}',
+    );
+    return _bridge
+        .computePreviewMsSsim(request: request)
+        .then(
+          (result) {
+            stopwatch.stop();
+            DeveloperDiagnostics.logTiming(
+              'preview-metric:ms-ssim',
+              'done path=${request.inputPath} total=${stopwatch.elapsedMilliseconds}ms value=$result',
+            );
+            return result;
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            stopwatch.stop();
+            DeveloperDiagnostics.logTimingError(
+              'preview-metric:ms-ssim',
+              error,
+              stackTrace,
+            );
+            throw error;
+          },
+        );
+  }
+
+  @override
+  Future<double?> computePreviewSsimulacra2({
+    required PreviewQualityMetricsRequest request,
+  }) {
+    final stopwatch = Stopwatch()..start();
+    DeveloperDiagnostics.logTiming(
+      'preview-metric:ssimulacra2',
+      'start path=${request.inputPath}',
+    );
+    return _bridge
+        .computePreviewSsimulacra2(request: request)
+        .then(
+          (result) {
+            stopwatch.stop();
+            DeveloperDiagnostics.logTiming(
+              'preview-metric:ssimulacra2',
+              'done path=${request.inputPath} total=${stopwatch.elapsedMilliseconds}ms value=$result',
+            );
+            return result;
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            stopwatch.stop();
+            DeveloperDiagnostics.logTimingError(
+              'preview-metric:ssimulacra2',
+              error,
+              stackTrace,
+            );
             throw error;
           },
         );

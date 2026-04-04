@@ -12,7 +12,9 @@ import 'optimization_plan.dart';
 
 final slimgApiProvider = Provider<SlimgApi>((ref) => const FrbSlimgApi());
 int _previewRequestSequence = 0;
-int _previewMetricsRequestSequence = 0;
+int _previewPixelMatchRequestSequence = 0;
+int _previewMsSsimRequestSequence = 0;
+int _previewSsimulacra2RequestSequence = 0;
 
 final currentOptimizationPlanProvider =
     FutureProvider.autoDispose<OptimizationPlan?>((ref) async {
@@ -112,47 +114,141 @@ final currentPreviewProvider = FutureProvider.autoDispose<OptimizationPreview?>(
   }
 });
 
-final currentPreviewQualityMetricsProvider =
-    FutureProvider.autoDispose<PreviewQualityMetrics?>((ref) async {
-      final requestId = ++_previewMetricsRequestSequence;
+final _currentPreviewMetricRequestProvider =
+    FutureProvider.autoDispose<PreviewQualityMetricsRequest?>((ref) async {
+      final controller = ref.watch(fileOpenControllerProvider);
+      if (controller.isFolderSelected) {
+        return null;
+      }
+      final preview = await ref.watch(currentPreviewProvider.future);
+      if (preview == null) {
+        return null;
+      }
+      return PreviewQualityMetricsRequest(
+        inputPath: preview.sourceFile.path,
+        previewEncodedBytes: preview.result.encodedBytes,
+      );
+    });
+
+final currentPreviewPixelMatchProvider =
+    FutureProvider.autoDispose<double?>((ref) async {
+      final requestId = ++_previewPixelMatchRequestSequence;
       final totalStopwatch = Stopwatch()..start();
       ref.onDispose(() {
         DeveloperDiagnostics.logTiming(
-          'preview-metrics:$requestId',
+          'preview-metric:pixel-match:$requestId',
           'disposed total=${totalStopwatch.elapsedMilliseconds}ms',
         );
       });
 
       try {
-        final preview = await ref.watch(currentPreviewProvider.future);
-        if (preview == null) {
+        final request = await ref.watch(_currentPreviewMetricRequestProvider.future);
+        if (request == null) {
           return null;
         }
 
         DeveloperDiagnostics.logTiming(
-          'preview-metrics:$requestId',
-          'start path=${preview.sourceFile.path}',
+          'preview-metric:pixel-match:$requestId',
+          'start path=${request.inputPath}',
         );
-
-        final metricsStopwatch = Stopwatch()..start();
+        final metricStopwatch = Stopwatch()..start();
         final result = await ref
             .read(slimgApiProvider)
-            .computePreviewQualityMetrics(
-              request: PreviewQualityMetricsRequest(
-                inputPath: preview.sourceFile.path,
-                previewEncodedBytes: preview.result.encodedBytes,
-              ),
-            );
-        metricsStopwatch.stop();
+            .computePreviewPixelMatchPercentage(request: request);
+        metricStopwatch.stop();
         totalStopwatch.stop();
         DeveloperDiagnostics.logTiming(
-          'preview-metrics:$requestId',
-          'done metrics=${metricsStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms pixelMatchPercentage=${result.pixelMatchPercentage} msSsim=${result.msSsim} ssimulacra2=${result.ssimulacra2}',
+          'preview-metric:pixel-match:$requestId',
+          'done metric=${metricStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms value=$result',
         );
         return result;
       } on Object catch (error, stackTrace) {
         DeveloperDiagnostics.logTimingError(
-          'preview-metrics:$requestId',
+          'preview-metric:pixel-match:$requestId',
+          error,
+          stackTrace,
+        );
+        rethrow;
+      }
+    });
+
+final currentPreviewMsSsimProvider =
+    FutureProvider.autoDispose<double?>((ref) async {
+      final requestId = ++_previewMsSsimRequestSequence;
+      final totalStopwatch = Stopwatch()..start();
+      ref.onDispose(() {
+        DeveloperDiagnostics.logTiming(
+          'preview-metric:ms-ssim:$requestId',
+          'disposed total=${totalStopwatch.elapsedMilliseconds}ms',
+        );
+      });
+
+      try {
+        final request = await ref.watch(_currentPreviewMetricRequestProvider.future);
+        if (request == null) {
+          return null;
+        }
+
+        DeveloperDiagnostics.logTiming(
+          'preview-metric:ms-ssim:$requestId',
+          'start path=${request.inputPath}',
+        );
+        final metricStopwatch = Stopwatch()..start();
+        final result = await ref
+            .read(slimgApiProvider)
+            .computePreviewMsSsim(request: request);
+        metricStopwatch.stop();
+        totalStopwatch.stop();
+        DeveloperDiagnostics.logTiming(
+          'preview-metric:ms-ssim:$requestId',
+          'done metric=${metricStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms value=$result',
+        );
+        return result;
+      } on Object catch (error, stackTrace) {
+        DeveloperDiagnostics.logTimingError(
+          'preview-metric:ms-ssim:$requestId',
+          error,
+          stackTrace,
+        );
+        rethrow;
+      }
+    });
+
+final currentPreviewSsimulacra2Provider =
+    FutureProvider.autoDispose<double?>((ref) async {
+      final requestId = ++_previewSsimulacra2RequestSequence;
+      final totalStopwatch = Stopwatch()..start();
+      ref.onDispose(() {
+        DeveloperDiagnostics.logTiming(
+          'preview-metric:ssimulacra2:$requestId',
+          'disposed total=${totalStopwatch.elapsedMilliseconds}ms',
+        );
+      });
+
+      try {
+        final request = await ref.watch(_currentPreviewMetricRequestProvider.future);
+        if (request == null) {
+          return null;
+        }
+
+        DeveloperDiagnostics.logTiming(
+          'preview-metric:ssimulacra2:$requestId',
+          'start path=${request.inputPath}',
+        );
+        final metricStopwatch = Stopwatch()..start();
+        final result = await ref
+            .read(slimgApiProvider)
+            .computePreviewSsimulacra2(request: request);
+        metricStopwatch.stop();
+        totalStopwatch.stop();
+        DeveloperDiagnostics.logTiming(
+          'preview-metric:ssimulacra2:$requestId',
+          'done metric=${metricStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms value=$result',
+        );
+        return result;
+      } on Object catch (error, stackTrace) {
+        DeveloperDiagnostics.logTimingError(
+          'preview-metric:ssimulacra2:$requestId',
           error,
           stackTrace,
         );

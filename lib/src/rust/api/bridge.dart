@@ -27,9 +27,19 @@ Future<ImageMetadata> inspectBytes({required List<int> data}) =>
 Future<PreviewResult> previewFile({required PreviewFileRequest request}) =>
     RustLib.instance.api.crateApiBridgePreviewFile(request: request);
 
-Future<PreviewQualityMetrics> computePreviewQualityMetrics({
+Future<double?> computePreviewPixelMatchPercentage({
   required PreviewQualityMetricsRequest request,
-}) => RustLib.instance.api.crateApiBridgeComputePreviewQualityMetrics(
+}) => RustLib.instance.api.crateApiBridgeComputePreviewPixelMatchPercentage(
+  request: request,
+);
+
+Future<double?> computePreviewMsSsim({
+  required PreviewQualityMetricsRequest request,
+}) => RustLib.instance.api.crateApiBridgeComputePreviewMsSsim(request: request);
+
+Future<double?> computePreviewSsimulacra2({
+  required PreviewQualityMetricsRequest request,
+}) => RustLib.instance.api.crateApiBridgeComputePreviewSsimulacra2(
   request: request,
 );
 

@@ -79,6 +79,44 @@ void main() {
     expect(find.text('2 / 2'), findsOneWidget);
   });
 
+  testWidgets('quality rows resolve independently after preview loads', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+    )
+      ..pixelMatchDelay = const Duration(milliseconds: 40)
+      ..msSsimDelay = const Duration(milliseconds: 120)
+      ..ssimulacra2Delay = const Duration(milliseconds: 200);
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 170));
+
+    expect(find.byType(CircularProgressIndicator), findsNWidgets(3));
+
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.text('98.7%'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNWidgets(2));
+
+    await tester.pump(const Duration(milliseconds: 80));
+    expect(find.text('0.987'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('92.4'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
   testWidgets('later openFiles event replaces the session', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -422,7 +460,6 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
-      expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.text('Estimating'), findsNothing);
       expect(slimg.previewCallCount, 1);
 
@@ -532,16 +569,38 @@ class _FakeSlimgApi implements SlimgApi {
     );
   }
 
+  Duration pixelMatchDelay = Duration.zero;
+  Duration msSsimDelay = Duration.zero;
+  Duration ssimulacra2Delay = Duration.zero;
+
   @override
-  Future<PreviewQualityMetrics> computePreviewQualityMetrics({
+  Future<double?> computePreviewPixelMatchPercentage({
     required PreviewQualityMetricsRequest request,
   }) async {
-    return const PreviewQualityMetrics(
-      msSsim: 0.9874,
-      psnr: null,
-      pixelMatchPercentage: 98.7,
-      ssimulacra2: 92.4,
-    );
+    if (pixelMatchDelay > Duration.zero) {
+      await Future<void>.delayed(pixelMatchDelay);
+    }
+    return 98.7;
+  }
+
+  @override
+  Future<double?> computePreviewMsSsim({
+    required PreviewQualityMetricsRequest request,
+  }) async {
+    if (msSsimDelay > Duration.zero) {
+      await Future<void>.delayed(msSsimDelay);
+    }
+    return 0.9874;
+  }
+
+  @override
+  Future<double?> computePreviewSsimulacra2({
+    required PreviewQualityMetricsRequest request,
+  }) async {
+    if (ssimulacra2Delay > Duration.zero) {
+      await Future<void>.delayed(ssimulacra2Delay);
+    }
+    return 92.4;
   }
 
   @override

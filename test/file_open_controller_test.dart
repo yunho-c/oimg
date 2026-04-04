@@ -232,15 +232,24 @@ class _FakeSlimgApi implements SlimgApi {
   }
 
   @override
-  Future<PreviewQualityMetrics> computePreviewQualityMetrics({
+  Future<double?> computePreviewPixelMatchPercentage({
     required PreviewQualityMetricsRequest request,
   }) async {
-    return const PreviewQualityMetrics(
-      msSsim: null,
-      psnr: null,
-      pixelMatchPercentage: null,
-      ssimulacra2: null,
-    );
+    return null;
+  }
+
+  @override
+  Future<double?> computePreviewMsSsim({
+    required PreviewQualityMetricsRequest request,
+  }) async {
+    return null;
+  }
+
+  @override
+  Future<double?> computePreviewSsimulacra2({
+    required PreviewQualityMetricsRequest request,
+  }) async {
+    return null;
   }
 
   @override

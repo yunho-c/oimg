@@ -174,9 +174,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PreviewFileRequest dco_decode_preview_file_request(dynamic raw);
 
   @protected
-  PreviewQualityMetrics dco_decode_preview_quality_metrics(dynamic raw);
-
-  @protected
   PreviewQualityMetricsRequest dco_decode_preview_quality_metrics_request(
     dynamic raw,
   );
@@ -403,11 +400,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   PreviewFileRequest sse_decode_preview_file_request(
-    SseDeserializer deserializer,
-  );
-
-  @protected
-  PreviewQualityMetrics sse_decode_preview_quality_metrics(
     SseDeserializer deserializer,
   );
 
@@ -698,12 +690,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_preview_file_request(
     PreviewFileRequest self,
-    SseSerializer serializer,
-  );
-
-  @protected
-  void sse_encode_preview_quality_metrics(
-    PreviewQualityMetrics self,
     SseSerializer serializer,
   );
 

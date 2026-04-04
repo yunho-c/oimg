@@ -30,14 +30,6 @@ pub struct PreviewQualityMetricsRequest {
     pub preview_encoded_bytes: Vec<u8>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct PreviewQualityMetrics {
-    pub ms_ssim: Option<f64>,
-    pub psnr: Option<f64>,
-    pub pixel_match_percentage: Option<f64>,
-    pub ssimulacra2: Option<f64>,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EncodedImageResult {
     pub encoded_bytes: Vec<u8>,

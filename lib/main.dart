@@ -11,7 +11,6 @@ import 'package:oimg/src/optimization/optimization_plan.dart';
 import 'package:oimg/src/optimization/optimization_providers.dart';
 import 'package:oimg/src/rust/frb_generated.dart';
 import 'package:oimg/src/rust/slimg_api.dart';
-import 'package:oimg/src/rust/types.dart';
 import 'package:oimg/src/settings/app_settings.dart';
 import 'package:oimg/src/settings/app_settings_controller.dart';
 import 'package:oimg/src/settings/developer_diagnostics.dart';
@@ -1579,9 +1578,6 @@ class _BottomSidebar extends ConsumerWidget {
       data: (value) => value,
       orElse: () => null,
     );
-    final previewQualityMetrics = ref.watch(
-      currentPreviewQualityMetricsProvider,
-    ).maybeWhen(data: (value) => value, orElse: () => null);
     final plan = ref.watch(currentOptimizationPlanProvider).maybeWhen(
       data: (value) => value,
       orElse: () => null,
@@ -1600,7 +1596,6 @@ class _BottomSidebar extends ConsumerWidget {
       currentFile: currentFile,
       runState: runState,
       preview: preview,
-      previewQualityMetrics: previewQualityMetrics,
       plan: plan,
       settings: settings,
     );
@@ -1654,7 +1649,7 @@ class _BottomSidebar extends ConsumerWidget {
                             label: '',
                             value: '',
                             child: _BottomQualitySection(
-                              metrics: summary.qualityMetrics,
+                              isFolderSelected: controller.isFolderSelected,
                             ),
                           ),
                         ),
@@ -1921,14 +1916,37 @@ class _BottomInfoRow extends StatelessWidget {
   }
 }
 
-class _BottomQualitySection extends StatelessWidget {
-  const _BottomQualitySection({required this.metrics});
+class _BottomQualitySection extends ConsumerWidget {
+  const _BottomQualitySection({required this.isFolderSelected});
 
-  final List<_BottomMetricData> metrics;
+  final bool isFolderSelected;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final rows = isFolderSelected
+        ? const <_BottomMetricRowState>[
+            _BottomMetricRowState.text(label: 'Pixel Match', value: 'N/A'),
+            _BottomMetricRowState.text(label: 'MS-SSIM', value: 'N/A'),
+            _BottomMetricRowState.text(label: 'SSIMULACRA 2', value: 'N/A'),
+          ]
+        : <_BottomMetricRowState>[
+            _metricRowState(
+              label: 'Pixel Match',
+              metric: ref.watch(currentPreviewPixelMatchProvider),
+              formatter: _formatNullableMetricPercent,
+            ),
+            _metricRowState(
+              label: 'MS-SSIM',
+              metric: ref.watch(currentPreviewMsSsimProvider),
+              formatter: _formatNullableMetric,
+            ),
+            _metricRowState(
+              label: 'SSIMULACRA 2',
+              metric: ref.watch(currentPreviewSsimulacra2Provider),
+              formatter: (value) => _formatNullableMetric(value, digits: 1),
+            ),
+          ];
 
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
@@ -1939,12 +1957,9 @@ class _BottomQualitySection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (var index = 0; index < metrics.length; index++) ...[
-            _BottomMetricRow(
-              label: metrics[index].label,
-              value: metrics[index].value,
-            ),
-            if (index + 1 < metrics.length) const SizedBox(height: 8),
+          for (var index = 0; index < rows.length; index++) ...[
+            _BottomMetricRow(row: rows[index]),
+            if (index + 1 < rows.length) const SizedBox(height: 8),
           ],
         ],
       ),
@@ -1952,18 +1967,65 @@ class _BottomQualitySection extends StatelessWidget {
   }
 }
 
-class _BottomMetricRow extends StatelessWidget {
-  const _BottomMetricRow({required this.label, required this.value});
+_BottomMetricRowState _metricRowState({
+  required String label,
+  required AsyncValue<double?> metric,
+  required String Function(double?) formatter,
+}) {
+  return metric.when(
+    data: (value) => _BottomMetricRowState.text(
+      label: label,
+      value: formatter(value),
+    ),
+    error: (_, _) => _BottomMetricRowState.text(label: label, value: 'N/A'),
+    loading: () => _BottomMetricRowState.loading(label: label),
+  );
+}
+
+class _BottomMetricRowState {
+  const _BottomMetricRowState._({
+    required this.label,
+    required this.state,
+    this.value,
+  });
+
+  const _BottomMetricRowState.loading({required String label})
+    : this._(label: label, state: _BottomMetricRowDisplayState.loading);
+
+  const _BottomMetricRowState.text({
+    required String label,
+    required String value,
+  }) : this._(
+         label: label,
+         state: _BottomMetricRowDisplayState.text,
+         value: value,
+       );
 
   final String label;
-  final String value;
+  final _BottomMetricRowDisplayState state;
+  final String? value;
+}
+
+enum _BottomMetricRowDisplayState { loading, text }
+
+class _BottomMetricRow extends StatelessWidget {
+  const _BottomMetricRow({required this.row});
+
+  final _BottomMetricRowState row;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: Text(label).xSmall().medium().muted()),
-        Text(value).xSmall().medium().muted(),
+        Expanded(child: Text(row.label).xSmall().medium().muted()),
+        if (row.state == _BottomMetricRowDisplayState.loading)
+          const SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        else
+          Text(row.value!).xSmall().medium().muted(),
       ],
     );
   }
@@ -1976,7 +2038,6 @@ class _BottomSummaryViewModel {
     required this.originalRows,
     required this.outputSectionTitle,
     required this.outputRows,
-    required this.qualityMetrics,
   });
 
   final List<_BottomStatData> stats;
@@ -1984,14 +2045,12 @@ class _BottomSummaryViewModel {
   final List<_BottomInfoRowData> originalRows;
   final String outputSectionTitle;
   final List<_BottomInfoRowData> outputRows;
-  final List<_BottomMetricData> qualityMetrics;
 
   static _BottomSummaryViewModel build({
     required FileOpenController controller,
     required OpenedImageFile currentFile,
     required OptimizationRunState runState,
     required OptimizationPreview? preview,
-    required PreviewQualityMetrics? previewQualityMetrics,
     required OptimizationPlan? plan,
     required AppSettings? settings,
   }) {
@@ -2007,7 +2066,6 @@ class _BottomSummaryViewModel {
       file: currentFile,
       runState: runState,
       preview: preview,
-      previewQualityMetrics: previewQualityMetrics,
       plan: plan,
     );
   }
@@ -2016,7 +2074,6 @@ class _BottomSummaryViewModel {
     required OpenedImageFile file,
     required OptimizationRunState runState,
     required OptimizationPreview? preview,
-    required PreviewQualityMetrics? previewQualityMetrics,
     required OptimizationPlan? plan,
   }) {
     final originalBytes = _originalFileSizeBytes(file);
@@ -2088,25 +2145,6 @@ class _BottomSummaryViewModel {
         _BottomInfoRowData(
           label: 'Bits Per Pixel',
           value: _formatNullableBpp(optimizedBpp),
-        ),
-      ],
-      qualityMetrics: [
-        _BottomMetricData(
-          label: 'Pixel Match',
-          value: _formatNullableMetricPercent(
-            previewQualityMetrics?.pixelMatchPercentage,
-          ),
-        ),
-        _BottomMetricData(
-          label: 'MS-SSIM',
-          value: _formatNullableMetric(previewQualityMetrics?.msSsim),
-        ),
-        _BottomMetricData(
-          label: 'SSIMULACRA 2',
-          value: _formatNullableMetric(
-            previewQualityMetrics?.ssimulacra2,
-            digits: 1,
-          ),
         ),
       ],
     );
@@ -2190,11 +2228,6 @@ class _BottomSummaryViewModel {
           value: _formatNullableBpp(optimizedBpp),
         ),
       ],
-      qualityMetrics: const [
-        _BottomMetricData(label: 'Pixel Match', value: 'N/A'),
-        _BottomMetricData(label: 'MS-SSIM', value: 'N/A'),
-        _BottomMetricData(label: 'SSIMULACRA 2', value: 'N/A'),
-      ],
     );
   }
 }
@@ -2213,13 +2246,6 @@ class _BottomStatData {
 
 class _BottomInfoRowData {
   const _BottomInfoRowData({required this.label, required this.value});
-
-  final String label;
-  final String value;
-}
-
-class _BottomMetricData {
-  const _BottomMetricData({required this.label, required this.value});
 
   final String label;
   final String value;

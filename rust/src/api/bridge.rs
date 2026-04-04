@@ -5,7 +5,7 @@ pub use crate::types::{
     BatchItemResult, BatchJobHandle, BatchJobSnapshot, BatchJobState, BatchProcessRequest,
     ConvertOptions, CropOptions, CropSpec, EncodedImageResult, ExtendOptions, ExtendSpec, FillSpec,
     FormatInfo, ImageMetadata, ImageOperation, OptimizeOptions, PreviewFileRequest,
-    PreviewQualityMetrics, PreviewQualityMetricsRequest, PreviewResult, ProcessBytesRequest,
+    PreviewQualityMetricsRequest, PreviewResult, ProcessBytesRequest,
     ProcessFileBatchRequest, ProcessFileRequest, ProcessResult, ResizeOptions, ResizeSpec,
 };
 
@@ -43,10 +43,18 @@ pub fn preview_file(request: PreviewFileRequest) -> Result<PreviewResult> {
     with_internal(|| crate::preview::preview_file(request))
 }
 
-pub fn compute_preview_quality_metrics(
+pub fn compute_preview_pixel_match_percentage(
     request: PreviewQualityMetricsRequest,
-) -> Result<PreviewQualityMetrics> {
-    with_internal(|| crate::metrics::compute_preview_quality_metrics(request))
+) -> Result<Option<f64>> {
+    with_internal(|| crate::metrics::compute_preview_pixel_match_percentage(request))
+}
+
+pub fn compute_preview_ms_ssim(request: PreviewQualityMetricsRequest) -> Result<Option<f64>> {
+    with_internal(|| crate::metrics::compute_preview_ms_ssim(request))
+}
+
+pub fn compute_preview_ssimulacra2(request: PreviewQualityMetricsRequest) -> Result<Option<f64>> {
+    with_internal(|| crate::metrics::compute_preview_ssimulacra2(request))
 }
 
 pub fn process_file(request: ProcessFileRequest) -> Result<ProcessResult> {

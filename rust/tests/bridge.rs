@@ -128,7 +128,7 @@ fn preview_file_crops_without_writing() {
 }
 
 #[test]
-fn compute_preview_quality_metrics_returns_ms_ssim_for_same_dimension_preview() {
+fn preview_metric_rpcs_return_values_for_same_dimension_preview() {
     let dir = tempdir().unwrap();
     let input_path = dir.path().join("source.png");
     fs::write(&input_path, png_bytes()).unwrap();
@@ -142,34 +142,38 @@ fn compute_preview_quality_metrics_returns_ms_ssim_for_same_dimension_preview() 
     })
     .unwrap();
 
-    let metrics = bridge::compute_preview_quality_metrics(PreviewQualityMetricsRequest {
+    let request = PreviewQualityMetricsRequest {
         input_path: input_path.to_string_lossy().into_owned(),
         preview_encoded_bytes: preview.encoded_bytes,
-    })
-    .unwrap();
+    };
 
-    let metric = metrics.ms_ssim.expect("expected preview metric");
-    assert!(
-        (0.0..=1.0).contains(&metric),
-        "expected metric in [0, 1], got {metric}"
-    );
-    let pixel_match = metrics
-        .pixel_match_percentage
+    let pixel_match = bridge::compute_preview_pixel_match_percentage(request.clone())
+        .unwrap()
         .expect("expected pixel match metric");
     assert!(
         (0.0..=100.0).contains(&pixel_match),
         "expected Pixel Match in [0, 100], got {pixel_match}"
     );
-    let ssimulacra2 = metrics.ssimulacra2.expect("expected ssimulacra2 metric");
+
+    let metric = bridge::compute_preview_ms_ssim(request.clone())
+        .unwrap()
+        .expect("expected preview metric");
+    assert!(
+        (0.0..=1.0).contains(&metric),
+        "expected metric in [0, 1], got {metric}"
+    );
+
+    let ssimulacra2 = bridge::compute_preview_ssimulacra2(request)
+        .unwrap()
+        .expect("expected ssimulacra2 metric");
     assert!(
         (0.0..=100.0).contains(&ssimulacra2),
         "expected SSIMULACRA 2 in [0, 100], got {ssimulacra2}"
     );
-    assert_eq!(metrics.psnr, None);
 }
 
 #[test]
-fn compute_preview_quality_metrics_returns_none_when_metric_cannot_be_computed() {
+fn preview_metric_rpcs_return_none_when_metric_cannot_be_computed() {
     let dir = tempdir().unwrap();
     let input_path = dir.path().join("source.png");
     fs::write(&input_path, png_bytes()).unwrap();
@@ -184,15 +188,17 @@ fn compute_preview_quality_metrics_returns_none_when_metric_cannot_be_computed()
     })
     .unwrap();
 
-    let metrics = bridge::compute_preview_quality_metrics(PreviewQualityMetricsRequest {
+    let request = PreviewQualityMetricsRequest {
         input_path: input_path.to_string_lossy().into_owned(),
         preview_encoded_bytes: preview.encoded_bytes,
-    })
-    .unwrap();
+    };
 
-    assert_eq!(metrics.ms_ssim, None);
-    assert_eq!(metrics.pixel_match_percentage, None);
-    assert_eq!(metrics.ssimulacra2, None);
+    assert_eq!(
+        bridge::compute_preview_pixel_match_percentage(request.clone()).unwrap(),
+        None
+    );
+    assert_eq!(bridge::compute_preview_ms_ssim(request.clone()).unwrap(), None);
+    assert_eq!(bridge::compute_preview_ssimulacra2(request).unwrap(), None);
 }
 
 #[test]

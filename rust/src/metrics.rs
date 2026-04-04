@@ -4,7 +4,7 @@ use image::RgbaImage;
 use slimg_core::{decode, ImageData};
 use tjdistler_iqa::{ImageQualityAssessment, MsSsim};
 
-use crate::types::{PreviewQualityMetrics, PreviewQualityMetricsRequest};
+use crate::types::PreviewQualityMetricsRequest;
 
 const DIFY_DEFAULT_THRESHOLD: f32 = 35215.0 * 0.05 * 0.05;
 
@@ -103,30 +103,34 @@ pub(crate) fn compute_pixel_match_percentage_from_bytes(
     compute_pixel_match_percentage(&reference, &distorted)
 }
 
-pub(crate) fn compute_preview_quality_metrics(
+pub(crate) fn compute_preview_pixel_match_percentage(
     request: PreviewQualityMetricsRequest,
-) -> crate::error::Result<PreviewQualityMetrics> {
+) -> crate::error::Result<Option<f64>> {
     let original_bytes = std::fs::read(&request.input_path).ok();
-
-    let ms_ssim = original_bytes.as_ref().and_then(|reference_bytes| {
-        compute_ms_ssim_from_bytes(reference_bytes, &request.preview_encoded_bytes)
-    });
-    let pixel_match_percentage = original_bytes.as_ref().and_then(|reference_bytes| {
+    Ok(original_bytes.as_ref().and_then(|reference_bytes| {
         compute_pixel_match_percentage_from_bytes(
             reference_bytes,
             &request.preview_encoded_bytes,
         )
-    });
-    let ssimulacra2 = original_bytes.as_ref().and_then(|reference_bytes| {
-        compute_ssimulacra2_from_bytes(reference_bytes, &request.preview_encoded_bytes)
-    });
+    }))
+}
 
-    Ok(PreviewQualityMetrics {
-        ms_ssim,
-        psnr: None,
-        pixel_match_percentage,
-        ssimulacra2,
-    })
+pub(crate) fn compute_preview_ms_ssim(
+    request: PreviewQualityMetricsRequest,
+) -> crate::error::Result<Option<f64>> {
+    let original_bytes = std::fs::read(&request.input_path).ok();
+    Ok(original_bytes.as_ref().and_then(|reference_bytes| {
+        compute_ms_ssim_from_bytes(reference_bytes, &request.preview_encoded_bytes)
+    }))
+}
+
+pub(crate) fn compute_preview_ssimulacra2(
+    request: PreviewQualityMetricsRequest,
+) -> crate::error::Result<Option<f64>> {
+    let original_bytes = std::fs::read(&request.input_path).ok();
+    Ok(original_bytes.as_ref().and_then(|reference_bytes| {
+        compute_ssimulacra2_from_bytes(reference_bytes, &request.preview_encoded_bytes)
+    }))
 }
 
 fn rgba_to_luma(image: &ImageData) -> Vec<u8> {

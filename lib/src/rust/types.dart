@@ -388,37 +388,6 @@ class PreviewFileRequest {
           operation == other.operation;
 }
 
-class PreviewQualityMetrics {
-  final double? msSsim;
-  final double? psnr;
-  final double? pixelMatchPercentage;
-  final double? ssimulacra2;
-
-  const PreviewQualityMetrics({
-    this.msSsim,
-    this.psnr,
-    this.pixelMatchPercentage,
-    this.ssimulacra2,
-  });
-
-  @override
-  int get hashCode =>
-      msSsim.hashCode ^
-      psnr.hashCode ^
-      pixelMatchPercentage.hashCode ^
-      ssimulacra2.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is PreviewQualityMetrics &&
-          runtimeType == other.runtimeType &&
-          msSsim == other.msSsim &&
-          psnr == other.psnr &&
-          pixelMatchPercentage == other.pixelMatchPercentage &&
-          ssimulacra2 == other.ssimulacra2;
-}
-
 class PreviewQualityMetricsRequest {
   final String inputPath;
   final Uint8List previewEncodedBytes;
