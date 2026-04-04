@@ -26,8 +26,12 @@ const _titleBarHeight = 24.0;
 const _defaultSidebarWidth = 280.0;
 const _minSidebarWidth = 180.0;
 const _maxSidebarWidth = 420.0;
-const _settingsSidebarWidth = 320.0;
-const _bottomSidebarHeight = 188.0;
+const _defaultSettingsSidebarWidth = 320.0;
+const _minSettingsSidebarWidth = 240.0;
+const _maxSettingsSidebarWidth = 420.0;
+const _defaultBottomSidebarHeight = 188.0;
+const _minBottomSidebarHeight = 140.0;
+const _maxBottomSidebarHeight = 320.0;
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -436,6 +440,8 @@ class _ImageSessionView extends ConsumerStatefulWidget {
 
 class _ImageSessionViewState extends ConsumerState<_ImageSessionView> {
   double _sidebarWidth = _defaultSidebarWidth;
+  double _settingsSidebarWidth = _defaultSettingsSidebarWidth;
+  double _bottomSidebarHeight = _defaultBottomSidebarHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -463,6 +469,20 @@ class _ImageSessionViewState extends ConsumerState<_ImageSessionView> {
               _minSidebarWidth,
               maxWidth,
             );
+            final settingsMaxWidth = _clampSettingsSidebarWidth(
+              constraints.maxWidth * 0.34,
+            );
+            final settingsSidebarWidth = _settingsSidebarWidth.clamp(
+              _minSettingsSidebarWidth,
+              settingsMaxWidth,
+            );
+            final bottomSidebarMaxHeight = _clampBottomSidebarHeight(
+              constraints.maxHeight * 0.4,
+            );
+            final bottomSidebarHeight = _bottomSidebarHeight.clamp(
+              _minBottomSidebarHeight,
+              bottomSidebarMaxHeight,
+            );
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -471,7 +491,8 @@ class _ImageSessionViewState extends ConsumerState<_ImageSessionView> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       SizedBox(width: sidebarWidth, child: sidebar),
-                      _SidebarResizeHandle(
+                      _ResizeHandle(
+                        axis: Axis.horizontal,
                         onDragUpdate: (delta) {
                           setState(() {
                             _sidebarWidth = _clampSidebarWidth(
@@ -484,19 +505,49 @@ class _ImageSessionViewState extends ConsumerState<_ImageSessionView> {
                       const SizedBox(width: 12),
                       Expanded(child: stage),
                       const SizedBox(width: 12),
-                      const SizedBox(
-                        width: _settingsSidebarWidth,
+                      _ResizeHandle(
+                        axis: Axis.horizontal,
+                        onDragUpdate: (delta) {
+                          setState(() {
+                            _settingsSidebarWidth = _clampSettingsSidebarWidth(
+                              _settingsSidebarWidth - delta,
+                              maxWidth: settingsMaxWidth,
+                            );
+                          });
+                        },
+                      ),
+                      SizedBox(
+                        width: settingsSidebarWidth,
                         child: settingsSidebar,
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                SizedBox(height: _bottomSidebarHeight, child: bottomSidebar),
+                const SizedBox(height: 8),
+                _ResizeHandle(
+                  axis: Axis.vertical,
+                  onDragUpdate: (delta) {
+                    setState(() {
+                      _bottomSidebarHeight = _clampBottomSidebarHeight(
+                        _bottomSidebarHeight - delta,
+                        maxHeight: bottomSidebarMaxHeight,
+                      );
+                    });
+                  },
+                ),
+                const SizedBox(height: 8),
+                SizedBox(height: bottomSidebarHeight, child: bottomSidebar),
               ],
             );
           }
 
+          final bottomSidebarMaxHeight = _clampBottomSidebarHeight(
+            constraints.maxHeight * 0.35,
+          );
+          final bottomSidebarHeight = _bottomSidebarHeight.clamp(
+            _minBottomSidebarHeight,
+            bottomSidebarMaxHeight,
+          );
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -512,8 +563,20 @@ class _ImageSessionViewState extends ConsumerState<_ImageSessionView> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              SizedBox(height: _bottomSidebarHeight, child: bottomSidebar),
+              const SizedBox(height: 8),
+              _ResizeHandle(
+                axis: Axis.vertical,
+                onDragUpdate: (delta) {
+                  setState(() {
+                    _bottomSidebarHeight = _clampBottomSidebarHeight(
+                      _bottomSidebarHeight - delta,
+                      maxHeight: bottomSidebarMaxHeight,
+                    );
+                  });
+                },
+              ),
+              const SizedBox(height: 8),
+              SizedBox(height: bottomSidebarHeight, child: bottomSidebar),
             ],
           );
         },
@@ -524,21 +587,46 @@ class _ImageSessionViewState extends ConsumerState<_ImageSessionView> {
   double _clampSidebarWidth(double width, {double? maxWidth}) {
     return width.clamp(_minSidebarWidth, maxWidth ?? _maxSidebarWidth);
   }
+
+  double _clampSettingsSidebarWidth(double width, {double? maxWidth}) {
+    return width.clamp(
+      _minSettingsSidebarWidth,
+      maxWidth ?? _maxSettingsSidebarWidth,
+    );
+  }
+
+  double _clampBottomSidebarHeight(double height, {double? maxHeight}) {
+    return height.clamp(
+      _minBottomSidebarHeight,
+      maxHeight ?? _maxBottomSidebarHeight,
+    );
+  }
 }
 
-class _SidebarResizeHandle extends StatelessWidget {
-  const _SidebarResizeHandle({required this.onDragUpdate});
+class _ResizeHandle extends StatelessWidget {
+  const _ResizeHandle({required this.axis, required this.onDragUpdate});
 
+  final Axis axis;
   final ValueChanged<double> onDragUpdate;
 
   @override
   Widget build(BuildContext context) {
+    final isHorizontal = axis == Axis.horizontal;
     return MouseRegion(
-      cursor: SystemMouseCursors.resizeLeftRight,
+      cursor: isHorizontal
+          ? SystemMouseCursors.resizeLeftRight
+          : SystemMouseCursors.resizeUpDown,
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
-        onHorizontalDragUpdate: (details) => onDragUpdate(details.delta.dx),
-        child: const SizedBox(width: 8),
+        onHorizontalDragUpdate: isHorizontal
+            ? (details) => onDragUpdate(details.delta.dx)
+            : null,
+        onVerticalDragUpdate: isHorizontal
+            ? null
+            : (details) => onDragUpdate(details.delta.dy),
+        child: isHorizontal
+            ? const SizedBox(width: 8)
+            : const SizedBox(height: 8),
       ),
     );
   }
