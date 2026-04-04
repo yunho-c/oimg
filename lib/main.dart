@@ -668,8 +668,14 @@ class _ImageStage extends ConsumerWidget {
     final displayMode = ref.watch(currentPreviewDisplayModeProvider);
     final difference = ref.watch(currentPreviewDifferenceProvider);
     final hasOptimizedPreview = optimizedDisplay != null;
+    final planData = plan.maybeWhen(data: (value) => value, orElse: () => null);
+    final differenceUnavailableTooltip =
+        planData?.useSourceImageForPreview == true
+        ? 'Not available for lossless formats'
+        : null;
     final supportsDifference =
         hasOptimizedPreview &&
+        differenceUnavailableTooltip == null &&
         optimizedDisplay.width == currentFile.metadata.width &&
         optimizedDisplay.height == currentFile.metadata.height;
 
@@ -843,6 +849,7 @@ class _ImageStage extends ConsumerWidget {
                   displayMode: displayMode,
                   hasOptimizedPreview: hasOptimizedPreview,
                   supportsDifference: supportsDifference,
+                  differenceUnavailableTooltip: differenceUnavailableTooltip,
                   optimizedArtifactId: optimizedDisplay?.artifactId,
                   onSelectOriginal: selectOriginal,
                   onSelectOptimized: selectOptimized,
@@ -1179,6 +1186,7 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
     required this.displayMode,
     required this.hasOptimizedPreview,
     required this.supportsDifference,
+    required this.differenceUnavailableTooltip,
     required this.optimizedArtifactId,
     required this.onSelectOriginal,
     required this.onSelectOptimized,
@@ -1189,6 +1197,7 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
   final PreviewDisplayMode displayMode;
   final bool hasOptimizedPreview;
   final bool supportsDifference;
+  final String? differenceUnavailableTooltip;
   final String? optimizedArtifactId;
   final VoidCallback onSelectOriginal;
   final VoidCallback onSelectOptimized;
@@ -1201,9 +1210,16 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
     final analyzeState = ref.watch(analyzeRunControllerProvider);
     final analyzeAvailability = ref.watch(analyzeAvailabilityProvider);
     final analyzeController = ref.read(analyzeRunControllerProvider.notifier);
+    final settings = ref.watch(appSettingsProvider).asData?.value;
     final optimizedLoading = preview.isLoading && !hasOptimizedPreview;
     final differenceLoading =
         displayMode == PreviewDisplayMode.difference && difference.isLoading;
+    final analyzeTooltip = !analyzeAvailability.isEnabled &&
+            settings != null &&
+            settings.compressionMethod == CompressionMethod.lossless &&
+            !settings.showsQualityControl
+        ? 'Not available for lossless formats'
+        : analyzeAvailability.reason ?? 'Visualize the quality/efficiency tradeoff';
 
     return Row(
       key: const ValueKey('preview-display-mode-row'),
@@ -1231,29 +1247,37 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
           label: 'Difference',
           selected: displayMode == PreviewDisplayMode.difference,
           enabled: supportsDifference,
+          tooltip: differenceUnavailableTooltip,
           loading: differenceLoading,
           onPressed: onSelectDifference,
         ),
         const Spacer(),
-        analyzeState.isCancelRequested
-            ? OutlineButton(
-                alignment: Alignment.center,
-                onPressed: null,
-                child: const Text('Canceling...'),
-              )
-            : analyzeState.isRunning
-            ? Button.destructive(
-                alignment: Alignment.center,
-                onPressed: analyzeController.cancelAnalyze,
-                child: const Text('Cancel Analyze'),
-              )
-            : OutlineButton(
-                alignment: Alignment.center,
-                onPressed: analyzeAvailability.isEnabled
-                    ? analyzeController.startAnalyze
-                    : null,
-                child: const Text('Analyze'),
-              ),
+        Tooltip(
+          waitDuration: const Duration(milliseconds: 250),
+          showDuration: const Duration(milliseconds: 120),
+          tooltip: (context) => TooltipContainer(
+            child: Text(analyzeTooltip),
+          ),
+          child: analyzeState.isCancelRequested
+              ? OutlineButton(
+                  alignment: Alignment.center,
+                  onPressed: null,
+                  child: const Text('Canceling...'),
+                )
+              : analyzeState.isRunning
+              ? Button.destructive(
+                  alignment: Alignment.center,
+                  onPressed: analyzeController.cancelAnalyze,
+                  child: const Text('Cancel Analyze'),
+                )
+              : OutlineButton(
+                  alignment: Alignment.center,
+                  onPressed: analyzeAvailability.isEnabled
+                      ? analyzeController.startAnalyze
+                      : null,
+                  child: const Text('Analyze'),
+                ),
+        ),
       ],
     );
   }
@@ -1265,6 +1289,7 @@ class _PreviewDisplayModeButton extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.enabled,
+    this.tooltip,
     this.loading = false,
     required this.onPressed,
   });
@@ -1273,6 +1298,7 @@ class _PreviewDisplayModeButton extends StatelessWidget {
   final String label;
   final bool selected;
   final bool enabled;
+  final String? tooltip;
   final bool loading;
   final VoidCallback onPressed;
 
@@ -1294,7 +1320,7 @@ class _PreviewDisplayModeButton extends StatelessWidget {
         Text(label).xSmall().medium(),
       ],
     );
-    return SizedBox(
+    final button = SizedBox(
       key: ValueKey('preview-mode-$label'),
       height: 30,
       child: selected
@@ -1306,6 +1332,19 @@ class _PreviewDisplayModeButton extends StatelessWidget {
               onPressed: enabled ? onPressed : null,
               child: buttonChild,
             ),
+    );
+
+    if (tooltip == null) {
+      return button;
+    }
+
+    return Tooltip(
+      waitDuration: const Duration(milliseconds: 250),
+      showDuration: const Duration(milliseconds: 120),
+      tooltip: (context) => TooltipContainer(
+        child: Text(tooltip!),
+      ),
+      child: button,
     );
   }
 }

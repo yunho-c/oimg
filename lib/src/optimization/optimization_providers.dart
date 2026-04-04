@@ -588,8 +588,10 @@ final currentPreviewDisplayModeProvider =
       );
 
       final hasPreview = optimizedDisplay != null;
+      final isLosslessPreview = plan?.useSourceImageForPreview ?? false;
       final supportsDifference =
           hasPreview &&
+          !isLosslessPreview &&
           optimizedDisplay.width == currentFile.metadata.width &&
           optimizedDisplay.height == currentFile.metadata.height;
 
