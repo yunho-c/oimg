@@ -42,6 +42,15 @@ class PreviewDisplaySelectionNotifier extends Notifier<PreviewDisplaySelection?>
   }
 }
 
+class PreviewDifferenceRequestNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void requestForArtifact(String artifactId) {
+    state = artifactId;
+  }
+}
+
 final currentOptimizationPlanProvider =
     FutureProvider.autoDispose<OptimizationPlan?>((ref) async {
       final controller = ref.watch(fileOpenControllerProvider);
@@ -162,6 +171,11 @@ final previewDisplaySelectionProvider = NotifierProvider.autoDispose<
   PreviewDisplaySelection?
 >(PreviewDisplaySelectionNotifier.new);
 
+final previewDifferenceRequestProvider = NotifierProvider.autoDispose<
+  PreviewDifferenceRequestNotifier,
+  String?
+>(PreviewDifferenceRequestNotifier.new);
+
 final currentPreviewDisplayModeProvider =
     Provider.autoDispose<PreviewDisplayMode>((ref) {
       final controller = ref.watch(fileOpenControllerProvider);
@@ -223,11 +237,6 @@ final _currentPreviewMetricRequestProvider =
 
 final currentPreviewDifferenceProvider =
     FutureProvider.autoDispose<ui.Image?>((ref) async {
-      if (ref.watch(currentPreviewDisplayModeProvider) !=
-          PreviewDisplayMode.difference) {
-        return null;
-      }
-
       final requestId = ++_previewDifferenceRequestSequence;
       final totalStopwatch = Stopwatch()..start();
       ref.onDispose(() {
@@ -240,6 +249,10 @@ final currentPreviewDifferenceProvider =
       try {
         final request = await ref.watch(_currentPreviewMetricRequestProvider.future);
         if (request == null) {
+          return null;
+        }
+        final requestedArtifactId = ref.watch(previewDifferenceRequestProvider);
+        if (requestedArtifactId != request.artifactId) {
           return null;
         }
 

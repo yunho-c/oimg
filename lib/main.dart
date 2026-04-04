@@ -1030,6 +1030,7 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final preview = ref.watch(currentPreviewProvider);
     final difference = ref.watch(currentPreviewDifferenceProvider);
+    final previewData = preview.maybeWhen(data: (value) => value, orElse: () => null);
     final optimizedLoading = preview.isLoading && !hasOptimizedPreview;
     final differenceLoading =
         displayMode == PreviewDisplayMode.difference && difference.isLoading;
@@ -1069,6 +1070,12 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
           enabled: supportsDifference,
           loading: differenceLoading,
           onPressed: () {
+            final artifactId = previewData?.result.artifactId;
+            if (artifactId != null) {
+              ref
+                  .read(previewDifferenceRequestProvider.notifier)
+                  .requestForArtifact(artifactId);
+            }
             ref.read(previewDisplaySelectionProvider.notifier).select(
               filePath: filePath,
               mode: PreviewDisplayMode.difference,

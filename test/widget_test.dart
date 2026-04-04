@@ -181,6 +181,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('preview-mode-Original')));
     await tester.pump();
     expect(slimg.differenceCallCount, 1);
+
+    await tester.tap(find.byKey(const ValueKey('preview-mode-Difference')));
+    await tester.pump();
+    expect(slimg.differenceCallCount, 1);
   });
 
   testWidgets('later openFiles event replaces the session', (tester) async {
