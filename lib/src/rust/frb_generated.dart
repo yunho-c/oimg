@@ -1078,12 +1078,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   PreviewQualityMetrics dco_decode_preview_quality_metrics(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return PreviewQualityMetrics(
       msSsim: dco_decode_opt_box_autoadd_f_64(arr[0]),
       psnr: dco_decode_opt_box_autoadd_f_64(arr[1]),
-      ssimulacra2: dco_decode_opt_box_autoadd_f_64(arr[2]),
+      pixelMatchPercentage: dco_decode_opt_box_autoadd_f_64(arr[2]),
+      ssimulacra2: dco_decode_opt_box_autoadd_f_64(arr[3]),
     );
   }
 
@@ -1837,10 +1838,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_msSsim = sse_decode_opt_box_autoadd_f_64(deserializer);
     var var_psnr = sse_decode_opt_box_autoadd_f_64(deserializer);
+    var var_pixelMatchPercentage = sse_decode_opt_box_autoadd_f_64(
+      deserializer,
+    );
     var var_ssimulacra2 = sse_decode_opt_box_autoadd_f_64(deserializer);
     return PreviewQualityMetrics(
       msSsim: var_msSsim,
       psnr: var_psnr,
+      pixelMatchPercentage: var_pixelMatchPercentage,
       ssimulacra2: var_ssimulacra2,
     );
   }
@@ -2575,6 +2580,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_opt_box_autoadd_f_64(self.msSsim, serializer);
     sse_encode_opt_box_autoadd_f_64(self.psnr, serializer);
+    sse_encode_opt_box_autoadd_f_64(self.pixelMatchPercentage, serializer);
     sse_encode_opt_box_autoadd_f_64(self.ssimulacra2, serializer);
   }
 

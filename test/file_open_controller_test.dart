@@ -238,6 +238,7 @@ class _FakeSlimgApi implements SlimgApi {
     return const PreviewQualityMetrics(
       msSsim: null,
       psnr: null,
+      pixelMatchPercentage: null,
       ssimulacra2: null,
     );
   }

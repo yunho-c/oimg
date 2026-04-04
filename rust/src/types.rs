@@ -34,6 +34,7 @@ pub struct PreviewQualityMetricsRequest {
 pub struct PreviewQualityMetrics {
     pub ms_ssim: Option<f64>,
     pub psnr: Option<f64>,
+    pub pixel_match_percentage: Option<f64>,
     pub ssimulacra2: Option<f64>,
 }
 

@@ -2091,7 +2091,12 @@ class _BottomSummaryViewModel {
         ),
       ],
       qualityMetrics: [
-        const _BottomMetricData(label: 'PSNR', value: 'N/A'),
+        _BottomMetricData(
+          label: 'Pixel Match',
+          value: _formatNullableMetricPercent(
+            previewQualityMetrics?.pixelMatchPercentage,
+          ),
+        ),
         _BottomMetricData(
           label: 'MS-SSIM',
           value: _formatNullableMetric(previewQualityMetrics?.msSsim),
@@ -2186,7 +2191,7 @@ class _BottomSummaryViewModel {
         ),
       ],
       qualityMetrics: const [
-        _BottomMetricData(label: 'PSNR', value: 'N/A'),
+        _BottomMetricData(label: 'Pixel Match', value: 'N/A'),
         _BottomMetricData(label: 'MS-SSIM', value: 'N/A'),
         _BottomMetricData(label: 'SSIMULACRA 2', value: 'N/A'),
       ],
@@ -2325,6 +2330,10 @@ String _formatNullableMetric(double? value, {int digits = 3}) {
   }
 
   return value.toStringAsFixed(digits);
+}
+
+String _formatNullableMetricPercent(double? value) {
+  return _formatNullablePercent(value) ?? 'N/A';
 }
 
 bool _isTerminalStatus(OptimizationItemStatus status) {

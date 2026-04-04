@@ -1,8 +1,12 @@
-use slimg_core::{decode, ImageData};
+use dify::diff::get_results;
 use fast_ssim2::{compute_ssimulacra2, srgb_u8_to_linear, LinearRgbImage};
+use image::RgbaImage;
+use slimg_core::{decode, ImageData};
 use tjdistler_iqa::{ImageQualityAssessment, MsSsim};
 
 use crate::types::{PreviewQualityMetrics, PreviewQualityMetricsRequest};
+
+const DIFY_DEFAULT_THRESHOLD: f32 = 35215.0 * 0.05 * 0.05;
 
 pub(crate) fn compute_ms_ssim(reference: &ImageData, distorted: &ImageData) -> Option<f64> {
     if reference.width != distorted.width || reference.height != distorted.height {
@@ -59,6 +63,46 @@ pub(crate) fn compute_ssimulacra2_from_bytes(
     compute_ssimulacra2_score(&reference, &distorted)
 }
 
+pub(crate) fn compute_pixel_match_percentage(
+    reference: &ImageData,
+    distorted: &ImageData,
+) -> Option<f64> {
+    if reference.width != distorted.width || reference.height != distorted.height {
+        return None;
+    }
+
+    let reference_image = rgba_image(reference)?;
+    let distorted_image = rgba_image(distorted)?;
+    let (width, height) = reference_image.dimensions();
+    let total_pixels = f64::from(width) * f64::from(height);
+    if total_pixels <= 0.0 {
+        return None;
+    }
+
+    let diff_pixels = get_results(
+        reference_image,
+        distorted_image,
+        DIFY_DEFAULT_THRESHOLD,
+        true,
+        Some(0.0),
+        &None,
+        &None,
+    )
+    .map(|(diffs, _)| diffs.max(0) as f64)?;
+
+    Some(((total_pixels - diff_pixels) / total_pixels) * 100.0)
+        .filter(|value| value.is_finite())
+}
+
+pub(crate) fn compute_pixel_match_percentage_from_bytes(
+    reference_bytes: &[u8],
+    distorted_bytes: &[u8],
+) -> Option<f64> {
+    let (reference, _) = decode(reference_bytes).ok()?;
+    let (distorted, _) = decode(distorted_bytes).ok()?;
+    compute_pixel_match_percentage(&reference, &distorted)
+}
+
 pub(crate) fn compute_preview_quality_metrics(
     request: PreviewQualityMetricsRequest,
 ) -> crate::error::Result<PreviewQualityMetrics> {
@@ -67,6 +111,12 @@ pub(crate) fn compute_preview_quality_metrics(
     let ms_ssim = original_bytes.as_ref().and_then(|reference_bytes| {
         compute_ms_ssim_from_bytes(reference_bytes, &request.preview_encoded_bytes)
     });
+    let pixel_match_percentage = original_bytes.as_ref().and_then(|reference_bytes| {
+        compute_pixel_match_percentage_from_bytes(
+            reference_bytes,
+            &request.preview_encoded_bytes,
+        )
+    });
     let ssimulacra2 = original_bytes.as_ref().and_then(|reference_bytes| {
         compute_ssimulacra2_from_bytes(reference_bytes, &request.preview_encoded_bytes)
     });
@@ -74,6 +124,7 @@ pub(crate) fn compute_preview_quality_metrics(
     Ok(PreviewQualityMetrics {
         ms_ssim,
         psnr: None,
+        pixel_match_percentage,
         ssimulacra2,
     })
 }
@@ -111,6 +162,10 @@ fn rgba_to_linear_rgb(image: &ImageData, width: usize, height: usize) -> LinearR
         })
         .collect();
     LinearRgbImage::new(data, width, height)
+}
+
+fn rgba_image(image: &ImageData) -> Option<RgbaImage> {
+    RgbaImage::from_raw(image.width, image.height, image.data.clone())
 }
 
 fn composite_onto_white(r: u8, g: u8, b: u8, a: u8) -> [u8; 3] {
@@ -196,6 +251,14 @@ mod tests {
     }
 
     #[test]
+    fn identical_images_have_full_pixel_match() {
+        let image = gradient_image(64, 64);
+        let value =
+            compute_pixel_match_percentage(&image, &image).expect("metric should compute");
+        assert_eq!(value, 100.0);
+    }
+
+    #[test]
     fn degraded_image_has_lower_ssimulacra2() {
         let reference = gradient_image(64, 64);
         let mut degraded = reference.clone();
@@ -217,6 +280,27 @@ mod tests {
     }
 
     #[test]
+    fn degraded_image_has_lower_pixel_match_percentage() {
+        let reference = gradient_image(64, 64);
+        let mut degraded = reference.clone();
+        for pixel in degraded.data.chunks_exact_mut(4) {
+            pixel[0] = pixel[0].saturating_add(48);
+            pixel[1] = pixel[1].saturating_sub(24);
+            pixel[2] = pixel[2].saturating_add(12);
+        }
+
+        let reference_value = compute_pixel_match_percentage(&reference, &reference)
+            .expect("reference metric should compute");
+        let degraded_value = compute_pixel_match_percentage(&reference, &degraded)
+            .expect("degraded metric should compute");
+
+        assert!(
+            degraded_value < reference_value,
+            "expected degraded image to score lower, got degraded={degraded_value} reference={reference_value}"
+        );
+    }
+
+    #[test]
     fn alpha_compositing_allows_metric_computation() {
         let mut reference = gradient_image(64, 64);
         for pixel in reference.data.chunks_exact_mut(4) {
@@ -229,9 +313,28 @@ mod tests {
     }
 
     #[test]
+    fn alpha_images_allow_pixel_match_percentage() {
+        let mut reference = gradient_image(64, 64);
+        for pixel in reference.data.chunks_exact_mut(4) {
+            pixel[3] = 128;
+        }
+        let degraded = reference.clone();
+        let value = compute_pixel_match_percentage(&reference, &degraded)
+            .expect("metric should compute");
+        assert!(value.is_finite());
+    }
+
+    #[test]
     fn dimension_mismatch_returns_none_for_ssimulacra2() {
         let reference = gradient_image(64, 64);
         let distorted = gradient_image(32, 64);
         assert_eq!(compute_ssimulacra2_score(&reference, &distorted), None);
+    }
+
+    #[test]
+    fn dimension_mismatch_returns_none_for_pixel_match_percentage() {
+        let reference = gradient_image(64, 64);
+        let distorted = gradient_image(32, 64);
+        assert_eq!(compute_pixel_match_percentage(&reference, &distorted), None);
     }
 }
