@@ -174,7 +174,7 @@ void main() {
     await tester.pump();
 
     expect(slimg.differenceCallCount, 1);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNWidgets(2));
 
     await tester.pump(const Duration(milliseconds: 120));
 

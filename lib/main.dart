@@ -1028,6 +1028,12 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final preview = ref.watch(currentPreviewProvider);
+    final difference = ref.watch(currentPreviewDifferenceProvider);
+    final optimizedLoading = preview.isLoading && !hasOptimizedPreview;
+    final differenceLoading =
+        displayMode == PreviewDisplayMode.difference && difference.isLoading;
+
     return Row(
       key: const ValueKey('preview-display-mode-row'),
       mainAxisAlignment: MainAxisAlignment.center,
@@ -1048,6 +1054,7 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
           label: 'Optimized',
           selected: displayMode == PreviewDisplayMode.optimized,
           enabled: hasOptimizedPreview,
+          loading: optimizedLoading,
           onPressed: () {
             ref.read(previewDisplaySelectionProvider.notifier).select(
               filePath: filePath,
@@ -1060,6 +1067,7 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
           label: 'Difference',
           selected: displayMode == PreviewDisplayMode.difference,
           enabled: supportsDifference,
+          loading: differenceLoading,
           onPressed: () {
             ref.read(previewDisplaySelectionProvider.notifier).select(
               filePath: filePath,
@@ -1077,17 +1085,32 @@ class _PreviewDisplayModeButton extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.enabled,
+    this.loading = false,
     required this.onPressed,
   });
 
   final String label;
   final bool selected;
   final bool enabled;
+  final bool loading;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    final buttonChild = Text(label).xSmall().medium();
+    final buttonChild = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (loading) ...[
+          const SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: 8),
+        ],
+        Text(label).xSmall().medium(),
+      ],
+    );
     return SizedBox(
       key: ValueKey('preview-mode-$label'),
       height: 30,
