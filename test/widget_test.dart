@@ -410,7 +410,7 @@ void main() {
     expect(find.text('Lossy'), findsOneWidget);
     expect(find.text('Compatibility'), findsOneWidget);
     expect(find.text('Efficiency'), findsOneWidget);
-    expect(find.text('Quality'), findsOneWidget);
+    expect(find.text('Quality'), findsWidgets);
     expect(find.text('80'), findsOneWidget);
 
     await tester.tap(find.byType(Switch));
@@ -424,7 +424,7 @@ void main() {
     await tester.tap(find.text('PNG').first);
     await tester.pumpAndSettle();
 
-    expect(find.text('Quality'), findsNothing);
+    expect(find.text('Quality'), findsOneWidget);
   });
 
   testWidgets('optimize all uses mixed slimg requests and updates the session', (

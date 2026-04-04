@@ -20,6 +20,7 @@ import 'package:oimg/src/settings/app_settings_controller.dart';
 import 'package:oimg/src/settings/developer_diagnostics.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
 const _uiScale = 0.8;
@@ -2709,9 +2710,19 @@ class _BottomMetricRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final labelWidget = Text(row.label).xSmall().medium().muted();
+    final help = _metricHelpFor(row.label);
+
     return Row(
       children: [
-        Expanded(child: Text(row.label).xSmall().medium().muted()),
+        Expanded(
+          child: help == null
+              ? labelWidget
+              : _MetricHelpHoverCard(
+                  help: help,
+                  child: labelWidget,
+                ),
+        ),
         if (row.state == _BottomMetricRowDisplayState.loading)
           const SizedBox(
             width: 12,
@@ -2736,6 +2747,94 @@ class _BottomMetricRow extends StatelessWidget {
       ],
     );
   }
+}
+
+class _MetricHelpData {
+  const _MetricHelpData({
+    required this.description,
+    required this.linkLabel,
+    required this.linkUrl,
+  });
+
+  final String description;
+  final String linkLabel;
+  final Uri linkUrl;
+}
+
+class _MetricHelpHoverCard extends StatelessWidget {
+  const _MetricHelpHoverCard({
+    required this.help,
+    required this.child,
+  });
+
+  final _MetricHelpData help;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return HoverCard(
+      wait: const Duration(milliseconds: 250),
+      debounce: const Duration(milliseconds: 120),
+      hoverBuilder: (context) {
+        return Container(
+          constraints: const BoxConstraints(maxWidth: 260),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.popover,
+            borderRadius: theme.borderRadiusLg,
+            border: Border.all(color: theme.colorScheme.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(help.description).xSmall().muted(),
+              const SizedBox(height: 10),
+              LinkButton(
+                density: ButtonDensity.compact,
+                onPressed: () async {
+                  await launchUrl(
+                    help.linkUrl,
+                    mode: LaunchMode.externalApplication,
+                  );
+                },
+                child: Text(help.linkLabel),
+              ),
+            ],
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+}
+
+_MetricHelpData? _metricHelpFor(String label) {
+  return switch (label) {
+    'Pixel Match' => _MetricHelpData(
+      description:
+          'Estimates what percentage of the image remains visually unchanged.',
+      linkLabel: 'Learn more on GitHub (dify)',
+      linkUrl: Uri.parse('https://github.com/jihchi/dify'),
+    ),
+    'MS-SSIM' => _MetricHelpData(
+      description:
+          'Compares preserved structure and contrast across several viewing scales.',
+      linkLabel: 'Learn more on Wikipedia',
+      linkUrl: Uri.parse(
+        'https://en.wikipedia.org/wiki/Structural_similarity_index_measure',
+      ),
+    ),
+    'SSIMULACRA 2' => _MetricHelpData(
+      description:
+          'A perceptual quality metric tuned to human vision.',
+      linkLabel: 'Learn more on x266 wiki',
+      linkUrl: Uri.parse('https://wiki.x266.mov/docs/metrics/SSIMULACRA2'),
+    ),
+    _ => null,
+  };
 }
 
 class _BottomSummaryViewModel {
