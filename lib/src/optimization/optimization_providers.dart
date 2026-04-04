@@ -138,6 +138,16 @@ class OptimizedPreviewDisplay {
   bool get usesOutputPath => outputPath != null;
 }
 
+class PreviewMetricResult {
+  const PreviewMetricResult({
+    required this.value,
+    required this.elapsedMilliseconds,
+  });
+
+  final double? value;
+  final int elapsedMilliseconds;
+}
+
 class AnalyzeRunState {
   const AnalyzeRunState({
     required this.availability,
@@ -686,7 +696,7 @@ Future<ui.Image> _decodeRawImage(RawImageResult result) {
 }
 
 final currentPreviewPixelMatchProvider =
-    FutureProvider.autoDispose<double?>((ref) async {
+    FutureProvider.autoDispose<PreviewMetricResult?>((ref) async {
       final requestId = ++_previewPixelMatchRequestSequence;
       final totalStopwatch = Stopwatch()..start();
       ref.onDispose(() {
@@ -716,7 +726,10 @@ final currentPreviewPixelMatchProvider =
           'preview-metric:pixel-match:$requestId',
           'done metric=${metricStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms value=$result',
         );
-        return result;
+        return PreviewMetricResult(
+          value: result,
+          elapsedMilliseconds: metricStopwatch.elapsedMilliseconds,
+        );
       } on Object catch (error, stackTrace) {
         DeveloperDiagnostics.logTimingError(
           'preview-metric:pixel-match:$requestId',
@@ -728,7 +741,7 @@ final currentPreviewPixelMatchProvider =
     });
 
 final currentPreviewMsSsimProvider =
-    FutureProvider.autoDispose<double?>((ref) async {
+    FutureProvider.autoDispose<PreviewMetricResult?>((ref) async {
       final requestId = ++_previewMsSsimRequestSequence;
       final totalStopwatch = Stopwatch()..start();
       ref.onDispose(() {
@@ -758,7 +771,10 @@ final currentPreviewMsSsimProvider =
           'preview-metric:ms-ssim:$requestId',
           'done metric=${metricStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms value=$result',
         );
-        return result;
+        return PreviewMetricResult(
+          value: result,
+          elapsedMilliseconds: metricStopwatch.elapsedMilliseconds,
+        );
       } on Object catch (error, stackTrace) {
         DeveloperDiagnostics.logTimingError(
           'preview-metric:ms-ssim:$requestId',
@@ -770,7 +786,7 @@ final currentPreviewMsSsimProvider =
     });
 
 final currentPreviewSsimulacra2Provider =
-    FutureProvider.autoDispose<double?>((ref) async {
+    FutureProvider.autoDispose<PreviewMetricResult?>((ref) async {
       final requestId = ++_previewSsimulacra2RequestSequence;
       final totalStopwatch = Stopwatch()..start();
       ref.onDispose(() {
@@ -800,7 +816,10 @@ final currentPreviewSsimulacra2Provider =
           'preview-metric:ssimulacra2:$requestId',
           'done metric=${metricStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms value=$result',
         );
-        return result;
+        return PreviewMetricResult(
+          value: result,
+          elapsedMilliseconds: metricStopwatch.elapsedMilliseconds,
+        );
       } on Object catch (error, stackTrace) {
         DeveloperDiagnostics.logTimingError(
           'preview-metric:ssimulacra2:$requestId',

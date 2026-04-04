@@ -2614,12 +2614,17 @@ class _BottomQualitySection extends ConsumerWidget {
 
 _BottomMetricRowState _metricRowState({
   required String label,
-  required AsyncValue<double?> metric,
+  required AsyncValue<PreviewMetricResult?> metric,
   required String Function(double?) formatter,
 }) {
   return metric.when(
-    data: (value) =>
-        _BottomMetricRowState.text(label: label, value: formatter(value)),
+    data: (result) => _BottomMetricRowState.text(
+      label: label,
+      value: formatter(result?.value),
+      timingTooltip: result == null
+          ? null
+          : _formatMetricTimingTooltip(result.elapsedMilliseconds),
+    ),
     error: (_, _) => _BottomMetricRowState.text(label: label, value: 'N/A'),
     loading: () => _BottomMetricRowState.loading(label: label),
   );
@@ -2630,6 +2635,7 @@ class _BottomMetricRowState {
     required this.label,
     required this.state,
     this.value,
+    this.timingTooltip,
   });
 
   const _BottomMetricRowState.loading({required String label})
@@ -2638,15 +2644,18 @@ class _BottomMetricRowState {
   const _BottomMetricRowState.text({
     required String label,
     required String value,
+    String? timingTooltip,
   }) : this._(
          label: label,
          state: _BottomMetricRowDisplayState.text,
          value: value,
+         timingTooltip: timingTooltip,
        );
 
   final String label;
   final _BottomMetricRowDisplayState state;
   final String? value;
+  final String? timingTooltip;
 }
 
 enum _BottomMetricRowDisplayState { loading, text }
@@ -2667,8 +2676,21 @@ class _BottomMetricRow extends StatelessWidget {
             height: 12,
             child: CircularProgressIndicator(strokeWidth: 2),
           )
-        else
-          Text(row.value!).xSmall().medium().muted(),
+        else ...[
+          (() {
+            final valueWidget = Text(row.value!).xSmall().medium().muted();
+            return row.timingTooltip == null
+                ? valueWidget
+                : Tooltip(
+                    waitDuration: const Duration(milliseconds: 250),
+                    showDuration: const Duration(milliseconds: 120),
+                    tooltip: (context) => TooltipContainer(
+                      child: Text(row.timingTooltip!),
+                    ),
+                    child: valueWidget,
+                  );
+          })(),
+        ],
       ],
     );
   }
@@ -3029,6 +3051,15 @@ String _formatNullableMetric(double? value, {int digits = 3}) {
 
 String _formatNullableMetricPercent(double? value) {
   return _formatNullablePercent(value) ?? 'N/A';
+}
+
+String _formatMetricTimingTooltip(int elapsedMilliseconds) {
+  if (elapsedMilliseconds >= 1000) {
+    final seconds = elapsedMilliseconds / 1000;
+    return '${seconds.toStringAsFixed(1)} s';
+  }
+
+  return '$elapsedMilliseconds ms';
 }
 
 bool _isTerminalStatus(OptimizationItemStatus status) {
