@@ -1037,7 +1037,7 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
 
     return Row(
       key: const ValueKey('preview-display-mode-row'),
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
         _PreviewDisplayModeButton(
           label: 'Original',
