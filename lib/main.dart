@@ -167,9 +167,7 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
                 Expanded(
                   child: Text(
                     notice,
-                    style: TextStyle(
-                      color: theme.colorScheme.mutedForeground,
-                    ),
+                    style: TextStyle(color: theme.colorScheme.mutedForeground),
                   ).small(),
                 ),
                 const SizedBox(width: 12),
@@ -187,8 +185,7 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
   }
 
   void _syncDeveloperSettings(AppSettings settings) {
-    final enabled =
-        settings.developerModeEnabled && settings.timingLogsEnabled;
+    final enabled = settings.developerModeEnabled && settings.timingLogsEnabled;
     DeveloperDiagnostics.setTimingLogsEnabled(enabled);
     ref.read(slimgApiProvider).setTimingLogsEnabled(enabled: enabled);
   }
@@ -560,7 +557,10 @@ class _ImageStage extends ConsumerWidget {
     final preview = ref.watch(currentPreviewProvider);
     final displayMode = ref.watch(currentPreviewDisplayModeProvider);
     final difference = ref.watch(currentPreviewDifferenceProvider);
-    final previewData = preview.maybeWhen(data: (value) => value, orElse: () => null);
+    final previewData = preview.maybeWhen(
+      data: (value) => value,
+      orElse: () => null,
+    );
     final hasOptimizedPreview = previewData != null;
     final supportsDifference =
         hasOptimizedPreview &&
@@ -598,7 +598,9 @@ class _ImageStage extends ConsumerWidget {
                     Text(
                       '${currentFile.metadata.width} x ${currentFile.metadata.height}',
                       textAlign: TextAlign.right,
-                      style: TextStyle(color: theme.colorScheme.mutedForeground),
+                      style: TextStyle(
+                        color: theme.colorScheme.mutedForeground,
+                      ),
                     ).xSmall(),
                   ],
                 ),
@@ -616,7 +618,9 @@ class _ImageStage extends ConsumerWidget {
               padding: const EdgeInsets.all(10),
               child: plan.when(
                 data: (_) {
-                  final fileName = FileOpenController.fileNameOf(currentFile.path);
+                  final fileName = FileOpenController.fileNameOf(
+                    currentFile.path,
+                  );
                   switch (displayMode) {
                     case PreviewDisplayMode.original:
                       return _PreviewCanvas(
@@ -639,7 +643,8 @@ class _ImageStage extends ConsumerWidget {
                                 'Unable to render optimized preview.',
                           );
                         },
-                        loading: () => const Center(child: CircularProgressIndicator()),
+                        loading: () =>
+                            const Center(child: CircularProgressIndicator()),
                         error: (_, _) => _PreviewCanvas(
                           fileName: fileName,
                           path: currentFile.path,
@@ -658,7 +663,8 @@ class _ImageStage extends ConsumerWidget {
                             rawImage: diff,
                           );
                         },
-                        loading: () => const Center(child: CircularProgressIndicator()),
+                        loading: () =>
+                            const Center(child: CircularProgressIndicator()),
                         error: (_, _) => const _PreviewUnavailable(
                           message: 'Difference preview unavailable.',
                         ),
@@ -799,17 +805,13 @@ class _PreviewCanvas extends StatelessWidget {
                 },
               )
             : rawImage != null
-            ? RawImage(
-                image: rawImage,
-                fit: BoxFit.contain,
-              )
+            ? RawImage(image: rawImage, fit: BoxFit.contain)
             : Image.memory(
                 encodedBytes!,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
                   return _PreviewUnavailable(
-                    message:
-                        unavailableMessage ?? 'Unable to render preview.',
+                    message: unavailableMessage ?? 'Unable to render preview.',
                   );
                 },
               ),
@@ -841,9 +843,7 @@ class _PreviewUnavailable extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: theme.colorScheme.mutedForeground,
-            ),
+            style: TextStyle(color: theme.colorScheme.mutedForeground),
           ),
         ],
       ),
@@ -852,10 +852,7 @@ class _PreviewUnavailable extends StatelessWidget {
 }
 
 class _FolderCollage extends StatelessWidget {
-  const _FolderCollage({
-    required this.files,
-    required this.onOpenFile,
-  });
+  const _FolderCollage({required this.files, required this.onOpenFile});
 
   final List<OpenedImageFile> files;
   final ValueChanged<String> onOpenFile;
@@ -870,7 +867,8 @@ class _FolderCollage extends StatelessWidget {
           math.min(4, (constraints.maxWidth / 180).floor()),
         );
         final totalSpacing = spacing * (crossAxisCount - 1);
-        final tileWidth = (constraints.maxWidth - totalSpacing) / crossAxisCount;
+        final tileWidth =
+            (constraints.maxWidth - totalSpacing) / crossAxisCount;
 
         return GridView.builder(
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -1030,7 +1028,10 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final preview = ref.watch(currentPreviewProvider);
     final difference = ref.watch(currentPreviewDifferenceProvider);
-    final previewData = preview.maybeWhen(data: (value) => value, orElse: () => null);
+    final previewData = preview.maybeWhen(
+      data: (value) => value,
+      orElse: () => null,
+    );
     final optimizedLoading = preview.isLoading && !hasOptimizedPreview;
     final differenceLoading =
         displayMode == PreviewDisplayMode.difference && difference.isLoading;
@@ -1044,10 +1045,9 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
           selected: displayMode == PreviewDisplayMode.original,
           enabled: true,
           onPressed: () {
-            ref.read(previewDisplaySelectionProvider.notifier).select(
-              filePath: filePath,
-              mode: PreviewDisplayMode.original,
-            );
+            ref
+                .read(previewDisplaySelectionProvider.notifier)
+                .select(filePath: filePath, mode: PreviewDisplayMode.original);
           },
         ),
         const SizedBox(width: 8),
@@ -1057,10 +1057,9 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
           enabled: hasOptimizedPreview,
           loading: optimizedLoading,
           onPressed: () {
-            ref.read(previewDisplaySelectionProvider.notifier).select(
-              filePath: filePath,
-              mode: PreviewDisplayMode.optimized,
-            );
+            ref
+                .read(previewDisplaySelectionProvider.notifier)
+                .select(filePath: filePath, mode: PreviewDisplayMode.optimized);
           },
         ),
         const SizedBox(width: 8),
@@ -1076,10 +1075,12 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
                   .read(previewDifferenceRequestProvider.notifier)
                   .requestForArtifact(artifactId);
             }
-            ref.read(previewDisplaySelectionProvider.notifier).select(
-              filePath: filePath,
-              mode: PreviewDisplayMode.difference,
-            );
+            ref
+                .read(previewDisplaySelectionProvider.notifier)
+                .select(
+                  filePath: filePath,
+                  mode: PreviewDisplayMode.difference,
+                );
           },
         ),
       ],
@@ -1356,15 +1357,16 @@ class _SettingsSidebar extends ConsumerWidget {
                           children: [
                             Text('0').xSmall().muted(),
                             const Spacer(),
-                            Text(_qualityValueLabel(settings))
-                                .xSmall()
-                                .medium()
-                                .muted(),
+                            Text(
+                              _qualityValueLabel(settings),
+                            ).xSmall().medium().muted(),
                           ],
                         ),
                         const SizedBox(height: 8),
                         Slider(
-                          value: SliderValue.single(settings.quality.toDouble()),
+                          value: SliderValue.single(
+                            settings.quality.toDouble(),
+                          ),
                           min: 0,
                           max: 100,
                           divisions: 100,
@@ -1393,9 +1395,9 @@ class _SettingsSidebar extends ConsumerWidget {
                 error: (_, _) {
                   return Padding(
                     padding: const EdgeInsets.all(12),
-                    child: const Text('Unable to load settings')
-                        .small()
-                        .muted(),
+                    child: const Text(
+                      'Unable to load settings',
+                    ).small().muted(),
                   );
                 },
               ),
@@ -1453,10 +1455,7 @@ class _SettingsModeSwitcher extends StatelessWidget {
                 ).animate(animation);
           return FadeTransition(
             opacity: animation,
-            child: SlideTransition(
-              position: offsetAnimation,
-              child: child,
-            ),
+            child: SlideTransition(position: offsetAnimation, child: child),
           );
         },
         layoutBuilder: (currentChild, previousChildren) {
@@ -1584,7 +1583,9 @@ class _BasicSettingsModeSection extends StatelessWidget {
         const SizedBox(height: 8),
         RadioGroup<CompressionPriority>(
           value: settings.compressionPriority,
-          onChanged: runState.isRunning ? null : notifier.setCompressionPriority,
+          onChanged: runState.isRunning
+              ? null
+              : notifier.setCompressionPriority,
           child: Row(
             children: [
               Expanded(
@@ -1666,9 +1667,9 @@ class _DeveloperSettingsDialog extends ConsumerWidget {
                             children: [
                               Text('Developer mode').small().medium(),
                               const SizedBox(height: 4),
-                              Text('Unlock diagnostics and internal controls.')
-                                  .xSmall()
-                                  .muted(),
+                              Text(
+                                'Unlock diagnostics and internal controls.',
+                              ).xSmall().muted(),
                             ],
                           ),
                         ),
@@ -1770,18 +1771,17 @@ class _BottomSidebar extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
-    final preview = ref.watch(currentPreviewProvider).maybeWhen(
+    final previewState = ref.watch(currentPreviewProvider);
+    final preview = previewState.maybeWhen(
       data: (value) => value,
       orElse: () => null,
     );
-    final plan = ref.watch(currentOptimizationPlanProvider).maybeWhen(
-      data: (value) => value,
-      orElse: () => null,
-    );
-    final settings = ref.watch(appSettingsProvider).maybeWhen(
-      data: (value) => value,
-      orElse: () => null,
-    );
+    final plan = ref
+        .watch(currentOptimizationPlanProvider)
+        .maybeWhen(data: (value) => value, orElse: () => null);
+    final settings = ref
+        .watch(appSettingsProvider)
+        .maybeWhen(data: (value) => value, orElse: () => null);
     final runState = ref.watch(optimizationRunControllerProvider);
     final runController = ref.read(optimizationRunControllerProvider.notifier);
     final progressValue = runState.totalCount > 0
@@ -1792,6 +1792,7 @@ class _BottomSidebar extends ConsumerWidget {
       currentFile: currentFile,
       runState: runState,
       preview: preview,
+      isPreviewPending: previewState.isLoading,
       plan: plan,
       settings: settings,
     );
@@ -1920,11 +1921,7 @@ class _BottomSidebar extends ConsumerWidget {
 }
 
 class _BottomDetail extends StatelessWidget {
-  const _BottomDetail({
-    required this.label,
-    required this.value,
-    this.child,
-  });
+  const _BottomDetail({required this.label, required this.value, this.child});
 
   final String label;
   final String value;
@@ -2006,16 +2003,26 @@ class _BottomStatTile extends StatelessWidget {
         children: [
           Text(stat.label).xSmall().medium().muted(),
           const Spacer(),
-          Text(
-            stat.value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: stat.color,
+          if (stat.loading)
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: stat.color,
+              ),
+            )
+          else
+            Text(
+              stat.value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: stat.color,
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -2040,17 +2047,11 @@ class _BottomInfoSection extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: _BottomInfoColumn(
-            title: originalTitle,
-            rows: originalRows,
-          ),
+          child: _BottomInfoColumn(title: originalTitle, rows: originalRows),
         ),
         const SizedBox(width: 18),
         Expanded(
-          child: _BottomInfoColumn(
-            title: outputTitle,
-            rows: outputRows,
-          ),
+          child: _BottomInfoColumn(title: outputTitle, rows: outputRows),
         ),
       ],
     );
@@ -2100,12 +2101,21 @@ class _BottomInfoRow extends StatelessWidget {
       children: [
         Text('${row.label} ').xSmall().medium().muted(),
         Expanded(
-          child: Text(
-            row.value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.right,
-          ).xSmall().medium(),
+          child: row.loading
+              ? const Align(
+                  alignment: Alignment.centerRight,
+                  child: SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              : Text(
+                  row.value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                ).xSmall().medium(),
         ),
       ],
     );
@@ -2169,10 +2179,8 @@ _BottomMetricRowState _metricRowState({
   required String Function(double?) formatter,
 }) {
   return metric.when(
-    data: (value) => _BottomMetricRowState.text(
-      label: label,
-      value: formatter(value),
-    ),
+    data: (value) =>
+        _BottomMetricRowState.text(label: label, value: formatter(value)),
     error: (_, _) => _BottomMetricRowState.text(label: label, value: 'N/A'),
     loading: () => _BottomMetricRowState.loading(label: label),
   );
@@ -2247,6 +2255,7 @@ class _BottomSummaryViewModel {
     required OpenedImageFile currentFile,
     required OptimizationRunState runState,
     required OptimizationPreview? preview,
+    required bool isPreviewPending,
     required OptimizationPlan? plan,
     required AppSettings? settings,
   }) {
@@ -2262,6 +2271,7 @@ class _BottomSummaryViewModel {
       file: currentFile,
       runState: runState,
       preview: preview,
+      isPreviewPending: isPreviewPending,
       plan: plan,
     );
   }
@@ -2270,10 +2280,16 @@ class _BottomSummaryViewModel {
     required OpenedImageFile file,
     required OptimizationRunState runState,
     required OptimizationPreview? preview,
+    required bool isPreviewPending,
     required OptimizationPlan? plan,
   }) {
     final originalBytes = _originalFileSizeBytes(file);
-    final newBytes = preview?.result.sizeBytes.toInt() ?? _effectiveFileSizeBytes(file);
+    final hasSavedResult = file.lastResult != null;
+    final isOptimizedPreviewPending =
+        preview == null && isPreviewPending && !hasSavedResult;
+    final newBytes =
+        preview?.result.sizeBytes.toInt() ??
+        (isOptimizedPreviewPending ? null : _effectiveFileSizeBytes(file));
     final originalBpp = _bitsPerPixel(
       bytes: originalBytes,
       width: file.metadata.width,
@@ -2281,7 +2297,10 @@ class _BottomSummaryViewModel {
     );
     final optimizedBpp = _bitsPerPixel(
       bytes: newBytes,
-      width: preview?.result.width ?? file.lastResult?.width ?? file.metadata.width,
+      width:
+          preview?.result.width ??
+          file.lastResult?.width ??
+          file.metadata.width,
       height:
           preview?.result.height ??
           file.lastResult?.height ??
@@ -2290,9 +2309,8 @@ class _BottomSummaryViewModel {
     final savingsBytes = originalBytes != null && newBytes != null
         ? originalBytes - newBytes
         : null;
-    final savingsPercent = originalBytes != null &&
-            originalBytes > 0 &&
-            savingsBytes != null
+    final savingsPercent =
+        originalBytes != null && originalBytes > 0 && savingsBytes != null
         ? (savingsBytes / originalBytes) * 100
         : null;
     final outputFormat =
@@ -2309,6 +2327,7 @@ class _BottomSummaryViewModel {
           label: 'Optimized',
           value: _formatNullableBytes(newBytes),
           color: const Color(0xFF2563EB),
+          loading: isOptimizedPreviewPending,
         ),
         _BottomStatData(
           label: 'Savings',
@@ -2341,6 +2360,7 @@ class _BottomSummaryViewModel {
         _BottomInfoRowData(
           label: 'Bits Per Pixel',
           value: _formatNullableBpp(optimizedBpp),
+          loading: isOptimizedPreviewPending,
         ),
       ],
     );
@@ -2352,23 +2372,21 @@ class _BottomSummaryViewModel {
     required AppSettings? settings,
   }) {
     final files = controller.selectedFolderFiles;
-    final originalBytes = _aggregateFolderBytes(
-      files,
-      useOriginalSizes: true,
-    );
+    final originalBytes = _aggregateFolderBytes(files, useOriginalSizes: true);
     final newBytes = _aggregateFolderBytes(files, useOriginalSizes: false);
     final originalBpp = _aggregateFolderBpp(files, useOriginalSizes: true);
     final optimizedBpp = _aggregateFolderBpp(files, useOriginalSizes: false);
     final savingsBytes = originalBytes != null && newBytes != null
         ? originalBytes - newBytes
         : null;
-    final savingsPercent = originalBytes != null &&
-            originalBytes > 0 &&
-            savingsBytes != null
+    final savingsPercent =
+        originalBytes != null && originalBytes > 0 && savingsBytes != null
         ? (savingsBytes / originalBytes) * 100
         : null;
     final completedCount = files
-        .where((file) => _isTerminalStatus(_statusForFile(file, runState).status))
+        .where(
+          (file) => _isTerminalStatus(_statusForFile(file, runState).status),
+        )
         .length;
 
     return _BottomSummaryViewModel(
@@ -2398,7 +2416,8 @@ class _BottomSummaryViewModel {
       originalRows: [
         _BottomInfoRowData(
           label: 'Folder',
-          value: controller.selectedFolderName ??
+          value:
+              controller.selectedFolderName ??
               controller.selectedFolderPath ??
               'Unknown',
         ),
@@ -2433,18 +2452,25 @@ class _BottomStatData {
     required this.label,
     required this.value,
     required this.color,
+    this.loading = false,
   });
 
   final String label;
   final String value;
   final Color color;
+  final bool loading;
 }
 
 class _BottomInfoRowData {
-  const _BottomInfoRowData({required this.label, required this.value});
+  const _BottomInfoRowData({
+    required this.label,
+    required this.value,
+    this.loading = false,
+  });
 
   final String label;
   final String value;
+  final bool loading;
 }
 
 int? _effectiveFileSizeBytes(OpenedImageFile file) {
@@ -2452,7 +2478,8 @@ int? _effectiveFileSizeBytes(OpenedImageFile file) {
 }
 
 int? _originalFileSizeBytes(OpenedImageFile file) {
-  return file.lastResult?.originalSize.toInt() ?? file.metadata.fileSize?.toInt();
+  return file.lastResult?.originalSize.toInt() ??
+      file.metadata.fileSize?.toInt();
 }
 
 int? _aggregateFolderBytes(
