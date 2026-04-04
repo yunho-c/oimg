@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
+use crate::types::RawImageResult;
+
 #[derive(Debug)]
 pub(crate) struct PreviewArtifact {
     pub original_width: u32,
@@ -10,6 +12,34 @@ pub(crate) struct PreviewArtifact {
     pub preview_height: u32,
     pub original_rgba_bytes: Vec<u8>,
     pub preview_rgba_bytes: Vec<u8>,
+    pub pixel_match_percentage: OnceLock<Option<f64>>,
+    pub ms_ssim: OnceLock<Option<f64>>,
+    pub ssimulacra2: OnceLock<Option<f64>>,
+    pub difference_image: OnceLock<Option<RawImageResult>>,
+}
+
+impl PreviewArtifact {
+    pub(crate) fn new(
+        original_width: u32,
+        original_height: u32,
+        preview_width: u32,
+        preview_height: u32,
+        original_rgba_bytes: Vec<u8>,
+        preview_rgba_bytes: Vec<u8>,
+    ) -> Self {
+        Self {
+            original_width,
+            original_height,
+            preview_width,
+            preview_height,
+            original_rgba_bytes,
+            preview_rgba_bytes,
+            pixel_match_percentage: OnceLock::new(),
+            ms_ssim: OnceLock::new(),
+            ssimulacra2: OnceLock::new(),
+            difference_image: OnceLock::new(),
+        }
+    }
 }
 
 #[derive(Debug, Default)]

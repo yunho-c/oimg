@@ -94,8 +94,7 @@ pub(crate) fn compute_pixel_match_percentage(
     )
     .map(|(diffs, _)| diffs.max(0) as f64)?;
 
-    Some(((total_pixels - diff_pixels) / total_pixels) * 100.0)
-        .filter(|value| value.is_finite())
+    Some(((total_pixels - diff_pixels) / total_pixels) * 100.0).filter(|value| value.is_finite())
 }
 
 pub(crate) fn compute_difference_image(
@@ -125,56 +124,67 @@ pub(crate) fn compute_preview_pixel_match_percentage(
     request: PreviewArtifactRequest,
 ) -> crate::error::Result<Option<f64>> {
     let artifact = request_artifact(&request)?;
-    Ok(compute_pixel_match_percentage(
-        artifact.original_width,
-        artifact.original_height,
-        &artifact.original_rgba_bytes,
-        artifact.preview_width,
-        artifact.preview_height,
-        &artifact.preview_rgba_bytes,
-    ))
+    Ok(*artifact.pixel_match_percentage.get_or_init(|| {
+        compute_pixel_match_percentage(
+            artifact.original_width,
+            artifact.original_height,
+            &artifact.original_rgba_bytes,
+            artifact.preview_width,
+            artifact.preview_height,
+            &artifact.preview_rgba_bytes,
+        )
+    }))
 }
 
 pub(crate) fn compute_preview_ms_ssim(
     request: PreviewArtifactRequest,
 ) -> crate::error::Result<Option<f64>> {
     let artifact = request_artifact(&request)?;
-    Ok(compute_ms_ssim(
-        artifact.original_width,
-        artifact.original_height,
-        &artifact.original_rgba_bytes,
-        artifact.preview_width,
-        artifact.preview_height,
-        &artifact.preview_rgba_bytes,
-    ))
+    Ok(*artifact.ms_ssim.get_or_init(|| {
+        compute_ms_ssim(
+            artifact.original_width,
+            artifact.original_height,
+            &artifact.original_rgba_bytes,
+            artifact.preview_width,
+            artifact.preview_height,
+            &artifact.preview_rgba_bytes,
+        )
+    }))
 }
 
 pub(crate) fn compute_preview_ssimulacra2(
     request: PreviewArtifactRequest,
 ) -> crate::error::Result<Option<f64>> {
     let artifact = request_artifact(&request)?;
-    Ok(compute_ssimulacra2_score(
-        artifact.original_width,
-        artifact.original_height,
-        &artifact.original_rgba_bytes,
-        artifact.preview_width,
-        artifact.preview_height,
-        &artifact.preview_rgba_bytes,
-    ))
+    Ok(*artifact.ssimulacra2.get_or_init(|| {
+        compute_ssimulacra2_score(
+            artifact.original_width,
+            artifact.original_height,
+            &artifact.original_rgba_bytes,
+            artifact.preview_width,
+            artifact.preview_height,
+            &artifact.preview_rgba_bytes,
+        )
+    }))
 }
 
 pub(crate) fn compute_preview_difference_image(
     request: PreviewArtifactRequest,
 ) -> crate::error::Result<Option<RawImageResult>> {
     let artifact = request_artifact(&request)?;
-    Ok(compute_difference_image(
-        artifact.original_width,
-        artifact.original_height,
-        &artifact.original_rgba_bytes,
-        artifact.preview_width,
-        artifact.preview_height,
-        &artifact.preview_rgba_bytes,
-    ))
+    Ok(artifact
+        .difference_image
+        .get_or_init(|| {
+            compute_difference_image(
+                artifact.original_width,
+                artifact.original_height,
+                &artifact.original_rgba_bytes,
+                artifact.preview_width,
+                artifact.preview_height,
+                &artifact.preview_rgba_bytes,
+            )
+        })
+        .clone())
 }
 
 fn request_artifact(
@@ -255,10 +265,12 @@ fn compute_difference_image_data(
             .chunks_exact(4)
             .zip(distorted_rgba.chunks_exact(4))
             .flat_map(|(reference_pixel, distorted_pixel)| {
-                let [reference_r, reference_g, reference_b, reference_a]: [u8; 4] =
-                    reference_pixel.try_into().expect("pixel chunk should be RGBA");
-                let [distorted_r, distorted_g, distorted_b, distorted_a]: [u8; 4] =
-                    distorted_pixel.try_into().expect("pixel chunk should be RGBA");
+                let [reference_r, reference_g, reference_b, reference_a]: [u8; 4] = reference_pixel
+                    .try_into()
+                    .expect("pixel chunk should be RGBA");
+                let [distorted_r, distorted_g, distorted_b, distorted_a]: [u8; 4] = distorted_pixel
+                    .try_into()
+                    .expect("pixel chunk should be RGBA");
                 let reference_rgb =
                     premultiply_rgb(reference_r, reference_g, reference_b, reference_a);
                 let distorted_rgb =
@@ -341,7 +353,10 @@ mod tests {
             &image.data,
         )
         .expect("metric should compute");
-        assert!(value > 0.999, "expected near-perfect similarity, got {value}");
+        assert!(
+            value > 0.999,
+            "expected near-perfect similarity, got {value}"
+        );
     }
 
     #[test]
@@ -391,7 +406,10 @@ mod tests {
             &image.data,
         )
         .expect("metric should compute");
-        assert!(value > 99.9, "expected near-perfect similarity, got {value}");
+        assert!(
+            value > 99.9,
+            "expected near-perfect similarity, got {value}"
+        );
     }
 
     #[test]
