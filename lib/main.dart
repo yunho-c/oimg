@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oimg/src/file_open/file_open_channel.dart';
@@ -556,6 +557,14 @@ class _ImageStage extends ConsumerWidget {
     final theme = Theme.of(context);
     final plan = ref.watch(currentOptimizationPlanProvider);
     final preview = ref.watch(currentPreviewProvider);
+    final displayMode = ref.watch(currentPreviewDisplayModeProvider);
+    final difference = ref.watch(currentPreviewDifferenceProvider);
+    final previewData = preview.maybeWhen(data: (value) => value, orElse: () => null);
+    final hasOptimizedPreview = previewData != null;
+    final supportsDifference =
+        hasOptimizedPreview &&
+        previewData.result.width == currentFile.metadata.width &&
+        previewData.result.height == currentFile.metadata.height;
 
     return Card(
       padding: EdgeInsets.zero,
@@ -605,37 +614,74 @@ class _ImageStage extends ConsumerWidget {
               color: theme.colorScheme.background,
               padding: const EdgeInsets.all(10),
               child: plan.when(
-                data: (plan) {
-                  final useSourceImage = plan?.useSourceImageForPreview ?? false;
-                  return preview.when(
-                    data: (preview) => _PreviewCanvas(
-                      path: currentFile.path,
-                      fileName: FileOpenController.fileNameOf(currentFile.path),
-                      preview: useSourceImage ? null : preview,
-                    ),
-                    loading: () => useSourceImage
-                        ? _PreviewCanvas(
-                            path: currentFile.path,
-                            fileName: FileOpenController.fileNameOf(
-                              currentFile.path,
-                            ),
-                            preview: null,
-                          )
-                        : const Center(child: CircularProgressIndicator()),
-                    error: (_, _) => _PreviewCanvas(
-                      path: currentFile.path,
-                      fileName: FileOpenController.fileNameOf(currentFile.path),
-                      preview: null,
-                    ),
-                  );
+                data: (_) {
+                  final fileName = FileOpenController.fileNameOf(currentFile.path);
+                  switch (displayMode) {
+                    case PreviewDisplayMode.original:
+                      return _PreviewCanvas(
+                        fileName: fileName,
+                        path: currentFile.path,
+                      );
+                    case PreviewDisplayMode.optimized:
+                      return preview.when(
+                        data: (preview) {
+                          if (preview == null) {
+                            return _PreviewCanvas(
+                              fileName: fileName,
+                              path: currentFile.path,
+                            );
+                          }
+                          return _PreviewCanvas(
+                            fileName: fileName,
+                            encodedBytes: preview.result.encodedBytes,
+                            unavailableMessage:
+                                'Unable to render optimized preview.',
+                          );
+                        },
+                        loading: () => const Center(child: CircularProgressIndicator()),
+                        error: (_, _) => _PreviewCanvas(
+                          fileName: fileName,
+                          path: currentFile.path,
+                        ),
+                      );
+                    case PreviewDisplayMode.difference:
+                      return difference.when(
+                        data: (diff) {
+                          if (diff == null) {
+                            return const _PreviewUnavailable(
+                              message: 'Difference preview unavailable.',
+                            );
+                          }
+                          return _PreviewCanvas(
+                            fileName: fileName,
+                            encodedBytes: diff.encodedBytes,
+                            unavailableMessage:
+                                'Unable to render difference preview.',
+                          );
+                        },
+                        loading: () => const Center(child: CircularProgressIndicator()),
+                        error: (_, _) => const _PreviewUnavailable(
+                          message: 'Difference preview unavailable.',
+                        ),
+                      );
+                  }
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (_, _) => _PreviewCanvas(
-                  path: currentFile.path,
                   fileName: FileOpenController.fileNameOf(currentFile.path),
-                  preview: null,
+                  path: currentFile.path,
                 ),
               ),
+            ),
+          ),
+          const Divider(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
+            child: _PreviewDisplayModeRow(
+              filePath: currentFile.path,
+              displayMode: displayMode,
+              hasOptimizedPreview: hasOptimizedPreview,
+              supportsDifference: supportsDifference,
             ),
           ),
         ],
@@ -718,59 +764,77 @@ class _FolderStage extends StatelessWidget {
 
 class _PreviewCanvas extends StatelessWidget {
   const _PreviewCanvas({
-    required this.path,
     required this.fileName,
-    required this.preview,
+    this.path,
+    this.encodedBytes,
+    this.unavailableMessage,
   });
 
-  final String path;
   final String fileName;
-  final OptimizationPreview? preview;
+  final String? path;
+  final Uint8List? encodedBytes;
+  final String? unavailableMessage;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    assert((path == null) != (encodedBytes == null));
 
     return InteractiveViewer(
       minScale: 0.5,
       maxScale: 6,
       child: Container(
         alignment: Alignment.center,
-        child: preview == null
+        child: path != null
             ? Image.file(
-                File(path),
+                File(path!),
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
                   return _ImageLoadError(fileName: fileName);
                 },
               )
             : Image.memory(
-                preview!.result.encodedBytes,
+                encodedBytes!,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
-                  return Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          LucideIcons.imageOff,
-                          size: 32,
-                          color: theme.colorScheme.mutedForeground,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Unable to render optimized preview.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: theme.colorScheme.mutedForeground,
-                          ),
-                        ),
-                      ],
-                    ),
+                  return _PreviewUnavailable(
+                    message:
+                        unavailableMessage ?? 'Unable to render preview.',
                   );
                 },
               ),
+      ),
+    );
+  }
+}
+
+class _PreviewUnavailable extends StatelessWidget {
+  const _PreviewUnavailable({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            LucideIcons.imageOff,
+            size: 32,
+            color: theme.colorScheme.mutedForeground,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: theme.colorScheme.mutedForeground,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -935,6 +999,97 @@ class _PreviewMetaItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text('$label $value').xSmall().muted();
+  }
+}
+
+class _PreviewDisplayModeRow extends ConsumerWidget {
+  const _PreviewDisplayModeRow({
+    required this.filePath,
+    required this.displayMode,
+    required this.hasOptimizedPreview,
+    required this.supportsDifference,
+  });
+
+  final String filePath;
+  final PreviewDisplayMode displayMode;
+  final bool hasOptimizedPreview;
+  final bool supportsDifference;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Row(
+      key: const ValueKey('preview-display-mode-row'),
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _PreviewDisplayModeButton(
+          label: 'Original',
+          selected: displayMode == PreviewDisplayMode.original,
+          enabled: true,
+          onPressed: () {
+            ref.read(previewDisplaySelectionProvider.notifier).select(
+              filePath: filePath,
+              mode: PreviewDisplayMode.original,
+            );
+          },
+        ),
+        const SizedBox(width: 8),
+        _PreviewDisplayModeButton(
+          label: 'Optimized',
+          selected: displayMode == PreviewDisplayMode.optimized,
+          enabled: hasOptimizedPreview,
+          onPressed: () {
+            ref.read(previewDisplaySelectionProvider.notifier).select(
+              filePath: filePath,
+              mode: PreviewDisplayMode.optimized,
+            );
+          },
+        ),
+        const SizedBox(width: 8),
+        _PreviewDisplayModeButton(
+          label: 'Difference',
+          selected: displayMode == PreviewDisplayMode.difference,
+          enabled: supportsDifference,
+          onPressed: () {
+            ref.read(previewDisplaySelectionProvider.notifier).select(
+              filePath: filePath,
+              mode: PreviewDisplayMode.difference,
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _PreviewDisplayModeButton extends StatelessWidget {
+  const _PreviewDisplayModeButton({
+    required this.label,
+    required this.selected,
+    required this.enabled,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final buttonChild = Text(label).xSmall().medium();
+    return SizedBox(
+      key: ValueKey('preview-mode-$label'),
+      height: 30,
+      child: selected
+          ? PrimaryButton(
+              onPressed: enabled ? onPressed : null,
+              child: buttonChild,
+            )
+          : OutlineButton(
+              onPressed: enabled ? onPressed : null,
+              child: buttonChild,
+            ),
+    );
   }
 }
 

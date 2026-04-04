@@ -12,9 +12,34 @@ import 'optimization_plan.dart';
 
 final slimgApiProvider = Provider<SlimgApi>((ref) => const FrbSlimgApi());
 int _previewRequestSequence = 0;
+int _previewDifferenceRequestSequence = 0;
 int _previewPixelMatchRequestSequence = 0;
 int _previewMsSsimRequestSequence = 0;
 int _previewSsimulacra2RequestSequence = 0;
+
+enum PreviewDisplayMode { original, optimized, difference }
+
+class PreviewDisplaySelection {
+  const PreviewDisplaySelection({
+    required this.filePath,
+    required this.mode,
+  });
+
+  final String filePath;
+  final PreviewDisplayMode mode;
+}
+
+class PreviewDisplaySelectionNotifier extends Notifier<PreviewDisplaySelection?> {
+  @override
+  PreviewDisplaySelection? build() => null;
+
+  void select({
+    required String filePath,
+    required PreviewDisplayMode mode,
+  }) {
+    state = PreviewDisplaySelection(filePath: filePath, mode: mode);
+  }
+}
 
 final currentOptimizationPlanProvider =
     FutureProvider.autoDispose<OptimizationPlan?>((ref) async {
@@ -114,6 +139,57 @@ final currentPreviewProvider = FutureProvider.autoDispose<OptimizationPreview?>(
   }
 });
 
+final previewDisplaySelectionProvider = NotifierProvider.autoDispose<
+  PreviewDisplaySelectionNotifier,
+  PreviewDisplaySelection?
+>(PreviewDisplaySelectionNotifier.new);
+
+final currentPreviewDisplayModeProvider =
+    Provider.autoDispose<PreviewDisplayMode>((ref) {
+      final controller = ref.watch(fileOpenControllerProvider);
+      final currentFile = controller.currentFile;
+      if (currentFile == null) {
+        return PreviewDisplayMode.original;
+      }
+
+      final manualSelection = ref.watch(previewDisplaySelectionProvider);
+      final preview = ref.watch(currentPreviewProvider).maybeWhen(
+        data: (value) => value,
+        orElse: () => null,
+      );
+      final plan = ref.watch(currentOptimizationPlanProvider).maybeWhen(
+        data: (value) => value,
+        orElse: () => null,
+      );
+
+      final hasPreview = preview != null;
+      final supportsDifference =
+          hasPreview &&
+          preview.result.width == currentFile.metadata.width &&
+          preview.result.height == currentFile.metadata.height;
+
+      if (manualSelection != null && manualSelection.filePath == currentFile.path) {
+        switch (manualSelection.mode) {
+          case PreviewDisplayMode.original:
+            return PreviewDisplayMode.original;
+          case PreviewDisplayMode.optimized:
+            return hasPreview
+                ? PreviewDisplayMode.optimized
+                : PreviewDisplayMode.original;
+          case PreviewDisplayMode.difference:
+            return supportsDifference
+                ? PreviewDisplayMode.difference
+                : PreviewDisplayMode.original;
+        }
+      }
+
+      final defaultsToOriginal = plan?.useSourceImageForPreview ?? true;
+      if (defaultsToOriginal || !hasPreview) {
+        return PreviewDisplayMode.original;
+      }
+      return PreviewDisplayMode.optimized;
+    });
+
 final _currentPreviewMetricRequestProvider =
     FutureProvider.autoDispose<PreviewQualityMetricsRequest?>((ref) async {
       final controller = ref.watch(fileOpenControllerProvider);
@@ -128,6 +204,53 @@ final _currentPreviewMetricRequestProvider =
         inputPath: preview.sourceFile.path,
         previewEncodedBytes: preview.result.encodedBytes,
       );
+    });
+
+final currentPreviewDifferenceProvider =
+    FutureProvider.autoDispose<EncodedImageResult?>((ref) async {
+      if (ref.watch(currentPreviewDisplayModeProvider) !=
+          PreviewDisplayMode.difference) {
+        return null;
+      }
+
+      final requestId = ++_previewDifferenceRequestSequence;
+      final totalStopwatch = Stopwatch()..start();
+      ref.onDispose(() {
+        DeveloperDiagnostics.logTiming(
+          'preview-diff:$requestId',
+          'disposed total=${totalStopwatch.elapsedMilliseconds}ms',
+        );
+      });
+
+      try {
+        final request = await ref.watch(_currentPreviewMetricRequestProvider.future);
+        if (request == null) {
+          return null;
+        }
+
+        DeveloperDiagnostics.logTiming(
+          'preview-diff:$requestId',
+          'start path=${request.inputPath}',
+        );
+        final diffStopwatch = Stopwatch()..start();
+        final result = await ref
+            .read(slimgApiProvider)
+            .computePreviewDifferenceImage(request: request);
+        diffStopwatch.stop();
+        totalStopwatch.stop();
+        DeveloperDiagnostics.logTiming(
+          'preview-diff:$requestId',
+          'done diff=${diffStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms available=${result != null}',
+        );
+        return result;
+      } on Object catch (error, stackTrace) {
+        DeveloperDiagnostics.logTimingError(
+          'preview-diff:$requestId',
+          error,
+          stackTrace,
+        );
+        rethrow;
+      }
     });
 
 final currentPreviewPixelMatchProvider =

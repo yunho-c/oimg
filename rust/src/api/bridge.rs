@@ -57,6 +57,12 @@ pub fn compute_preview_ssimulacra2(request: PreviewQualityMetricsRequest) -> Res
     with_internal(|| crate::metrics::compute_preview_ssimulacra2(request))
 }
 
+pub fn compute_preview_difference_image(
+    request: PreviewQualityMetricsRequest,
+) -> Result<Option<EncodedImageResult>> {
+    with_internal(|| crate::metrics::compute_preview_difference_image(request))
+}
+
 pub fn process_file(request: ProcessFileRequest) -> Result<ProcessResult> {
     with_internal(|| crate::convert::process_file(request))
 }

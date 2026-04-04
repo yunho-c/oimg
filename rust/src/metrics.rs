@@ -1,10 +1,11 @@
 use dify::diff::get_results;
-use fast_ssim2::{compute_ssimulacra2, srgb_u8_to_linear, LinearRgbImage};
+use fast_ssim2::{LinearRgbImage, compute_ssimulacra2, srgb_u8_to_linear};
 use image::RgbaImage;
-use slimg_core::{decode, ImageData};
+use slimg_core::codec::{EncodeOptions, get_codec};
+use slimg_core::{Format, ImageData, decode};
 use tjdistler_iqa::{ImageQualityAssessment, MsSsim};
 
-use crate::types::PreviewQualityMetricsRequest;
+use crate::types::{EncodedImageResult, PreviewQualityMetricsRequest};
 
 const DIFY_DEFAULT_THRESHOLD: f32 = 35215.0 * 0.05 * 0.05;
 
@@ -103,6 +104,41 @@ pub(crate) fn compute_pixel_match_percentage_from_bytes(
     compute_pixel_match_percentage(&reference, &distorted)
 }
 
+pub(crate) fn compute_difference_image(
+    reference: &ImageData,
+    distorted: &ImageData,
+) -> Option<EncodedImageResult> {
+    let diff = compute_difference_image_data(reference, distorted)?;
+    let codec = get_codec(Format::Png);
+    let encoded = codec
+        .encode(
+            &diff,
+            &EncodeOptions {
+                quality: 100,
+                threads: None,
+            },
+        )
+        .ok()?;
+    let size_bytes = encoded.len() as u64;
+
+    Some(EncodedImageResult {
+        encoded_bytes: encoded,
+        format: Format::Png.extension().to_string(),
+        width: diff.width,
+        height: diff.height,
+        size_bytes,
+    })
+}
+
+pub(crate) fn compute_difference_image_from_bytes(
+    reference_bytes: &[u8],
+    distorted_bytes: &[u8],
+) -> Option<EncodedImageResult> {
+    let (reference, _) = decode(reference_bytes).ok()?;
+    let (distorted, _) = decode(distorted_bytes).ok()?;
+    compute_difference_image(&reference, &distorted)
+}
+
 pub(crate) fn compute_preview_pixel_match_percentage(
     request: PreviewQualityMetricsRequest,
 ) -> crate::error::Result<Option<f64>> {
@@ -130,6 +166,15 @@ pub(crate) fn compute_preview_ssimulacra2(
     let original_bytes = std::fs::read(&request.input_path).ok();
     Ok(original_bytes.as_ref().and_then(|reference_bytes| {
         compute_ssimulacra2_from_bytes(reference_bytes, &request.preview_encoded_bytes)
+    }))
+}
+
+pub(crate) fn compute_preview_difference_image(
+    request: PreviewQualityMetricsRequest,
+) -> crate::error::Result<Option<EncodedImageResult>> {
+    let original_bytes = std::fs::read(&request.input_path).ok();
+    Ok(original_bytes.as_ref().and_then(|reference_bytes| {
+        compute_difference_image_from_bytes(reference_bytes, &request.preview_encoded_bytes)
     }))
 }
 
@@ -180,6 +225,46 @@ fn composite_onto_white(r: u8, g: u8, b: u8, a: u8) -> [u8; 3] {
         ((u32::from(g) * alpha + 255 * inv_alpha) / 255) as u8,
         ((u32::from(b) * alpha + 255 * inv_alpha) / 255) as u8,
     ]
+}
+
+fn compute_difference_image_data(reference: &ImageData, distorted: &ImageData) -> Option<ImageData> {
+    if reference.width != distorted.width || reference.height != distorted.height {
+        return None;
+    }
+
+    let data = reference
+        .data
+        .chunks_exact(4)
+        .zip(distorted.data.chunks_exact(4))
+        .flat_map(|(reference_pixel, distorted_pixel)| {
+            let [reference_r, reference_g, reference_b, reference_a]: [u8; 4] =
+                reference_pixel.try_into().expect("pixel chunk should be RGBA");
+            let [distorted_r, distorted_g, distorted_b, distorted_a]: [u8; 4] =
+                distorted_pixel.try_into().expect("pixel chunk should be RGBA");
+            let reference_rgb = premultiply_rgb(reference_r, reference_g, reference_b, reference_a);
+            let distorted_rgb = premultiply_rgb(distorted_r, distorted_g, distorted_b, distorted_a);
+            [
+                distorted_rgb[0].abs_diff(reference_rgb[0]),
+                distorted_rgb[1].abs_diff(reference_rgb[1]),
+                distorted_rgb[2].abs_diff(reference_rgb[2]),
+                255,
+            ]
+        })
+        .collect();
+
+    Some(ImageData::new(reference.width, reference.height, data))
+}
+
+fn premultiply_rgb(r: u8, g: u8, b: u8, a: u8) -> [u8; 3] {
+    [
+        premultiply_channel(r, a),
+        premultiply_channel(g, a),
+        premultiply_channel(b, a),
+    ]
+}
+
+fn premultiply_channel(value: u8, alpha: u8) -> u8 {
+    ((u32::from(value) * u32::from(alpha) + 127) / 255) as u8
 }
 
 fn supported_ms_ssim_scales(width: usize, height: usize) -> Option<usize> {
@@ -329,6 +414,44 @@ mod tests {
     }
 
     #[test]
+    fn identical_images_produce_black_difference_image() {
+        let image = gradient_image(16, 16);
+        let diff = compute_difference_image_data(&image, &image).expect("diff should compute");
+        for pixel in diff.data.chunks_exact(4) {
+            assert_eq!(pixel, [0, 0, 0, 255]);
+        }
+    }
+
+    #[test]
+    fn changed_images_produce_non_black_difference_image() {
+        let reference = gradient_image(16, 16);
+        let mut distorted = reference.clone();
+        for pixel in distorted.data.chunks_exact_mut(4) {
+            pixel[0] = pixel[0].saturating_add(32);
+        }
+
+        let diff = compute_difference_image_data(&reference, &distorted).expect("diff should compute");
+        assert!(
+            diff.data
+                .chunks_exact(4)
+                .any(|pixel| pixel[0] > 0 || pixel[1] > 0 || pixel[2] > 0),
+            "expected at least one visible difference pixel"
+        );
+    }
+
+    #[test]
+    fn alpha_images_allow_difference_image_computation() {
+        let mut reference = gradient_image(16, 16);
+        for pixel in reference.data.chunks_exact_mut(4) {
+            pixel[3] = 128;
+        }
+
+        let diff = compute_difference_image_data(&reference, &reference).expect("diff should compute");
+        assert_eq!(diff.width, 16);
+        assert_eq!(diff.height, 16);
+    }
+
+    #[test]
     fn dimension_mismatch_returns_none_for_ssimulacra2() {
         let reference = gradient_image(64, 64);
         let distorted = gradient_image(32, 64);
@@ -340,5 +463,12 @@ mod tests {
         let reference = gradient_image(64, 64);
         let distorted = gradient_image(32, 64);
         assert_eq!(compute_pixel_match_percentage(&reference, &distorted), None);
+    }
+
+    #[test]
+    fn dimension_mismatch_returns_none_for_difference_image() {
+        let reference = gradient_image(64, 64);
+        let distorted = gradient_image(32, 64);
+        assert!(compute_difference_image_data(&reference, &distorted).is_none());
     }
 }

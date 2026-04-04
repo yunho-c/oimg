@@ -163,13 +163,21 @@ fn preview_metric_rpcs_return_values_for_same_dimension_preview() {
         "expected metric in [0, 1], got {metric}"
     );
 
-    let ssimulacra2 = bridge::compute_preview_ssimulacra2(request)
+    let ssimulacra2 = bridge::compute_preview_ssimulacra2(request.clone())
         .unwrap()
         .expect("expected ssimulacra2 metric");
     assert!(
         (0.0..=100.0).contains(&ssimulacra2),
         "expected SSIMULACRA 2 in [0, 100], got {ssimulacra2}"
     );
+
+    let diff = bridge::compute_preview_difference_image(request)
+        .unwrap()
+        .expect("expected difference preview");
+    let (diff_image, diff_format) = decode(&diff.encoded_bytes).unwrap();
+    assert_eq!(diff_format, Format::Png);
+    assert_eq!(diff_image.width, 48);
+    assert_eq!(diff_image.height, 32);
 }
 
 #[test]
@@ -198,7 +206,8 @@ fn preview_metric_rpcs_return_none_when_metric_cannot_be_computed() {
         None
     );
     assert_eq!(bridge::compute_preview_ms_ssim(request.clone()).unwrap(), None);
-    assert_eq!(bridge::compute_preview_ssimulacra2(request).unwrap(), None);
+    assert_eq!(bridge::compute_preview_ssimulacra2(request.clone()).unwrap(), None);
+    assert_eq!(bridge::compute_preview_difference_image(request).unwrap(), None);
 }
 
 #[test]

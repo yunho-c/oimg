@@ -23,6 +23,10 @@ abstract class SlimgApi {
     required PreviewQualityMetricsRequest request,
   });
 
+  Future<EncodedImageResult?> computePreviewDifferenceImage({
+    required PreviewQualityMetricsRequest request,
+  });
+
   Future<ProcessResult> processFile({required ProcessFileRequest request});
 
   Future<List<BatchItemResult>> processFileBatch({
@@ -170,6 +174,38 @@ class FrbSlimgApi implements SlimgApi {
             stopwatch.stop();
             DeveloperDiagnostics.logTimingError(
               'preview-metric:ssimulacra2',
+              error,
+              stackTrace,
+            );
+            throw error;
+          },
+        );
+  }
+
+  @override
+  Future<EncodedImageResult?> computePreviewDifferenceImage({
+    required PreviewQualityMetricsRequest request,
+  }) {
+    final stopwatch = Stopwatch()..start();
+    DeveloperDiagnostics.logTiming(
+      'preview-diff',
+      'start path=${request.inputPath}',
+    );
+    return _bridge
+        .computePreviewDifferenceImage(request: request)
+        .then(
+          (result) {
+            stopwatch.stop();
+            DeveloperDiagnostics.logTiming(
+              'preview-diff',
+              'done path=${request.inputPath} total=${stopwatch.elapsedMilliseconds}ms available=${result != null}',
+            );
+            return result;
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            stopwatch.stop();
+            DeveloperDiagnostics.logTimingError(
+              'preview-diff',
               error,
               stackTrace,
             );

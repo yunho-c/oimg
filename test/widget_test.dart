@@ -117,6 +117,74 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
+  testWidgets('preview mode row defaults to original until preview exists', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      previewDelay: const Duration(seconds: 5),
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.byKey(const ValueKey('preview-display-mode-row')), findsOneWidget);
+    expect(find.byKey(const ValueKey('preview-mode-Original')), findsOneWidget);
+    expect(find.byKey(const ValueKey('preview-mode-Optimized')), findsOneWidget);
+    expect(find.byKey(const ValueKey('preview-mode-Difference')), findsOneWidget);
+    expect(slimg.differenceCallCount, 0);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump();
+  });
+
+  testWidgets('difference mode computes lazily and shows loading state', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+    )..differenceDelay = const Duration(milliseconds: 100);
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(slimg.differenceCallCount, 0);
+
+    await tester.tap(find.byKey(const ValueKey('preview-mode-Difference')));
+    await tester.pump();
+
+    expect(slimg.differenceCallCount, 1);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 120));
+
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('preview-mode-Original')));
+    await tester.pump();
+    expect(slimg.differenceCallCount, 1);
+  });
+
   testWidgets('later openFiles event replaces the session', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -533,6 +601,7 @@ class _FakeSlimgApi implements SlimgApi {
   ProcessFileBatchRequest? lastBatchRequest;
   bool lastTimingLogsEnabled = false;
   int previewCallCount = 0;
+  int differenceCallCount = 0;
   int _nextJobId = 0;
   final Map<String, _FakeBatchJob> _jobs = {};
 
@@ -572,6 +641,7 @@ class _FakeSlimgApi implements SlimgApi {
   Duration pixelMatchDelay = Duration.zero;
   Duration msSsimDelay = Duration.zero;
   Duration ssimulacra2Delay = Duration.zero;
+  Duration differenceDelay = Duration.zero;
 
   @override
   Future<double?> computePreviewPixelMatchPercentage({
@@ -601,6 +671,23 @@ class _FakeSlimgApi implements SlimgApi {
       await Future<void>.delayed(ssimulacra2Delay);
     }
     return 92.4;
+  }
+
+  @override
+  Future<EncodedImageResult?> computePreviewDifferenceImage({
+    required PreviewQualityMetricsRequest request,
+  }) async {
+    differenceCallCount += 1;
+    if (differenceDelay > Duration.zero) {
+      await Future<void>.delayed(differenceDelay);
+    }
+    return EncodedImageResult(
+      encodedBytes: _previewBytes,
+      format: 'png',
+      width: 48,
+      height: 32,
+      sizeBytes: BigInt.from(_previewBytes.length),
+    );
   }
 
   @override

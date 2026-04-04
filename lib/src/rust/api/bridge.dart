@@ -43,6 +43,12 @@ Future<double?> computePreviewSsimulacra2({
   request: request,
 );
 
+Future<EncodedImageResult?> computePreviewDifferenceImage({
+  required PreviewQualityMetricsRequest request,
+}) => RustLib.instance.api.crateApiBridgeComputePreviewDifferenceImage(
+  request: request,
+);
+
 Future<ProcessResult> processFile({required ProcessFileRequest request}) =>
     RustLib.instance.api.crateApiBridgeProcessFile(request: request);
 

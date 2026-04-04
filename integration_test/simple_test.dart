@@ -91,6 +91,13 @@ class _FakeSlimgApi implements SlimgApi {
   }
 
   @override
+  Future<EncodedImageResult?> computePreviewDifferenceImage({
+    required PreviewQualityMetricsRequest request,
+  }) async {
+    return null;
+  }
+
+  @override
   Future<ProcessResult> processFile({required ProcessFileRequest request}) {
     throw UnimplementedError();
   }
