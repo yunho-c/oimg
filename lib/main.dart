@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/services.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oimg/src/file_open/file_open_channel.dart';
@@ -673,136 +673,185 @@ class _ImageStage extends ConsumerWidget {
         optimizedDisplay.width == currentFile.metadata.width &&
         optimizedDisplay.height == currentFile.metadata.height;
 
-    return Card(
-      padding: EdgeInsets.zero,
-      borderRadius: theme.borderRadiusXl,
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  FileOpenController.directoryOf(currentFile.path),
-                  style: TextStyle(color: theme.colorScheme.mutedForeground),
-                ).xSmall(),
-                const SizedBox(height: 4),
-                Row(
+    void selectOriginal() {
+      ref
+          .read(previewDisplaySelectionProvider.notifier)
+          .select(filePath: currentFile.path, mode: PreviewDisplayMode.original);
+    }
+
+    void selectOptimized() {
+      if (!hasOptimizedPreview) {
+        return;
+      }
+      ref
+          .read(previewDisplaySelectionProvider.notifier)
+          .select(
+            filePath: currentFile.path,
+            mode: PreviewDisplayMode.optimized,
+          );
+    }
+
+    void selectDifference() {
+      if (!supportsDifference) {
+        return;
+      }
+      final artifactId = optimizedDisplay.artifactId;
+      ref
+          .read(previewDifferenceRequestProvider.notifier)
+          .requestForArtifact(artifactId);
+      ref
+          .read(previewDisplaySelectionProvider.notifier)
+          .select(
+            filePath: currentFile.path,
+            mode: PreviewDisplayMode.difference,
+          );
+    }
+
+    return CallbackShortcuts(
+      bindings: <ShortcutActivator, VoidCallback>{
+        const SingleActivator(LogicalKeyboardKey.keyR): selectOriginal,
+        const SingleActivator(LogicalKeyboardKey.keyE): selectOptimized,
+        const SingleActivator(LogicalKeyboardKey.keyD): selectDifference,
+      },
+      child: Focus(
+        autofocus: true,
+        skipTraversal: true,
+        child: Card(
+          padding: EdgeInsets.zero,
+          borderRadius: theme.borderRadiusXl,
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
                     Text(
-                      '${currentFile.metadata.width} x ${currentFile.metadata.height}',
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                        color: theme.colorScheme.mutedForeground,
-                      ),
+                      FileOpenController.directoryOf(currentFile.path),
+                      style: TextStyle(color: theme.colorScheme.mutedForeground),
                     ).xSmall(),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          '${currentFile.metadata.width} x ${currentFile.metadata.height}',
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            color: theme.colorScheme.mutedForeground,
+                          ),
+                        ).xSmall(),
+                      ],
+                    ),
+                    if (preview.hasError) ...[
+                      const SizedBox(height: 10),
+                      Text('Preview unavailable').xSmall().muted(),
+                    ],
                   ],
                 ),
-                if (preview.hasError) ...[
-                  const SizedBox(height: 10),
-                  Text('Preview unavailable').xSmall().muted(),
-                ],
-              ],
-            ),
-          ),
-          const Divider(),
-          Expanded(
-            child: Container(
-              color: theme.colorScheme.background,
-              padding: const EdgeInsets.all(10),
-              child: plan.when(
-                data: (_) {
-                  final fileName = FileOpenController.fileNameOf(
-                    currentFile.path,
-                  );
-                  switch (displayMode) {
-                    case PreviewDisplayMode.original:
-                      return _PreviewCanvas(
-                        fileName: fileName,
-                        path: currentFile.path,
+              ),
+              const Divider(),
+              Expanded(
+                child: Container(
+                  color: theme.colorScheme.background,
+                  padding: const EdgeInsets.all(10),
+                  child: plan.when(
+                    data: (_) {
+                      final fileName = FileOpenController.fileNameOf(
+                        currentFile.path,
                       );
-                    case PreviewDisplayMode.optimized:
-                      if (optimizedDisplay != null) {
-                        if (optimizedDisplay.usesOutputPath) {
+                      switch (displayMode) {
+                        case PreviewDisplayMode.original:
                           return _PreviewCanvas(
                             fileName: fileName,
-                            path: optimizedDisplay.outputPath,
-                            unavailableMessage:
-                                'Unable to render optimized preview.',
+                            path: currentFile.path,
                           );
-                        }
-                        return _PreviewCanvas(
-                          fileName: fileName,
-                          encodedBytes: optimizedDisplay.encodedBytes,
-                          unavailableMessage:
-                              'Unable to render optimized preview.',
-                        );
-                      }
-                      return preview.when(
-                        data: (_) => _PreviewCanvas(
-                          fileName: fileName,
-                          path: currentFile.path,
-                        ),
-                        loading: () =>
-                            const Center(child: CircularProgressIndicator()),
-                        error: (_, _) => _PreviewCanvas(
-                          fileName: fileName,
-                          path: currentFile.path,
-                        ),
-                      );
-                    case PreviewDisplayMode.difference:
-                      return difference.when(
-                        data: (diff) {
-                          if (diff == null) {
-                            return const _PreviewUnavailable(
-                              message: 'Difference preview unavailable.',
+                        case PreviewDisplayMode.optimized:
+                          if (optimizedDisplay != null) {
+                            if (optimizedDisplay.usesOutputPath) {
+                              return _PreviewCanvas(
+                                fileName: fileName,
+                                path: optimizedDisplay.outputPath,
+                                unavailableMessage:
+                                    'Unable to render optimized preview.',
+                              );
+                            }
+                            return _PreviewCanvas(
+                              fileName: fileName,
+                              encodedBytes: optimizedDisplay.encodedBytes,
+                              unavailableMessage:
+                                  'Unable to render optimized preview.',
                             );
                           }
-                          return _PreviewCanvas(
-                            fileName: fileName,
-                            rawImage: diff,
+                          return preview.when(
+                            data: (_) => _PreviewCanvas(
+                              fileName: fileName,
+                              path: currentFile.path,
+                            ),
+                            loading: () =>
+                                const Center(child: CircularProgressIndicator()),
+                            error: (_, _) => _PreviewCanvas(
+                              fileName: fileName,
+                              path: currentFile.path,
+                            ),
                           );
-                        },
-                        loading: () =>
-                            const Center(child: CircularProgressIndicator()),
-                        error: (_, _) => const _PreviewUnavailable(
-                          message: 'Difference preview unavailable.',
-                        ),
-                      );
-                  }
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (_, _) => _PreviewCanvas(
-                  fileName: FileOpenController.fileNameOf(currentFile.path),
-                  path: currentFile.path,
+                        case PreviewDisplayMode.difference:
+                          return difference.when(
+                            data: (diff) {
+                              if (diff == null) {
+                                return const _PreviewUnavailable(
+                                  message: 'Difference preview unavailable.',
+                                );
+                              }
+                              return _PreviewCanvas(
+                                fileName: fileName,
+                                rawImage: diff,
+                              );
+                            },
+                            loading: () =>
+                                const Center(child: CircularProgressIndicator()),
+                            error: (_, _) => const _PreviewUnavailable(
+                              message: 'Difference preview unavailable.',
+                            ),
+                          );
+                      }
+                    },
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (_, _) => _PreviewCanvas(
+                      fileName: FileOpenController.fileNameOf(currentFile.path),
+                      path: currentFile.path,
+                    ),
+                  ),
                 ),
               ),
-            ),
+              const Divider(),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
+                child: _PreviewDisplayModeRow(
+                  filePath: currentFile.path,
+                  displayMode: displayMode,
+                  hasOptimizedPreview: hasOptimizedPreview,
+                  supportsDifference: supportsDifference,
+                  optimizedArtifactId: optimizedDisplay?.artifactId,
+                  onSelectOriginal: selectOriginal,
+                  onSelectOptimized: selectOptimized,
+                  onSelectDifference: selectDifference,
+                ),
+              ),
+            ],
           ),
-          const Divider(),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
-            child: _PreviewDisplayModeRow(
-              filePath: currentFile.path,
-              displayMode: displayMode,
-              hasOptimizedPreview: hasOptimizedPreview,
-              supportsDifference: supportsDifference,
-              optimizedArtifactId: optimizedDisplay?.artifactId,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -1131,6 +1180,9 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
     required this.hasOptimizedPreview,
     required this.supportsDifference,
     required this.optimizedArtifactId,
+    required this.onSelectOriginal,
+    required this.onSelectOptimized,
+    required this.onSelectDifference,
   });
 
   final String filePath;
@@ -1138,6 +1190,9 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
   final bool hasOptimizedPreview;
   final bool supportsDifference;
   final String? optimizedArtifactId;
+  final VoidCallback onSelectOriginal;
+  final VoidCallback onSelectOptimized;
+  final VoidCallback onSelectDifference;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1155,47 +1210,29 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
         _PreviewDisplayModeButton(
+          shortcutKey: LogicalKeyboardKey.keyR,
           label: 'Original',
           selected: displayMode == PreviewDisplayMode.original,
           enabled: true,
-          onPressed: () {
-            ref
-                .read(previewDisplaySelectionProvider.notifier)
-                .select(filePath: filePath, mode: PreviewDisplayMode.original);
-          },
+          onPressed: onSelectOriginal,
         ),
         const SizedBox(width: 8),
         _PreviewDisplayModeButton(
+          shortcutKey: LogicalKeyboardKey.keyE,
           label: 'Optimized',
           selected: displayMode == PreviewDisplayMode.optimized,
           enabled: hasOptimizedPreview,
           loading: optimizedLoading,
-          onPressed: () {
-            ref
-                .read(previewDisplaySelectionProvider.notifier)
-                .select(filePath: filePath, mode: PreviewDisplayMode.optimized);
-          },
+          onPressed: onSelectOptimized,
         ),
         const SizedBox(width: 8),
         _PreviewDisplayModeButton(
+          shortcutKey: LogicalKeyboardKey.keyD,
           label: 'Difference',
           selected: displayMode == PreviewDisplayMode.difference,
           enabled: supportsDifference,
           loading: differenceLoading,
-          onPressed: () {
-            final artifactId = optimizedArtifactId;
-            if (artifactId != null) {
-              ref
-                  .read(previewDifferenceRequestProvider.notifier)
-                  .requestForArtifact(artifactId);
-            }
-            ref
-                .read(previewDisplaySelectionProvider.notifier)
-                .select(
-                  filePath: filePath,
-                  mode: PreviewDisplayMode.difference,
-                );
-          },
+          onPressed: onSelectDifference,
         ),
         const Spacer(),
         analyzeState.isCancelRequested
@@ -1224,6 +1261,7 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
 
 class _PreviewDisplayModeButton extends StatelessWidget {
   const _PreviewDisplayModeButton({
+    required this.shortcutKey,
     required this.label,
     required this.selected,
     required this.enabled,
@@ -1231,6 +1269,7 @@ class _PreviewDisplayModeButton extends StatelessWidget {
     required this.onPressed,
   });
 
+  final LogicalKeyboardKey shortcutKey;
   final String label;
   final bool selected;
   final bool enabled;
@@ -1250,6 +1289,8 @@ class _PreviewDisplayModeButton extends StatelessWidget {
           ),
           const SizedBox(width: 8),
         ],
+        _PreviewModeShortcutKey(shortcutKey: shortcutKey),
+        const SizedBox(width: 8),
         Text(label).xSmall().medium(),
       ],
     );
@@ -1265,6 +1306,35 @@ class _PreviewDisplayModeButton extends StatelessWidget {
               onPressed: enabled ? onPressed : null,
               child: buttonChild,
             ),
+    );
+  }
+}
+
+class _PreviewModeShortcutKey extends StatelessWidget {
+  const _PreviewModeShortcutKey({required this.shortcutKey});
+
+  final LogicalKeyboardKey shortcutKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.secondary.withValues(alpha: 0.7),
+        borderRadius: theme.borderRadiusSm,
+        border: Border.all(color: theme.colorScheme.border),
+      ),
+      child: Text(
+        shortcutKey.keyLabel.toUpperCase(),
+        style: TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
+          color: theme.colorScheme.mutedForeground,
+          height: 1,
+        ),
+      ),
     );
   }
 }
