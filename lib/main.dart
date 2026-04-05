@@ -3731,6 +3731,47 @@ class _EmptyState extends ConsumerWidget {
                           ),
                           child: support,
                         ),
+                        const SizedBox(height: 44),
+                      ],
+                    ),
+                  ),
+                  Positioned(
+                    right: 28,
+                    bottom: 24,
+                    child: Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      alignment: WrapAlignment.end,
+                      children: [
+                        OutlineButton(
+                          key: const ValueKey('empty-state-github-button'),
+                          onPressed: () async {
+                            await launchUrl(
+                              Uri.parse('https://github.com/yunho-c/oimg'),
+                              mode: LaunchMode.externalApplication,
+                            );
+                          },
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(LucideIcons.github, size: 15),
+                              SizedBox(width: 8),
+                              Text('GitHub'),
+                            ],
+                          ),
+                        ),
+                        OutlineButton(
+                          key: const ValueKey('empty-state-feedback-button'),
+                          onPressed: () {},
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(LucideIcons.messageSquare, size: 15),
+                              SizedBox(width: 8),
+                              Text('Feedback'),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
