@@ -3725,7 +3725,12 @@ class _EmptyState extends ConsumerWidget {
                           child: hero,
                         ),
                         const SizedBox(height: 18),
-                        support,
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: constraints.maxWidth * 0.85,
+                          ),
+                          child: support,
+                        ),
                       ],
                     ),
                   ),
