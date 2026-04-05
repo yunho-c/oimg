@@ -114,6 +114,22 @@ class FileOpenController extends ChangeNotifier {
     await openPaths(_initialPaths);
   }
 
+  Future<void> pickFilesAndOpen() async {
+    final paths = await _channel.pickFiles();
+    if (paths.isEmpty) {
+      return;
+    }
+    await openPaths(paths);
+  }
+
+  Future<void> pickFolderAndOpen() async {
+    final paths = await _channel.pickFolder();
+    if (paths.isEmpty) {
+      return;
+    }
+    await openPaths(paths);
+  }
+
   Future<void> openPaths(List<String> paths) async {
     final candidatePaths = await _expandCandidatePaths(paths);
     final inspectedFiles = <OpenedImageFile>[];

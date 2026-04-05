@@ -38,6 +38,7 @@ pub(crate) fn inspect_bytes(data: Vec<u8>) -> Result<ImageMetadata> {
         height: image.height,
         format: format_to_string(format),
         file_size: None,
+        has_transparency: image.data.chunks_exact(4).any(|pixel| pixel[3] < 255),
     })
 }
 
@@ -674,6 +675,7 @@ mod tests {
         assert_eq!(metadata.height, 24);
         assert_eq!(metadata.format, "png");
         assert_eq!(metadata.file_size, None);
+        assert!(!metadata.has_transparency);
     }
 
     #[test]

@@ -195,12 +195,19 @@ ImageMetadata _metadata(String format) {
     height: 32,
     format: format,
     fileSize: BigInt.from(1024),
+    hasTransparency: false,
   );
 }
 
 class _FakeFileOpenChannel implements FileOpenChannel {
   @override
   Future<void> bind(OpenFilesHandler onOpenFiles) async {}
+
+  @override
+  Future<List<String>> pickFiles() async => const <String>[];
+
+  @override
+  Future<List<String>> pickFolder() async => const <String>[];
 }
 
 class _FakeSlimgApi implements SlimgApi {

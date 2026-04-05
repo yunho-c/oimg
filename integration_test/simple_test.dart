@@ -40,13 +40,19 @@ void main() {
         child: const MyApp(),
       ),
     );
-    expect(find.text('Open an image with OIMG'), findsOneWidget);
+    expect(find.text('Optimize your images easily'), findsOneWidget);
   });
 }
 
 class _NoopFileOpenChannel implements FileOpenChannel {
   @override
   Future<void> bind(OpenFilesHandler onOpenFiles) async {}
+
+  @override
+  Future<List<String>> pickFiles() async => const <String>[];
+
+  @override
+  Future<List<String>> pickFolder() async => const <String>[];
 }
 
 class _FakeSlimgApi implements SlimgApi {
@@ -59,7 +65,9 @@ class _FakeSlimgApi implements SlimgApi {
   }
 
   @override
-  Future<PreviewResult> previewFile({required PreviewFileRequest request}) async {
+  Future<PreviewResult> previewFile({
+    required PreviewFileRequest request,
+  }) async {
     return PreviewResult(
       encodedBytes: Uint8List(0),
       artifactId: 'integration-preview-artifact',

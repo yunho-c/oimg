@@ -101,6 +101,7 @@ fn inspect_bytes_reports_png_dimensions() {
     assert_eq!(metadata.height, 32);
     assert_eq!(metadata.format, "png");
     assert_eq!(metadata.file_size, None);
+    assert!(!metadata.has_transparency);
 }
 
 #[test]

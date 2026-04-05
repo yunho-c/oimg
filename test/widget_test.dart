@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:fl_chart/fl_chart.dart';
@@ -33,9 +34,134 @@ void main() {
     await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
     await tester.pumpAndSettle();
 
-    expect(find.text('Open an image with OIMG'), findsOneWidget);
+    expect(find.text('Optimize your images easily'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('empty-state-browse-button')),
+      findsOneWidget,
+    );
     expect(find.byType(DropRegion), findsOneWidget);
   });
+
+  testWidgets('browse menu shows file and folder actions on empty state', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi();
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('empty-state-browse-button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('empty-state-open-files')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('empty-state-open-folder')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('browse files action opens a session from the empty state', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final channel = _FakeFileOpenChannel()..pickFilesResult = ['/tmp/hero.png'];
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/hero.png': _metadata('png', 2400)},
+    );
+    final controller = FileOpenController(channel: channel, slimg: slimg);
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('empty-state-browse-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('empty-state-open-files')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(channel.pickFilesCallCount, 1);
+    expect(find.text('hero.png'), findsWidgets);
+  });
+
+  testWidgets('browse folder action opens a session from the empty state', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final root = await Directory.systemTemp.createTemp('oimg-empty-state');
+    addTearDown(() async {
+      await root.delete(recursive: true);
+    });
+    final image = File('${root.path}/inside.png')..writeAsBytesSync([1, 2, 3]);
+
+    final channel = _FakeFileOpenChannel()..pickFolderResult = [root.path];
+    final slimg = _FakeSlimgApi(
+      inspectResults: {image.path: _metadata('png', 2400)},
+    );
+    final controller = FileOpenController(channel: channel, slimg: slimg);
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('empty-state-browse-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('empty-state-open-folder')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(channel.pickFolderCallCount, 1);
+    expect(find.text('inside.png'), findsWidgets);
+  });
+
+  testWidgets(
+    'shows a transparency warning when the selected codec cannot preserve alpha',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final slimg = _FakeSlimgApi(
+        inspectResults: {
+          '/tmp/transparent.png': _metadata(
+            'png',
+            2400,
+            hasTransparency: true,
+          ),
+        },
+      );
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/transparent.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'JPEG does not support transparency. Transparent areas will be flattened.',
+        ),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('renders startup session, preview, and actions', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
@@ -86,12 +212,13 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final slimg = _FakeSlimgApi(
-      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
-    )
-      ..pixelMatchDelay = const Duration(milliseconds: 40)
-      ..msSsimDelay = const Duration(milliseconds: 120)
-      ..ssimulacra2Delay = const Duration(milliseconds: 200);
+    final slimg =
+        _FakeSlimgApi(
+            inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+          )
+          ..pixelMatchDelay = const Duration(milliseconds: 40)
+          ..msSsimDelay = const Duration(milliseconds: 120)
+          ..ssimulacra2Delay = const Duration(milliseconds: 200);
     final controller = FileOpenController(
       channel: _FakeFileOpenChannel(),
       slimg: slimg,
@@ -139,10 +266,19 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.byKey(const ValueKey('preview-display-mode-row')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('preview-display-mode-row')),
+      findsOneWidget,
+    );
     expect(find.byKey(const ValueKey('preview-mode-Original')), findsOneWidget);
-    expect(find.byKey(const ValueKey('preview-mode-Optimized')), findsOneWidget);
-    expect(find.byKey(const ValueKey('preview-mode-Difference')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('preview-mode-Optimized')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('preview-mode-Difference')),
+      findsOneWidget,
+    );
     expect(slimg.differenceCallCount, 0);
 
     await tester.pump(const Duration(seconds: 5));
@@ -289,12 +425,14 @@ void main() {
           height: 4096,
           format: 'png',
           fileSize: BigInt.from(2400),
+          hasTransparency: false,
         ),
         '/tmp/huge-b.png': ImageMetadata(
           width: 4096,
           height: 4096,
           format: 'png',
           fileSize: BigInt.from(2200),
+          hasTransparency: false,
         ),
       },
     );
@@ -393,50 +531,51 @@ void main() {
     expect(find.text('1 / 2'), findsOneWidget);
   });
 
-  testWidgets('folder rows open a collage and file selection returns to file view', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1400, 1000));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets(
+    'folder rows open a collage and file selection returns to file view',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final slimg = _FakeSlimgApi(
-      inspectResults: {
-        '/tmp/animals/cat.png': _metadata('png', 2400),
-        '/tmp/animals/dog.jpg': _metadata('jpeg', 1800),
-        '/tmp/cars/road.png': _metadata('png', 900),
-      },
-    );
-    final controller = FileOpenController(
-      channel: _FakeFileOpenChannel(),
-      slimg: slimg,
-      initialPaths: const [
-        '/tmp/animals/cat.png',
-        '/tmp/animals/dog.jpg',
-        '/tmp/cars/road.png',
-      ],
-    );
-    await controller.initialize();
+      final slimg = _FakeSlimgApi(
+        inspectResults: {
+          '/tmp/animals/cat.png': _metadata('png', 2400),
+          '/tmp/animals/dog.jpg': _metadata('jpeg', 1800),
+          '/tmp/cars/road.png': _metadata('png', 900),
+        },
+      );
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const [
+          '/tmp/animals/cat.png',
+          '/tmp/animals/dog.jpg',
+          '/tmp/cars/road.png',
+        ],
+      );
+      await controller.initialize();
 
-    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.text('1 / 3'), findsOneWidget);
-    expect(find.text('4.1 KB'), findsOneWidget);
+      expect(find.text('1 / 3'), findsOneWidget);
+      expect(find.text('4.1 KB'), findsOneWidget);
 
-    await tester.tap(find.text('animals').first);
-    await tester.pump();
+      await tester.tap(find.text('animals').first);
+      await tester.pump();
 
-    expect(find.text('1 / 3'), findsNothing);
-    expect(find.text('0 / 2'), findsOneWidget);
-    expect(find.text('Loaded'), findsOneWidget);
+      expect(find.text('1 / 3'), findsNothing);
+      expect(find.text('0 / 2'), findsOneWidget);
+      expect(find.text('Loaded'), findsOneWidget);
 
-    await tester.tap(find.text('dog.jpg').first);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
+      await tester.tap(find.text('dog.jpg').first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.text('2 / 3'), findsOneWidget);
-  });
+      expect(find.text('2 / 3'), findsOneWidget);
+    },
+  );
 
   testWidgets('folder summary aggregates original and optimized sizes', (
     tester,
@@ -454,10 +593,7 @@ void main() {
     final controller = FileOpenController(
       channel: _FakeFileOpenChannel(),
       slimg: slimg,
-      initialPaths: const [
-        '/tmp/animals/cat.png',
-        '/tmp/animals/dog.jpg',
-      ],
+      initialPaths: const ['/tmp/animals/cat.png', '/tmp/animals/dog.jpg'],
     );
     await controller.initialize();
     await controller.applyProcessResults([
@@ -492,9 +628,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
   });
 
-  testWidgets('savings tile toggles between percent and ratio', (
-    tester,
-  ) async {
+  testWidgets('savings tile toggles between percent and ratio', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -565,54 +699,55 @@ void main() {
     expect(find.text('Quality'), findsOneWidget);
   });
 
-  testWidgets('optimize all uses mixed slimg requests and updates the session', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1400, 1000));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets(
+    'optimize all uses mixed slimg requests and updates the session',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final slimg = _FakeSlimgApi(
-      inspectResults: {
-        '/tmp/first.png': _metadata('png', 2400),
-        '/tmp/second.jpg': _metadata('jpeg', 1800),
-        '/tmp/first.optimized.jpeg': _metadata('jpeg', 900),
-      },
-    );
-    final controller = FileOpenController(
-      channel: _FakeFileOpenChannel(),
-      slimg: slimg,
-      initialPaths: const ['/tmp/first.png', '/tmp/second.jpg'],
-    );
-    await controller.initialize();
+      final slimg = _FakeSlimgApi(
+        inspectResults: {
+          '/tmp/first.png': _metadata('png', 2400),
+          '/tmp/second.jpg': _metadata('jpeg', 1800),
+          '/tmp/first.optimized.jpeg': _metadata('jpeg', 900),
+        },
+      );
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png', '/tmp/second.jpg'],
+      );
+      await controller.initialize();
 
-    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
 
-    await tester.tap(find.text('Optimize'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 250));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Optimize'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pumpAndSettle();
 
-    final batch = slimg.lastBatchRequest!;
-    expect(batch.requests.length, 2);
-    batch.requests[0].operation.when(
-      convert: (options) => expect(options.targetFormat, 'jpeg'),
-      optimize: (_) => fail('expected convert for png -> jpeg'),
-      resize: (_) => fail('unexpected resize'),
-      crop: (_) => fail('unexpected crop'),
-      extend: (_) => fail('unexpected extend'),
-    );
-    batch.requests[1].operation.when(
-      convert: (_) => fail('expected optimize for jpeg source'),
-      optimize: (_) {},
-      resize: (_) => fail('unexpected resize'),
-      crop: (_) => fail('unexpected crop'),
-      extend: (_) => fail('unexpected extend'),
-    );
+      final batch = slimg.lastBatchRequest!;
+      expect(batch.requests.length, 2);
+      batch.requests[0].operation.when(
+        convert: (options) => expect(options.targetFormat, 'jpeg'),
+        optimize: (_) => fail('expected convert for png -> jpeg'),
+        resize: (_) => fail('unexpected resize'),
+        crop: (_) => fail('unexpected crop'),
+        extend: (_) => fail('unexpected extend'),
+      );
+      batch.requests[1].operation.when(
+        convert: (_) => fail('expected optimize for jpeg source'),
+        optimize: (_) {},
+        resize: (_) => fail('unexpected resize'),
+        crop: (_) => fail('unexpected crop'),
+        extend: (_) => fail('unexpected extend'),
+      );
 
-    expect(find.text('first.optimized.jpeg'), findsWidgets);
-  });
+      expect(find.text('first.optimized.jpeg'), findsWidgets);
+    },
+  );
 
   testWidgets('cancel stops queued files after the active item finishes', (
     tester,
@@ -633,7 +768,11 @@ void main() {
     final controller = FileOpenController(
       channel: _FakeFileOpenChannel(),
       slimg: slimg,
-      initialPaths: const ['/tmp/first.png', '/tmp/second.png', '/tmp/third.png'],
+      initialPaths: const [
+        '/tmp/first.png',
+        '/tmp/second.png',
+        '/tmp/third.png',
+      ],
     );
     await controller.initialize();
 
@@ -805,17 +944,22 @@ Widget _buildApp({
   );
 }
 
-ImageMetadata _metadata(String format, int bytes) {
+ImageMetadata _metadata(String format, int bytes, {bool hasTransparency = false}) {
   return ImageMetadata(
     width: 48,
     height: 32,
     format: format,
     fileSize: BigInt.from(bytes),
+    hasTransparency: hasTransparency,
   );
 }
 
 class _FakeFileOpenChannel implements FileOpenChannel {
   OpenFilesHandler? _handler;
+  List<String> pickFilesResult = const <String>[];
+  List<String> pickFolderResult = const <String>[];
+  int pickFilesCallCount = 0;
+  int pickFolderCallCount = 0;
 
   @override
   Future<void> bind(OpenFilesHandler onOpenFiles) async {
@@ -824,6 +968,18 @@ class _FakeFileOpenChannel implements FileOpenChannel {
 
   Future<void> emit(List<String> paths) async {
     await _handler?.call(paths);
+  }
+
+  @override
+  Future<List<String>> pickFiles() async {
+    pickFilesCallCount += 1;
+    return pickFilesResult;
+  }
+
+  @override
+  Future<List<String>> pickFolder() async {
+    pickFolderCallCount += 1;
+    return pickFolderResult;
   }
 }
 
@@ -881,12 +1037,17 @@ class _FakeSlimgApi implements SlimgApi {
   }
 
   @override
-  Future<PreviewResult> previewFile({required PreviewFileRequest request}) async {
+  Future<PreviewResult> previewFile({
+    required PreviewFileRequest request,
+  }) async {
     previewCallCount += 1;
     if (previewDelay > Duration.zero) {
       await Future<void>.delayed(previewDelay);
     }
-    final artifactSuffix = request.inputPath.replaceAll(RegExp(r'[^a-zA-Z0-9]+'), '-');
+    final artifactSuffix = request.inputPath.replaceAll(
+      RegExp(r'[^a-zA-Z0-9]+'),
+      '-',
+    );
     return PreviewResult(
       encodedBytes: _previewBytes,
       artifactId: 'preview-artifact-$previewCallCount-$artifactSuffix',
@@ -1009,7 +1170,9 @@ class _FakeSlimgApi implements SlimgApi {
   }
 
   @override
-  Future<BatchJobSnapshot> getProcessFileBatchJob({required String jobId}) async {
+  Future<BatchJobSnapshot> getProcessFileBatchJob({
+    required String jobId,
+  }) async {
     final job = _jobs[jobId];
     if (job == null) {
       throw StateError('unknown job');
@@ -1061,7 +1224,9 @@ class _FakeSlimgApi implements SlimgApi {
   }
 
   @override
-  Future<AnalyzeFileJobSnapshot> getAnalyzeFileJob({required String jobId}) async {
+  Future<AnalyzeFileJobSnapshot> getAnalyzeFileJob({
+    required String jobId,
+  }) async {
     final job = _analyzeJobs[jobId];
     if (job == null) {
       throw StateError('unknown analyze job');

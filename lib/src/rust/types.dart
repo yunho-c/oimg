@@ -446,17 +446,23 @@ class ImageMetadata {
   final int height;
   final String format;
   final BigInt? fileSize;
+  final bool hasTransparency;
 
   const ImageMetadata({
     required this.width,
     required this.height,
     required this.format,
     this.fileSize,
+    this.hasTransparency = false,
   });
 
   @override
   int get hashCode =>
-      width.hashCode ^ height.hashCode ^ format.hashCode ^ fileSize.hashCode;
+      width.hashCode ^
+      height.hashCode ^
+      format.hashCode ^
+      fileSize.hashCode ^
+      hasTransparency.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -466,7 +472,8 @@ class ImageMetadata {
           width == other.width &&
           height == other.height &&
           format == other.format &&
-          fileSize == other.fileSize;
+          fileSize == other.fileSize &&
+          hasTransparency == other.hasTransparency;
 }
 
 @freezed

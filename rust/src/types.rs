@@ -13,6 +13,7 @@ pub struct ImageMetadata {
     pub height: u32,
     pub format: String,
     pub file_size: Option<u64>,
+    pub has_transparency: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

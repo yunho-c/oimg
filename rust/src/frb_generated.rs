@@ -1236,11 +1236,13 @@ impl SseDecode for crate::types::ImageMetadata {
         let mut var_height = <u32>::sse_decode(deserializer);
         let mut var_format = <String>::sse_decode(deserializer);
         let mut var_fileSize = <Option<u64>>::sse_decode(deserializer);
+        let mut var_hasTransparency = <bool>::sse_decode(deserializer);
         return crate::types::ImageMetadata {
             width: var_width,
             height: var_height,
             format: var_format,
             file_size: var_fileSize,
+            has_transparency: var_hasTransparency,
         };
     }
 }
@@ -2225,6 +2227,7 @@ impl flutter_rust_bridge::IntoDart for crate::types::ImageMetadata {
             self.height.into_into_dart().into_dart(),
             self.format.into_into_dart().into_dart(),
             self.file_size.into_into_dart().into_dart(),
+            self.has_transparency.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2835,6 +2838,7 @@ impl SseEncode for crate::types::ImageMetadata {
         <u32>::sse_encode(self.height, serializer);
         <String>::sse_encode(self.format, serializer);
         <Option<u64>>::sse_encode(self.file_size, serializer);
+        <bool>::sse_encode(self.has_transparency, serializer);
     }
 }
 

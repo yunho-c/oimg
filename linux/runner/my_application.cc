@@ -85,6 +85,60 @@ void queue_open_files(MyApplication* self, char** paths) {
   g_ptr_array_add(self->pending_open_requests, paths);
 }
 
+FlMethodResponse* picker_response_from_paths(char** paths) {
+  g_autoptr(FlValue) list = paths_to_fl_value(paths);
+  return FL_METHOD_RESPONSE(fl_method_success_response_new(list));
+}
+
+FlMethodResponse* picker_response_from_filename_list(GSList* filenames) {
+  g_autoptr(FlValue) list = fl_value_new_list();
+  for (GSList* item = filenames; item != nullptr; item = item->next) {
+    const char* path = static_cast<const char*>(item->data);
+    if (path != nullptr) {
+      fl_value_append_take(list, fl_value_new_string(path));
+    }
+  }
+  return FL_METHOD_RESPONSE(fl_method_success_response_new(list));
+}
+
+FlMethodResponse* show_picker_dialog(MyApplication* self,
+                                     GtkFileChooserAction action,
+                                     gboolean select_multiple) {
+  GtkWidget* dialog = gtk_file_chooser_dialog_new(
+      action == GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER ? "Open Folder"
+                                                      : "Open Files",
+      self->window, action, "_Cancel", GTK_RESPONSE_CANCEL,
+      action == GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER ? "_Select" : "_Open",
+      GTK_RESPONSE_ACCEPT, nullptr);
+
+  GtkFileChooser* chooser = GTK_FILE_CHOOSER(dialog);
+  gtk_file_chooser_set_select_multiple(chooser, select_multiple);
+  gtk_file_chooser_set_local_only(chooser, TRUE);
+
+  g_autoptr(FlMethodResponse) response = nullptr;
+  const gint result = gtk_dialog_run(GTK_DIALOG(dialog));
+  if (result == GTK_RESPONSE_ACCEPT) {
+    if (select_multiple) {
+      GSList* filenames = gtk_file_chooser_get_filenames(chooser);
+      response = picker_response_from_filename_list(filenames);
+      g_slist_free_full(filenames, g_free);
+    } else {
+      g_autofree gchar* filename = gtk_file_chooser_get_filename(chooser);
+      if (filename != nullptr) {
+        char* single_path[] = {filename, nullptr};
+        response = picker_response_from_paths(single_path);
+      } else {
+        response = picker_response_from_paths(nullptr);
+      }
+    }
+  } else {
+    response = picker_response_from_paths(nullptr);
+  }
+
+  gtk_widget_destroy(dialog);
+  return FL_METHOD_RESPONSE(g_object_ref(response));
+}
+
 // Called when the Dart side signals that it is ready to receive native events.
 static void file_open_method_call_cb(FlMethodChannel* channel,
                                      FlMethodCall* method_call,
@@ -97,6 +151,11 @@ static void file_open_method_call_cb(FlMethodChannel* channel,
     self->file_open_channel_ready = true;
     flush_pending_open_requests(self);
     response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+  } else if (strcmp(fl_method_call_get_name(method_call), "pickFiles") == 0) {
+    response = show_picker_dialog(self, GTK_FILE_CHOOSER_ACTION_OPEN, TRUE);
+  } else if (strcmp(fl_method_call_get_name(method_call), "pickFolder") == 0) {
+    response =
+        show_picker_dialog(self, GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER, FALSE);
   } else {
     response = FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
   }

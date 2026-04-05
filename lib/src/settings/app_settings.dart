@@ -6,6 +6,15 @@ enum CompressionPriority { compatibility, efficiency }
 
 enum PreferredCodec { png, jpeg, webp, avif, jxl }
 
+extension PreferredCodecCapabilities on PreferredCodec {
+  bool get supportsTransparency {
+    return switch (this) {
+      PreferredCodec.jpeg => false,
+      _ => true,
+    };
+  }
+}
+
 class AppSettings {
   const AppSettings({
     required this.compressionMethod,

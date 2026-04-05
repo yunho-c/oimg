@@ -30,6 +30,22 @@ class AppDelegate: FlutterAppDelegate {
         self.fileOpenChannelReady = true
         self.flushPendingOpenRequests()
         result(nil)
+      } else if call.method == "pickFiles" {
+        result(
+          self.presentOpenPanel(
+            canChooseFiles: true,
+            canChooseDirectories: false,
+            allowsMultipleSelection: true
+          )
+        )
+      } else if call.method == "pickFolder" {
+        result(
+          self.presentOpenPanel(
+            canChooseFiles: false,
+            canChooseDirectories: true,
+            allowsMultipleSelection: false
+          )
+        )
       } else {
         result(FlutterMethodNotImplemented)
       }
@@ -116,5 +132,29 @@ class AppDelegate: FlutterAppDelegate {
         securityScopedUrlsByPath[path] = url
       }
     }
+  }
+
+  private func presentOpenPanel(
+    canChooseFiles: Bool,
+    canChooseDirectories: Bool,
+    allowsMultipleSelection: Bool
+  ) -> [String] {
+    let panel = NSOpenPanel()
+    panel.canChooseFiles = canChooseFiles
+    panel.canChooseDirectories = canChooseDirectories
+    panel.allowsMultipleSelection = allowsMultipleSelection
+    panel.resolvesAliases = true
+    panel.canCreateDirectories = false
+    panel.title = canChooseDirectories ? "Open Folder" : "Open Files"
+    panel.message = canChooseDirectories
+      ? "Choose a folder to open in OIMG."
+      : "Choose one or more image files to open in OIMG."
+
+    guard panel.runModal() == .OK else {
+      return []
+    }
+
+    retainSecurityScopedAccess(for: panel.urls)
+    return panel.urls.filter(\.isFileURL).map(\.path)
   }
 }

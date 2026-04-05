@@ -51,8 +51,8 @@ class _SavingsDisplayModeNotifier extends Notifier<_SavingsDisplayMode> {
 
 final _savingsDisplayModeProvider =
     NotifierProvider<_SavingsDisplayModeNotifier, _SavingsDisplayMode>(
-  _SavingsDisplayModeNotifier.new,
-);
+      _SavingsDisplayModeNotifier.new,
+    );
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -682,7 +682,10 @@ class _ImageStage extends ConsumerWidget {
     void selectOriginal() {
       ref
           .read(previewDisplaySelectionProvider.notifier)
-          .select(filePath: currentFile.path, mode: PreviewDisplayMode.original);
+          .select(
+            filePath: currentFile.path,
+            mode: PreviewDisplayMode.original,
+          );
     }
 
     void selectOptimized() {
@@ -736,7 +739,9 @@ class _ImageStage extends ConsumerWidget {
                   children: [
                     Text(
                       FileOpenController.directoryOf(currentFile.path),
-                      style: TextStyle(color: theme.colorScheme.mutedForeground),
+                      style: TextStyle(
+                        color: theme.colorScheme.mutedForeground,
+                      ),
                     ).xSmall(),
                     const SizedBox(height: 4),
                     Row(
@@ -804,8 +809,9 @@ class _ImageStage extends ConsumerWidget {
                               fileName: fileName,
                               path: currentFile.path,
                             ),
-                            loading: () =>
-                                const Center(child: CircularProgressIndicator()),
+                            loading: () => const Center(
+                              child: CircularProgressIndicator(),
+                            ),
                             error: (_, _) => _PreviewCanvas(
                               fileName: fileName,
                               path: currentFile.path,
@@ -824,8 +830,9 @@ class _ImageStage extends ConsumerWidget {
                                 rawImage: diff,
                               );
                             },
-                            loading: () =>
-                                const Center(child: CircularProgressIndicator()),
+                            loading: () => const Center(
+                              child: CircularProgressIndicator(),
+                            ),
                             error: (_, _) => const _PreviewUnavailable(
                               message: 'Difference preview unavailable.',
                             ),
@@ -1214,12 +1221,14 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
     final optimizedLoading = preview.isLoading && !hasOptimizedPreview;
     final differenceLoading =
         displayMode == PreviewDisplayMode.difference && difference.isLoading;
-    final analyzeTooltip = !analyzeAvailability.isEnabled &&
+    final analyzeTooltip =
+        !analyzeAvailability.isEnabled &&
             settings != null &&
             settings.compressionMethod == CompressionMethod.lossless &&
             !settings.showsQualityControl
         ? 'Not available for lossless formats'
-        : analyzeAvailability.reason ?? 'Visualize the quality/efficiency tradeoff';
+        : analyzeAvailability.reason ??
+              'Visualize the quality/efficiency tradeoff';
 
     return Row(
       key: const ValueKey('preview-display-mode-row'),
@@ -1255,9 +1264,7 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
         Tooltip(
           waitDuration: const Duration(milliseconds: 250),
           showDuration: const Duration(milliseconds: 120),
-          tooltip: (context) => TooltipContainer(
-            child: Text(analyzeTooltip),
-          ),
+          tooltip: (context) => TooltipContainer(child: Text(analyzeTooltip)),
           child: analyzeState.isCancelRequested
               ? OutlineButton(
                   alignment: Alignment.center,
@@ -1341,9 +1348,7 @@ class _PreviewDisplayModeButton extends StatelessWidget {
     return Tooltip(
       waitDuration: const Duration(milliseconds: 250),
       showDuration: const Duration(milliseconds: 120),
-      tooltip: (context) => TooltipContainer(
-        child: Text(tooltip!),
-      ),
+      tooltip: (context) => TooltipContainer(child: Text(tooltip!)),
       child: button,
     );
   }
@@ -1526,6 +1531,7 @@ class _SettingsSidebar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final settings = ref.watch(appSettingsProvider);
+    final fileController = ref.watch(fileOpenControllerProvider);
     final notifier = ref.read(appSettingsProvider.notifier);
     final runState = ref.watch(optimizationRunControllerProvider);
     final analyzeState = ref.watch(analyzeRunControllerProvider);
@@ -1593,6 +1599,12 @@ class _SettingsSidebar extends ConsumerWidget {
                     child: SingleChildScrollView(
                       child: settings.when(
                         data: (settings) {
+                          final transparencyWarning = _transparencyWarningText(
+                            settings: settings,
+                            file: fileController.isFolderSelected
+                                ? null
+                                : fileController.currentFile,
+                          );
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
@@ -1602,6 +1614,13 @@ class _SettingsSidebar extends ConsumerWidget {
                                 controlsLocked: controlsLocked,
                                 notifier: notifier,
                               ),
+                              if (transparencyWarning case final warning?) ...[
+                                const SizedBox(height: 12),
+                                _SettingsWarningBlock(
+                                  icon: LucideIcons.triangleAlert,
+                                  message: warning,
+                                ),
+                              ],
                               const SizedBox(height: 12),
                               if (settings.showsQualityControl) ...[
                                 _SettingsLabel('Quality'),
@@ -1626,7 +1645,9 @@ class _SettingsSidebar extends ConsumerWidget {
                                   onChanged: controlsLocked
                                       ? null
                                       : (value) {
-                                          notifier.setQuality(value.value.round());
+                                          notifier.setQuality(
+                                            value.value.round(),
+                                          );
                                         },
                                 ),
                                 const SizedBox(height: 12),
@@ -1660,11 +1681,7 @@ class _SettingsSidebar extends ConsumerWidget {
                     const SizedBox(height: 12),
                     Container(height: 1, color: theme.colorScheme.border),
                     const SizedBox(height: 12),
-                    Expanded(
-                      child: _AnalyzePanel(
-                        state: analyzeState,
-                      ),
-                    ),
+                    Expanded(child: _AnalyzePanel(state: analyzeState)),
                   ],
                 ],
               ),
@@ -1850,9 +1867,7 @@ class _BasicSettingsModeSection extends StatelessWidget {
         const SizedBox(height: 8),
         RadioGroup<CompressionPriority>(
           value: settings.compressionPriority,
-          onChanged: controlsLocked
-              ? null
-              : notifier.setCompressionPriority,
+          onChanged: controlsLocked ? null : notifier.setCompressionPriority,
           child: Row(
             children: [
               Expanded(
@@ -1877,9 +1892,7 @@ class _BasicSettingsModeSection extends StatelessWidget {
 }
 
 class _AnalyzePanel extends ConsumerWidget {
-  const _AnalyzePanel({
-    required this.state,
-  });
+  const _AnalyzePanel({required this.state});
 
   final AnalyzeRunState state;
 
@@ -1957,7 +1970,7 @@ class _AnalyzePanel extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             if (selectedSample != null)
-              _AnalyzeSelectionSummary(sample: selectedSample)
+              _AnalyzeSelectionSummary(sample: selectedSample),
           ],
           if (state.globalError case final error?) ...[
             const SizedBox(height: 8),
@@ -2006,26 +2019,27 @@ class _AnalyzeChart extends StatelessWidget {
           drawVerticalLine: true,
           horizontalInterval: 20,
           verticalInterval: maxX <= 0 ? 1 : maxX / 4,
-          getDrawingHorizontalLine: (value) => FlLine(
-            color: theme.colorScheme.border,
-            strokeWidth: 1,
-          ),
+          getDrawingHorizontalLine: (value) =>
+              FlLine(color: theme.colorScheme.border, strokeWidth: 1),
           getDrawingVerticalLine: (value) => FlLine(
             color: theme.colorScheme.border.withValues(alpha: 0.6),
             strokeWidth: 1,
           ),
         ),
         titlesData: FlTitlesData(
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 30,
               interval: 20,
-              getTitlesWidget: (value, meta) => Text(
-                value.toInt().toString(),
-              ).xSmall().muted(),
+              getTitlesWidget: (value, meta) =>
+                  Text(value.toInt().toString()).xSmall().muted(),
             ),
           ),
           bottomTitles: AxisTitles(
@@ -2033,9 +2047,8 @@ class _AnalyzeChart extends StatelessWidget {
               showTitles: true,
               reservedSize: 26,
               interval: maxX <= 0 ? 1 : maxX / 4,
-              getTitlesWidget: (value, meta) => Text(
-                _formatBytes(value.round()),
-              ).xSmall().muted(),
+              getTitlesWidget: (value, meta) =>
+                  Text(_formatBytes(value.round())).xSmall().muted(),
             ),
           ),
         ),
@@ -2063,17 +2076,22 @@ class _AnalyzeChart extends StatelessWidget {
             fitInsideHorizontally: true,
             fitInsideVertically: true,
             getTooltipItems: (spots) {
-              return spots.map((spot) {
-                final point = switch (spot.barIndex) {
-                  0 => pixelMatchPoints[spot.spotIndex],
-                  _ => ssimulacra2Points[spot.spotIndex],
-                };
-                final sample = point.sample;
-                return LineTooltipItem(
-                  'Q${sample.quality}\n${_formatBytes(sample.sizeBytes.toInt())}\nPixel ${_formatNullableMetricPercent(sample.pixelMatch)}\nSSIM ${_formatNullableMetric(sample.ssimulacra2, digits: 1)}',
-                  TextStyle(color: theme.colorScheme.foreground, fontSize: 10),
-                );
-              }).toList(growable: false);
+              return spots
+                  .map((spot) {
+                    final point = switch (spot.barIndex) {
+                      0 => pixelMatchPoints[spot.spotIndex],
+                      _ => ssimulacra2Points[spot.spotIndex],
+                    };
+                    final sample = point.sample;
+                    return LineTooltipItem(
+                      'Q${sample.quality}\n${_formatBytes(sample.sizeBytes.toInt())}\nPixel ${_formatNullableMetricPercent(sample.pixelMatch)}\nSSIM ${_formatNullableMetric(sample.ssimulacra2, digits: 1)}',
+                      TextStyle(
+                        color: theme.colorScheme.foreground,
+                        fontSize: 10,
+                      ),
+                    );
+                  })
+                  .toList(growable: false);
             },
           ),
         ),
@@ -2129,7 +2147,8 @@ LineChartBarData _buildAnalyzeLine({
     dotData: FlDotData(
       show: true,
       getDotPainter: (spot, percent, barData, index) {
-        final selected = selectedArtifactId != null &&
+        final selected =
+            selectedArtifactId != null &&
             points[index].sample.artifactId == selectedArtifactId;
         return FlDotCirclePainter(
           radius: selected ? 4 : 2.5,
@@ -2449,7 +2468,8 @@ class _BottomSidebar extends ConsumerWidget {
                                 )
                               : PrimaryButton(
                                   alignment: Alignment.center,
-                                  onPressed: analyzeState.isRunning ||
+                                  onPressed:
+                                      analyzeState.isRunning ||
                                           analyzeState.isCancelRequested
                                       ? null
                                       : runController.optimizeAll,
@@ -2560,8 +2580,8 @@ class _BottomStatTile extends ConsumerWidget {
     final theme = Theme.of(context);
     final savingsDisplayMode = ref.watch(_savingsDisplayModeProvider);
     final isToggleable = stat.toggleable && !stat.loading;
-    final displayedValue = stat.toggleable &&
-            savingsDisplayMode == _SavingsDisplayMode.ratio
+    final displayedValue =
+        stat.toggleable && savingsDisplayMode == _SavingsDisplayMode.ratio
         ? (stat.alternateValue ?? stat.value)
         : stat.value;
 
@@ -2827,10 +2847,7 @@ class _BottomMetricRow extends StatelessWidget {
         Expanded(
           child: help == null
               ? labelWidget
-              : _MetricHelpHoverCard(
-                  help: help,
-                  child: labelWidget,
-                ),
+              : _MetricHelpHoverCard(help: help, child: labelWidget),
         ),
         if (row.state == _BottomMetricRowDisplayState.loading)
           const SizedBox(
@@ -2846,9 +2863,8 @@ class _BottomMetricRow extends StatelessWidget {
                 : Tooltip(
                     waitDuration: const Duration(milliseconds: 250),
                     showDuration: const Duration(milliseconds: 120),
-                    tooltip: (context) => TooltipContainer(
-                      child: Text(row.timingTooltip!),
-                    ),
+                    tooltip: (context) =>
+                        TooltipContainer(child: Text(row.timingTooltip!)),
                     child: valueWidget,
                   );
           })(),
@@ -2871,10 +2887,7 @@ class _MetricHelpData {
 }
 
 class _MetricHelpHoverCard extends StatelessWidget {
-  const _MetricHelpHoverCard({
-    required this.help,
-    required this.child,
-  });
+  const _MetricHelpHoverCard({required this.help, required this.child});
 
   final _MetricHelpData help;
   final Widget child;
@@ -2937,8 +2950,7 @@ _MetricHelpData? _metricHelpFor(String label) {
       ),
     ),
     'SSIMULACRA 2' => _MetricHelpData(
-      description:
-          'A perceptual quality metric tuned to human vision.',
+      description: 'A perceptual quality metric tuned to human vision.',
       linkLabel: 'Learn more on x266 wiki',
       linkUrl: Uri.parse('https://wiki.x266.mov/docs/metrics/SSIMULACRA2'),
     ),
@@ -3000,7 +3012,10 @@ class _BottomSummaryViewModel {
     final originalBytes = _originalFileSizeBytes(file);
     final hasSavedResult = file.lastResult != null;
     final isOptimizedPreviewPending =
-        analyzeSample == null && preview == null && isPreviewPending && !hasSavedResult;
+        analyzeSample == null &&
+        preview == null &&
+        isPreviewPending &&
+        !hasSavedResult;
     final newBytes =
         analyzeSample?.sizeBytes.toInt() ??
         preview?.result.sizeBytes.toInt() ??
@@ -3312,7 +3327,10 @@ String _formatNullableMetricPercent(double? value) {
 }
 
 String _formatSavingsRatio(int? originalBytes, int? newBytes) {
-  if (originalBytes == null || newBytes == null || originalBytes <= 0 || newBytes <= 0) {
+  if (originalBytes == null ||
+      newBytes == null ||
+      originalBytes <= 0 ||
+      newBytes <= 0) {
     return '—';
   }
 
@@ -3447,54 +3465,375 @@ String _qualityValueLabel(AppSettings settings) {
   return '${settings.quality}';
 }
 
-class _EmptyState extends StatelessWidget {
+class _EmptyState extends ConsumerWidget {
   const _EmptyState();
+
+  Future<void> _browseFiles(BuildContext context, WidgetRef ref) async {
+    await ref.read(fileOpenControllerProvider).pickFilesAndOpen();
+  }
+
+  Future<void> _browseFolder(BuildContext context, WidgetRef ref) async {
+    await ref.read(fileOpenControllerProvider).pickFolderAndOpen();
+  }
+
+  void _showBrowseMenu(BuildContext context, WidgetRef ref) {
+    showDropdown(
+      context: context,
+      builder: (context) {
+        return DropdownMenu(
+          children: [
+            MenuButton(
+              key: const ValueKey('empty-state-open-files'),
+              leading: const Icon(LucideIcons.images, size: 16),
+              onPressed: (context) {
+                unawaited(_browseFiles(context, ref));
+              },
+              child: const Text('Open Files…'),
+            ),
+            MenuButton(
+              key: const ValueKey('empty-state-open-folder'),
+              leading: const Icon(LucideIcons.folderOpen, size: 16),
+              onPressed: (context) {
+                unawaited(_browseFolder(context, ref));
+              },
+              child: const Text('Open Folder…'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1180),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth >= 920;
+
+              final hero = Container(
+                decoration: BoxDecoration(
+                  borderRadius: theme.borderRadiusXxl,
+                  border: Border.all(
+                    color: theme.colorScheme.border.withValues(alpha: 0.7),
+                  ),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      theme.colorScheme.background,
+                      theme.colorScheme.primary.withValues(alpha: 0.06),
+                      theme.colorScheme.secondary.withValues(alpha: 0.42),
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                      blurRadius: 42,
+                      offset: const Offset(0, 18),
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      top: -56,
+                      right: -42,
+                      child: Container(
+                        width: 210,
+                        height: 210,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.1,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: -80,
+                      left: -28,
+                      child: Container(
+                        width: 180,
+                        height: 180,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: theme.colorScheme.secondaryForeground
+                              .withValues(alpha: 0.05),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(28, 30, 28, 28),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            'Optimize your images easily',
+                            style: TextStyle(
+                              fontSize: 31,
+                              height: 1.08,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.9,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            'OIMG helps you choose the optimal image format and settings.',
+                            style: TextStyle(
+                              color: theme.colorScheme.mutedForeground,
+                              fontSize: 13.6,
+                              height: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 26),
+                          Row(
+                            children: [
+                              PrimaryButton(
+                                key: const ValueKey(
+                                  'empty-state-browse-button',
+                                ),
+                                onPressed: () => _showBrowseMenu(context, ref),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    Icon(LucideIcons.folderSearch, size: 16),
+                                    SizedBox(width: 8),
+                                    Text('Browse…'),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'or drop files and folders anywhere',
+                                style: TextStyle(
+                                  color: theme.colorScheme.mutedForeground,
+                                ),
+                              ).small(),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+
+              final supportCards = const [
+                _EmptyStateFeatureCard(
+                  icon: LucideIcons.sparkles,
+                  title: 'Preview',
+                  description:
+                      'Inspect the optimized images before you hit save.',
+                ),
+                _EmptyStateFeatureCard(
+                  icon: LucideIcons.badgePercent,
+                  title: 'Compare',
+                  description:
+                      'See how different image formats compare in savings, quality, and compatibility.',
+                ),
+                _EmptyStateFeatureCard(
+                  icon: LucideIcons.chartSpline,
+                  title: 'Analyze',
+                  description:
+                      'Explore the balance between size and quality using state-of-the-art image quality analysis methods.',
+                ),
+              ];
+
+              final support = wide
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: supportCards[0]),
+                        const SizedBox(width: 14),
+                        Expanded(child: supportCards[1]),
+                        const SizedBox(width: 14),
+                        Expanded(child: supportCards[2]),
+                      ],
+                    )
+                  : Column(
+                      children: [
+                        supportCards[0],
+                        const SizedBox(height: 14),
+                        supportCards[1],
+                        const SizedBox(height: 14),
+                        supportCards[2],
+                      ],
+                    );
+
+              return Stack(
+                children: [
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: theme.borderRadiusXxl,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            theme.colorScheme.background,
+                            theme.colorScheme.secondary.withValues(alpha: 0.32),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 28,
+                    top: 24,
+                    child: Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: theme.colorScheme.primary.withValues(
+                          alpha: 0.05,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    right: 54,
+                    bottom: 20,
+                    child: Container(
+                      width: 160,
+                      height: 160,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: theme.colorScheme.secondaryForeground.withValues(
+                          alpha: 0.04,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(22),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [hero, const SizedBox(height: 18), support],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String? _transparencyWarningText({
+  required AppSettings settings,
+  required OpenedImageFile? file,
+}) {
+  if (file == null || !file.metadata.hasTransparency) {
+    return null;
+  }
+
+  final codec = settings.effectiveCodec;
+  if (codec.supportsTransparency) {
+    return null;
+  }
+
+  return '${codecLabel(codec)} does not support transparency. Transparent areas will be flattened.';
+}
+
+class _SettingsWarningBlock extends StatelessWidget {
+  const _SettingsWarningBlock({required this.icon, required this.message});
+
+  final IconData icon;
+  final String message;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 920),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Card(
-                borderRadius: theme.borderRadiusXxl,
-                child: Padding(
-                  padding: const EdgeInsets.all(28),
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: theme.colorScheme.border),
-                          borderRadius: theme.borderRadiusLg,
-                        ),
-                        child: Icon(
-                          LucideIcons.image,
-                          size: 28,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      const Text(
-                        'Open an image with OIMG',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 22.4,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.background.withValues(alpha: 0.58),
+        borderRadius: theme.borderRadiusLg,
+        border: Border.all(
+          color: theme.colorScheme.border.withValues(alpha: 0.72),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: theme.colorScheme.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: theme.colorScheme.mutedForeground,
+                height: 1.4,
               ),
-            ],
+            ).small(),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyStateFeatureCard extends StatelessWidget {
+  const _EmptyStateFeatureCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      borderRadius: theme.borderRadiusXl,
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                borderRadius: theme.borderRadiusLg,
+              ),
+              child: Icon(icon, size: 18, color: theme.colorScheme.primary),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title).medium(),
+                  const SizedBox(height: 6),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      color: theme.colorScheme.mutedForeground,
+                      height: 1.45,
+                    ),
+                  ).small(),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

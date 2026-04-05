@@ -15,6 +15,7 @@ void main() {
             height: 32,
             format: 'jpeg',
             fileSize: BigInt.from(2000),
+            hasTransparency: false,
           ),
         ),
         settings: AppSettings.defaults,
@@ -44,6 +45,7 @@ void main() {
             height: 32,
             format: 'png',
             fileSize: BigInt.from(3000),
+            hasTransparency: false,
           ),
         ),
         settings: AppSettings.defaults,
@@ -73,6 +75,7 @@ void main() {
             height: 32,
             format: 'jpeg',
             fileSize: BigInt.from(2000),
+            hasTransparency: false,
           ),
         ),
         settings: const AppSettings(
@@ -94,6 +97,7 @@ void main() {
             height: 32,
             format: 'jpeg',
             fileSize: BigInt.from(2000),
+            hasTransparency: false,
           ),
         ),
         settings: const AppSettings(
