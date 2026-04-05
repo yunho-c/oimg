@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -33,8 +34,308 @@ const List<int> _analyzeSweepQualities = <int>[
   90,
   100,
 ];
+const int _previewCacheBudgetBytes = 128 * 1024 * 1024;
+const int _previewDecodedImageBudget = 2;
+const int _previewCacheEntryOverheadBytes = 4 * 1024;
 
 enum PreviewDisplayMode { original, optimized, difference }
+
+enum _PreviewMetricKind { pixelMatch, msSsim, ssimulacra2 }
+
+class _PreviewCacheKey {
+  const _PreviewCacheKey({
+    required this.filePath,
+    required this.operation,
+  });
+
+  final String filePath;
+  final ImageOperation operation;
+
+  @override
+  int get hashCode => Object.hash(filePath, operation);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _PreviewCacheKey &&
+          runtimeType == other.runtimeType &&
+          filePath == other.filePath &&
+          operation == other.operation;
+}
+
+class _PreviewMetricCacheSlot {
+  const _PreviewMetricCacheSlot({
+    required this.hasValue,
+    this.result,
+  });
+
+  final bool hasValue;
+  final PreviewMetricResult? result;
+}
+
+class _PreviewCacheEntry {
+  _PreviewCacheEntry({
+    required this.key,
+    required this.preview,
+  });
+
+  final _PreviewCacheKey key;
+  final OptimizationPreview preview;
+
+  _PreviewMetricCacheSlot _pixelMatch = const _PreviewMetricCacheSlot(
+    hasValue: false,
+  );
+  _PreviewMetricCacheSlot _msSsim = const _PreviewMetricCacheSlot(
+    hasValue: false,
+  );
+  _PreviewMetricCacheSlot _ssimulacra2 = const _PreviewMetricCacheSlot(
+    hasValue: false,
+  );
+  bool hasResolvedDifference = false;
+  bool differenceAvailable = false;
+  RawImageResult? differenceRawImage;
+  ui.Image? differenceImage;
+
+  String get artifactId => preview.result.artifactId;
+
+  _PreviewMetricCacheSlot metric(_PreviewMetricKind kind) {
+    return switch (kind) {
+      _PreviewMetricKind.pixelMatch => _pixelMatch,
+      _PreviewMetricKind.msSsim => _msSsim,
+      _PreviewMetricKind.ssimulacra2 => _ssimulacra2,
+    };
+  }
+
+  void setMetric(_PreviewMetricKind kind, PreviewMetricResult? result) {
+    final slot = _PreviewMetricCacheSlot(hasValue: true, result: result);
+    switch (kind) {
+      case _PreviewMetricKind.pixelMatch:
+        _pixelMatch = slot;
+      case _PreviewMetricKind.msSsim:
+        _msSsim = slot;
+      case _PreviewMetricKind.ssimulacra2:
+        _ssimulacra2 = slot;
+    }
+  }
+
+  int estimatedBytes() {
+    final originalRgbaBytes =
+        preview.sourceFile.metadata.width * preview.sourceFile.metadata.height * 4;
+    final previewRgbaBytes = preview.result.width * preview.result.height * 4;
+    final encodedBytes = preview.result.encodedBytes.length;
+    final rawDifferenceBytes = differenceRawImage?.rgbaBytes.length ?? 0;
+    final differenceBytes =
+        differenceImage == null ? 0 : preview.result.width * preview.result.height * 4;
+    return _previewCacheEntryOverheadBytes +
+        originalRgbaBytes +
+        previewRgbaBytes +
+        encodedBytes +
+        rawDifferenceBytes +
+        differenceBytes;
+  }
+
+  void disposeImages() {
+    differenceImage?.dispose();
+    differenceImage = null;
+  }
+}
+
+class _PreviewCacheController {
+  _PreviewCacheController(this._slimgApi);
+
+  final SlimgApi _slimgApi;
+  final LinkedHashMap<_PreviewCacheKey, _PreviewCacheEntry> _entries =
+      LinkedHashMap<_PreviewCacheKey, _PreviewCacheEntry>();
+  final LinkedHashSet<_PreviewCacheKey> _differenceImageKeys =
+      LinkedHashSet<_PreviewCacheKey>();
+
+  OptimizationPreview? getPreview(_PreviewCacheKey key) {
+    final entry = _touchEntry(key);
+    return entry?.preview;
+  }
+
+  PreviewMetricResult? getMetric(
+    _PreviewCacheKey key,
+    _PreviewMetricKind metric,
+  ) {
+    final entry = _touchEntry(key);
+    if (entry == null) {
+      return null;
+    }
+    final slot = entry.metric(metric);
+    return slot.hasValue ? slot.result : null;
+  }
+
+  bool hasMetric(_PreviewCacheKey key, _PreviewMetricKind metric) {
+    return _entries[key]?.metric(metric).hasValue ?? false;
+  }
+
+  void cacheMetric(
+    _PreviewCacheKey key,
+    _PreviewMetricKind metric,
+    PreviewMetricResult? result,
+  ) {
+    final entry = _touchEntry(key);
+    if (entry == null) {
+      return;
+    }
+    entry.setMetric(metric, result);
+    _evictEntriesIfNeeded();
+  }
+
+  ui.Image? getDifferenceImage(_PreviewCacheKey key) {
+    final entry = _touchEntry(key);
+    if (entry == null || !entry.hasResolvedDifference || !entry.differenceAvailable) {
+      return null;
+    }
+    final image = entry.differenceImage;
+    if (image != null) {
+      _touchDifferenceImage(key);
+    }
+    return image;
+  }
+
+  RawImageResult? getDifferenceRawImage(_PreviewCacheKey key) {
+    final entry = _touchEntry(key);
+    if (entry == null || !entry.hasResolvedDifference || !entry.differenceAvailable) {
+      return null;
+    }
+    return entry.differenceRawImage;
+  }
+
+  bool hasResolvedDifference(_PreviewCacheKey key) {
+    return _entries[key]?.hasResolvedDifference ?? false;
+  }
+
+  bool isDifferenceUnavailable(_PreviewCacheKey key) {
+    final entry = _entries[key];
+    return entry != null &&
+        entry.hasResolvedDifference &&
+        !entry.differenceAvailable;
+  }
+
+  void cacheDifferenceUnavailable(_PreviewCacheKey key) {
+    final entry = _touchEntry(key);
+    if (entry == null) {
+      return;
+    }
+    entry.hasResolvedDifference = true;
+    entry.differenceAvailable = false;
+    entry.differenceRawImage = null;
+    entry.disposeImages();
+    _differenceImageKeys.remove(key);
+    _evictEntriesIfNeeded();
+  }
+
+  void cacheDifferenceRawImage(_PreviewCacheKey key, RawImageResult result) {
+    final entry = _touchEntry(key);
+    if (entry == null) {
+      return;
+    }
+    entry.hasResolvedDifference = true;
+    entry.differenceAvailable = true;
+    entry.differenceRawImage = result;
+    _evictEntriesIfNeeded();
+  }
+
+  void cacheDifferenceImage(_PreviewCacheKey key, ui.Image image) {
+    final entry = _touchEntry(key);
+    if (entry == null) {
+      image.dispose();
+      return;
+    }
+    if (!identical(entry.differenceImage, image)) {
+      entry.differenceImage?.dispose();
+    }
+    entry.hasResolvedDifference = true;
+    entry.differenceAvailable = true;
+    entry.differenceImage = image;
+    _touchDifferenceImage(key);
+    _evictDecodedImagesIfNeeded();
+    _evictEntriesIfNeeded();
+  }
+
+  void cachePreview(_PreviewCacheKey key, OptimizationPreview preview) {
+    final previous = _entries.remove(key);
+    if (previous != null && previous.artifactId != preview.result.artifactId) {
+      previous.disposeImages();
+      _differenceImageKeys.remove(key);
+      _disposeArtifact(previous.artifactId);
+    }
+
+    _entries[key] = _PreviewCacheEntry(key: key, preview: preview);
+    _evictEntriesIfNeeded();
+  }
+
+  void dispose() {
+    for (final entry in _entries.values) {
+      entry.disposeImages();
+      _disposeArtifact(entry.artifactId);
+    }
+    _entries.clear();
+    _differenceImageKeys.clear();
+  }
+
+  _PreviewCacheEntry? _touchEntry(_PreviewCacheKey key) {
+    final entry = _entries.remove(key);
+    if (entry == null) {
+      return null;
+    }
+    _entries[key] = entry;
+    return entry;
+  }
+
+  void _touchDifferenceImage(_PreviewCacheKey key) {
+    _differenceImageKeys.remove(key);
+    _differenceImageKeys.add(key);
+  }
+
+  void _evictEntriesIfNeeded() {
+    while (_estimatedTotalBytes() > _previewCacheBudgetBytes && _entries.length > 1) {
+      final key = _entries.keys.first;
+      final entry = _entries.remove(key);
+      if (entry == null) {
+        continue;
+      }
+      _differenceImageKeys.remove(key);
+      entry.disposeImages();
+      _disposeArtifact(entry.artifactId);
+    }
+  }
+
+  void _evictDecodedImagesIfNeeded() {
+    while (_differenceImageKeys.length > _previewDecodedImageBudget) {
+      final key = _differenceImageKeys.first;
+      _differenceImageKeys.remove(key);
+      final entry = _entries[key];
+      entry?.differenceImage?.dispose();
+      if (entry != null) {
+        entry.differenceImage = null;
+      }
+    }
+  }
+
+  int _estimatedTotalBytes() {
+    return _entries.values.fold<int>(
+      0,
+      (sum, entry) => sum + entry.estimatedBytes(),
+    );
+  }
+
+  void _disposeArtifact(String artifactId) {
+    unawaited(
+      _slimgApi.disposePreviewArtifact(artifactId: artifactId).catchError(
+        (Object error, StackTrace stackTrace) {
+          DeveloperDiagnostics.logTimingError(
+            'preview-artifact-dispose-cache',
+            error,
+            stackTrace,
+          );
+        },
+      ),
+    );
+  }
+}
 
 class PreviewDisplaySelection {
   const PreviewDisplaySelection({
@@ -223,6 +524,22 @@ class AnalyzeRunState {
     );
   }
 }
+
+class _PreviewArtifactContext {
+  const _PreviewArtifactContext({
+    required this.request,
+    required this.cacheKey,
+  });
+
+  final PreviewArtifactRequest request;
+  final _PreviewCacheKey? cacheKey;
+}
+
+final _previewCacheControllerProvider = Provider<_PreviewCacheController>((ref) {
+  final controller = _PreviewCacheController(ref.read(slimgApiProvider));
+  ref.onDispose(controller.dispose);
+  return controller;
+});
 
 final currentOptimizationPlanProvider =
     FutureProvider.autoDispose<OptimizationPlan?>((ref) async {
@@ -470,6 +787,11 @@ class OptimizationPreview {
   final OptimizationPlan plan;
   final PreviewResult result;
 
+  _PreviewCacheKey get _cacheKey => _PreviewCacheKey(
+    filePath: sourceFile.path,
+    operation: plan.previewRequest.operation,
+  );
+
   int? get originalSize => sourceFile.metadata.fileSize?.toInt();
 
   int? get savingsBytes {
@@ -495,23 +817,8 @@ final currentPreviewProvider = FutureProvider.autoDispose<OptimizationPreview?>(
 ) async {
   final requestId = ++_previewRequestSequence;
   final totalStopwatch = Stopwatch()..start();
-  final slimgApi = ref.read(slimgApiProvider);
-  String? artifactId;
+  final cache = ref.read(_previewCacheControllerProvider);
   ref.onDispose(() {
-    final currentArtifactId = artifactId;
-    if (currentArtifactId != null) {
-      unawaited(
-        slimgApi
-            .disposePreviewArtifact(artifactId: currentArtifactId)
-            .catchError((Object error, StackTrace stackTrace) {
-              DeveloperDiagnostics.logTimingError(
-                'preview-artifact-dispose:$requestId',
-                error,
-                stackTrace,
-              );
-            }),
-      );
-    }
     DeveloperDiagnostics.logTiming(
       'preview:$requestId',
       'disposed total=${totalStopwatch.elapsedMilliseconds}ms',
@@ -531,6 +838,20 @@ final currentPreviewProvider = FutureProvider.autoDispose<OptimizationPreview?>(
       'plan=${planStopwatch.elapsedMilliseconds}ms path=${plan.sourceFile.path} codec=${plan.targetCodec.name} useSource=${plan.useSourceImageForPreview}',
     );
 
+    final cacheKey = _PreviewCacheKey(
+      filePath: plan.sourceFile.path,
+      operation: plan.previewRequest.operation,
+    );
+    final cachedPreview = cache.getPreview(cacheKey);
+    if (cachedPreview != null) {
+      totalStopwatch.stop();
+      DeveloperDiagnostics.logTiming(
+        'preview:$requestId',
+        'cache-hit total=${totalStopwatch.elapsedMilliseconds}ms artifact=${cachedPreview.result.artifactId}',
+      );
+      return cachedPreview;
+    }
+
     final debounceStopwatch = Stopwatch()..start();
     await Future<void>.delayed(const Duration(milliseconds: 150));
     debounceStopwatch.stop();
@@ -549,13 +870,13 @@ final currentPreviewProvider = FutureProvider.autoDispose<OptimizationPreview?>(
       'preview:$requestId',
       'preview=${previewStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms format=${result.format} size=${result.sizeBytes}',
     );
-    artifactId = result.artifactId;
-
-    return OptimizationPreview(
+    final preview = OptimizationPreview(
       sourceFile: plan.sourceFile,
       plan: plan,
       result: result,
     );
+    cache.cachePreview(cacheKey, preview);
+    return preview;
   } on Object catch (error, stackTrace) {
     DeveloperDiagnostics.logTimingError('preview:$requestId', error, stackTrace);
     rethrow;
@@ -617,27 +938,34 @@ final currentPreviewDisplayModeProvider =
       return PreviewDisplayMode.optimized;
     });
 
-final _currentPreviewMetricRequestProvider =
-    FutureProvider.autoDispose<PreviewArtifactRequest?>((ref) async {
+final _currentPreviewArtifactContextProvider =
+    FutureProvider.autoDispose<_PreviewArtifactContext?>((ref) async {
       final controller = ref.watch(fileOpenControllerProvider);
       if (controller.isFolderSelected) {
         return null;
       }
       final analyzeSample = ref.watch(selectedAnalyzeSampleProvider);
       if (analyzeSample != null) {
-        return PreviewArtifactRequest(artifactId: analyzeSample.artifactId);
+        return _PreviewArtifactContext(
+          request: PreviewArtifactRequest(artifactId: analyzeSample.artifactId),
+          cacheKey: null,
+        );
       }
       final preview = await ref.watch(currentPreviewProvider.future);
       if (preview == null) {
         return null;
       }
-      return PreviewArtifactRequest(artifactId: preview.result.artifactId);
+      return _PreviewArtifactContext(
+        request: PreviewArtifactRequest(artifactId: preview.result.artifactId),
+        cacheKey: preview._cacheKey,
+      );
     });
 
 final currentPreviewDifferenceProvider =
     FutureProvider.autoDispose<ui.Image?>((ref) async {
       final requestId = ++_previewDifferenceRequestSequence;
       final totalStopwatch = Stopwatch()..start();
+      final cache = ref.read(_previewCacheControllerProvider);
       ref.onDispose(() {
         DeveloperDiagnostics.logTiming(
           'preview-diff:$requestId',
@@ -646,23 +974,54 @@ final currentPreviewDifferenceProvider =
       });
 
       try {
-        final request = await ref.watch(_currentPreviewMetricRequestProvider.future);
-        if (request == null) {
+        final context = await ref.watch(_currentPreviewArtifactContextProvider.future);
+        if (context == null) {
           return null;
         }
         final requestedArtifactId = ref.watch(previewDifferenceRequestProvider);
-        if (requestedArtifactId != request.artifactId) {
+        if (requestedArtifactId != context.request.artifactId) {
           return null;
+        }
+        final cacheKey = context.cacheKey;
+        if (cacheKey != null) {
+          final cachedImage = cache.getDifferenceImage(cacheKey);
+          if (cachedImage != null) {
+            totalStopwatch.stop();
+            DeveloperDiagnostics.logTiming(
+              'preview-diff:$requestId',
+              'cache-hit total=${totalStopwatch.elapsedMilliseconds}ms artifact=${context.request.artifactId}',
+            );
+            return cachedImage;
+          }
+          if (cache.isDifferenceUnavailable(cacheKey)) {
+            totalStopwatch.stop();
+            DeveloperDiagnostics.logTiming(
+              'preview-diff:$requestId',
+              'cache-hit total=${totalStopwatch.elapsedMilliseconds}ms artifact=${context.request.artifactId} available=false',
+            );
+            return null;
+          }
+          final cachedRawImage = cache.getDifferenceRawImage(cacheKey);
+          if (cachedRawImage != null) {
+            final image = await _decodeRawImage(cachedRawImage);
+            cache.cacheDifferenceImage(cacheKey, image);
+            totalStopwatch.stop();
+            DeveloperDiagnostics.logTiming(
+              'preview-diff:$requestId',
+              'cache-hit total=${totalStopwatch.elapsedMilliseconds}ms artifact=${context.request.artifactId} source=raw',
+            );
+            return image;
+          }
         }
 
         DeveloperDiagnostics.logTiming(
           'preview-diff:$requestId',
-          'start artifact=${request.artifactId}',
+          'start artifact=${context.request.artifactId}',
         );
         final diffStopwatch = Stopwatch()..start();
         final result = await ref
             .read(slimgApiProvider)
-            .computePreviewDifferenceImage(request: request);
+            .computePreviewDifferenceImage(request: context.request);
         diffStopwatch.stop();
         totalStopwatch.stop();
         DeveloperDiagnostics.logTiming(
@@ -670,10 +1029,20 @@ final currentPreviewDifferenceProvider =
           'done diff=${diffStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms available=${result != null}',
         );
         if (result == null) {
+          if (cacheKey != null) {
+            cache.cacheDifferenceUnavailable(cacheKey);
+          }
           return null;
         }
+        if (cacheKey != null) {
+          cache.cacheDifferenceRawImage(cacheKey, result);
+        }
         final image = await _decodeRawImage(result);
-        ref.onDispose(image.dispose);
+        if (cacheKey != null) {
+          cache.cacheDifferenceImage(cacheKey, image);
+        } else {
+          ref.onDispose(image.dispose);
+        }
         return image;
       } on Object catch (error, stackTrace) {
         DeveloperDiagnostics.logTimingError(
@@ -701,6 +1070,7 @@ final currentPreviewPixelMatchProvider =
     FutureProvider.autoDispose<PreviewMetricResult?>((ref) async {
       final requestId = ++_previewPixelMatchRequestSequence;
       final totalStopwatch = Stopwatch()..start();
+      final cache = ref.read(_previewCacheControllerProvider);
       ref.onDispose(() {
         DeveloperDiagnostics.logTiming(
           'preview-metric:pixel-match:$requestId',
@@ -709,29 +1079,43 @@ final currentPreviewPixelMatchProvider =
       });
 
       try {
-        final request = await ref.watch(_currentPreviewMetricRequestProvider.future);
-        if (request == null) {
+        final context = await ref.watch(_currentPreviewArtifactContextProvider.future);
+        if (context == null) {
           return null;
+        }
+        final cacheKey = context.cacheKey;
+        if (cacheKey != null && cache.hasMetric(cacheKey, _PreviewMetricKind.pixelMatch)) {
+          final result = cache.getMetric(cacheKey, _PreviewMetricKind.pixelMatch);
+          totalStopwatch.stop();
+          DeveloperDiagnostics.logTiming(
+            'preview-metric:pixel-match:$requestId',
+            'cache-hit total=${totalStopwatch.elapsedMilliseconds}ms artifact=${context.request.artifactId} value=${result?.value}',
+          );
+          return result;
         }
 
         DeveloperDiagnostics.logTiming(
           'preview-metric:pixel-match:$requestId',
-          'start artifact=${request.artifactId}',
+          'start artifact=${context.request.artifactId}',
         );
         final metricStopwatch = Stopwatch()..start();
         final result = await ref
             .read(slimgApiProvider)
-            .computePreviewPixelMatchPercentage(request: request);
+            .computePreviewPixelMatchPercentage(request: context.request);
         metricStopwatch.stop();
         totalStopwatch.stop();
         DeveloperDiagnostics.logTiming(
           'preview-metric:pixel-match:$requestId',
           'done metric=${metricStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms value=$result',
         );
-        return PreviewMetricResult(
+        final metricResult = PreviewMetricResult(
           value: result,
           elapsedMilliseconds: metricStopwatch.elapsedMilliseconds,
         );
+        if (cacheKey != null) {
+          cache.cacheMetric(cacheKey, _PreviewMetricKind.pixelMatch, metricResult);
+        }
+        return metricResult;
       } on Object catch (error, stackTrace) {
         DeveloperDiagnostics.logTimingError(
           'preview-metric:pixel-match:$requestId',
@@ -746,6 +1130,7 @@ final currentPreviewMsSsimProvider =
     FutureProvider.autoDispose<PreviewMetricResult?>((ref) async {
       final requestId = ++_previewMsSsimRequestSequence;
       final totalStopwatch = Stopwatch()..start();
+      final cache = ref.read(_previewCacheControllerProvider);
       ref.onDispose(() {
         DeveloperDiagnostics.logTiming(
           'preview-metric:ms-ssim:$requestId',
@@ -754,29 +1139,43 @@ final currentPreviewMsSsimProvider =
       });
 
       try {
-        final request = await ref.watch(_currentPreviewMetricRequestProvider.future);
-        if (request == null) {
+        final context = await ref.watch(_currentPreviewArtifactContextProvider.future);
+        if (context == null) {
           return null;
+        }
+        final cacheKey = context.cacheKey;
+        if (cacheKey != null && cache.hasMetric(cacheKey, _PreviewMetricKind.msSsim)) {
+          final result = cache.getMetric(cacheKey, _PreviewMetricKind.msSsim);
+          totalStopwatch.stop();
+          DeveloperDiagnostics.logTiming(
+            'preview-metric:ms-ssim:$requestId',
+            'cache-hit total=${totalStopwatch.elapsedMilliseconds}ms artifact=${context.request.artifactId} value=${result?.value}',
+          );
+          return result;
         }
 
         DeveloperDiagnostics.logTiming(
           'preview-metric:ms-ssim:$requestId',
-          'start artifact=${request.artifactId}',
+          'start artifact=${context.request.artifactId}',
         );
         final metricStopwatch = Stopwatch()..start();
         final result = await ref
             .read(slimgApiProvider)
-            .computePreviewMsSsim(request: request);
+            .computePreviewMsSsim(request: context.request);
         metricStopwatch.stop();
         totalStopwatch.stop();
         DeveloperDiagnostics.logTiming(
           'preview-metric:ms-ssim:$requestId',
           'done metric=${metricStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms value=$result',
         );
-        return PreviewMetricResult(
+        final metricResult = PreviewMetricResult(
           value: result,
           elapsedMilliseconds: metricStopwatch.elapsedMilliseconds,
         );
+        if (cacheKey != null) {
+          cache.cacheMetric(cacheKey, _PreviewMetricKind.msSsim, metricResult);
+        }
+        return metricResult;
       } on Object catch (error, stackTrace) {
         DeveloperDiagnostics.logTimingError(
           'preview-metric:ms-ssim:$requestId',
@@ -791,6 +1190,7 @@ final currentPreviewSsimulacra2Provider =
     FutureProvider.autoDispose<PreviewMetricResult?>((ref) async {
       final requestId = ++_previewSsimulacra2RequestSequence;
       final totalStopwatch = Stopwatch()..start();
+      final cache = ref.read(_previewCacheControllerProvider);
       ref.onDispose(() {
         DeveloperDiagnostics.logTiming(
           'preview-metric:ssimulacra2:$requestId',
@@ -799,29 +1199,44 @@ final currentPreviewSsimulacra2Provider =
       });
 
       try {
-        final request = await ref.watch(_currentPreviewMetricRequestProvider.future);
-        if (request == null) {
+        final context = await ref.watch(_currentPreviewArtifactContextProvider.future);
+        if (context == null) {
           return null;
+        }
+        final cacheKey = context.cacheKey;
+        if (cacheKey != null &&
+            cache.hasMetric(cacheKey, _PreviewMetricKind.ssimulacra2)) {
+          final result = cache.getMetric(cacheKey, _PreviewMetricKind.ssimulacra2);
+          totalStopwatch.stop();
+          DeveloperDiagnostics.logTiming(
+            'preview-metric:ssimulacra2:$requestId',
+            'cache-hit total=${totalStopwatch.elapsedMilliseconds}ms artifact=${context.request.artifactId} value=${result?.value}',
+          );
+          return result;
         }
 
         DeveloperDiagnostics.logTiming(
           'preview-metric:ssimulacra2:$requestId',
-          'start artifact=${request.artifactId}',
+          'start artifact=${context.request.artifactId}',
         );
         final metricStopwatch = Stopwatch()..start();
         final result = await ref
             .read(slimgApiProvider)
-            .computePreviewSsimulacra2(request: request);
+            .computePreviewSsimulacra2(request: context.request);
         metricStopwatch.stop();
         totalStopwatch.stop();
         DeveloperDiagnostics.logTiming(
           'preview-metric:ssimulacra2:$requestId',
           'done metric=${metricStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms value=$result',
         );
-        return PreviewMetricResult(
+        final metricResult = PreviewMetricResult(
           value: result,
           elapsedMilliseconds: metricStopwatch.elapsedMilliseconds,
         );
+        if (cacheKey != null) {
+          cache.cacheMetric(cacheKey, _PreviewMetricKind.ssimulacra2, metricResult);
+        }
+        return metricResult;
       } on Object catch (error, stackTrace) {
         DeveloperDiagnostics.logTimingError(
           'preview-metric:ssimulacra2:$requestId',
