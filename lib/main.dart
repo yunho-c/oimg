@@ -3717,7 +3717,16 @@ class _EmptyState extends ConsumerWidget {
                     padding: const EdgeInsets.all(22),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: [hero, const SizedBox(height: 18), support],
+                      children: [
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: constraints.maxWidth * 0.8,
+                          ),
+                          child: hero,
+                        ),
+                        const SizedBox(height: 18),
+                        support,
+                      ],
                     ),
                   ),
                 ],
