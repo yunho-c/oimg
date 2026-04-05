@@ -188,6 +188,144 @@ void main() {
     expect(slimg.differenceCallCount, 1);
   });
 
+  testWidgets('switching back to a file reuses cached preview and metrics', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {
+        '/tmp/first.png': _metadata('png', 2400),
+        '/tmp/second.png': _metadata('png', 1800),
+      },
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png', '/tmp/second.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(slimg.previewCallCount, 1);
+    expect(slimg.pixelMatchCallCount, 1);
+    expect(slimg.msSsimCallCount, 1);
+    expect(slimg.ssimulacra2CallCount, 1);
+
+    await tester.tap(find.text('second.png').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(slimg.previewCallCount, 2);
+    expect(slimg.pixelMatchCallCount, 2);
+    expect(slimg.msSsimCallCount, 2);
+    expect(slimg.ssimulacra2CallCount, 2);
+
+    await tester.tap(find.text('first.png').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 20));
+
+    expect(slimg.previewCallCount, 2);
+    expect(slimg.pixelMatchCallCount, 2);
+    expect(slimg.msSsimCallCount, 2);
+    expect(slimg.ssimulacra2CallCount, 2);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
+  testWidgets('switching back to a file reuses cached difference image', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {
+        '/tmp/first.png': _metadata('png', 2400),
+        '/tmp/second.png': _metadata('png', 1800),
+      },
+    )..differenceDelay = const Duration(milliseconds: 80);
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png', '/tmp/second.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.tap(find.byKey(const ValueKey('preview-mode-Difference')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(slimg.differenceCallCount, 1);
+
+    await tester.tap(find.text('second.png').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.tap(find.text('first.png').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 20));
+    await tester.tap(find.byKey(const ValueKey('preview-mode-Difference')));
+    await tester.pump();
+
+    expect(slimg.differenceCallCount, 1);
+  });
+
+  testWidgets('cache eviction disposes old preview artifacts', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {
+        '/tmp/huge-a.png': ImageMetadata(
+          width: 4096,
+          height: 4096,
+          format: 'png',
+          fileSize: BigInt.from(2400),
+        ),
+        '/tmp/huge-b.png': ImageMetadata(
+          width: 4096,
+          height: 4096,
+          format: 'png',
+          fileSize: BigInt.from(2200),
+        ),
+      },
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/huge-a.png', '/tmp/huge-b.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(slimg.previewCallCount, 1);
+    expect(slimg.disposedPreviewArtifactIds, isEmpty);
+
+    await tester.tap(find.text('huge-b.png').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(slimg.previewCallCount, 2);
+    expect(slimg.disposedPreviewArtifactIds, hasLength(1));
+
+    await tester.tap(find.text('huge-a.png').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(slimg.previewCallCount, 3);
+  });
+
   testWidgets('analyze sweep populates the chart without changing the slider', (
     tester,
   ) async {
@@ -585,7 +723,6 @@ void main() {
         ).toJsonString();
       final slimg = _FakeSlimgApi(
         inspectResults: {'/tmp/first.jpg': _metadata('jpeg', 2400)},
-        previewDelay: const Duration(seconds: 5),
       );
       final controller = FileOpenController(
         channel: _FakeFileOpenChannel(),
@@ -605,6 +742,48 @@ void main() {
 
       await tester.pump(const Duration(seconds: 5));
       await tester.pump();
+    },
+  );
+
+  testWidgets(
+    'difference stays unavailable for non-advanced lossless jpeg xl mode',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final store = _FakeAppSettingsStore()
+        ..value = const AppSettings(
+          compressionMethod: CompressionMethod.lossless,
+          compressionPriority: CompressionPriority.efficiency,
+          advancedMode: false,
+          preferredCodec: PreferredCodec.jpeg,
+          quality: 80,
+          developerModeEnabled: false,
+          timingLogsEnabled: false,
+        ).toJsonString();
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.jpg': _metadata('jpeg', 2400)},
+      );
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.jpg'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(
+        _buildApp(controller: controller, slimg: slimg, store: store),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(slimg.previewCallCount, 1);
+      expect(slimg.differenceCallCount, 0);
+
+      await tester.tap(find.byKey(const ValueKey('preview-mode-Difference')));
+      await tester.pump();
+
+      expect(slimg.differenceCallCount, 0);
     },
   );
 }
@@ -674,6 +853,10 @@ class _FakeSlimgApi implements SlimgApi {
   bool lastTimingLogsEnabled = false;
   int previewCallCount = 0;
   int differenceCallCount = 0;
+  int pixelMatchCallCount = 0;
+  int msSsimCallCount = 0;
+  int ssimulacra2CallCount = 0;
+  final List<String> disposedPreviewArtifactIds = <String>[];
   int _nextJobId = 0;
   int _nextAnalyzeJobId = 0;
   final Map<String, _FakeBatchJob> _jobs = {};
@@ -703,9 +886,10 @@ class _FakeSlimgApi implements SlimgApi {
     if (previewDelay > Duration.zero) {
       await Future<void>.delayed(previewDelay);
     }
+    final artifactSuffix = request.inputPath.replaceAll(RegExp(r'[^a-zA-Z0-9]+'), '-');
     return PreviewResult(
       encodedBytes: _previewBytes,
-      artifactId: 'preview-artifact-1',
+      artifactId: 'preview-artifact-$previewCallCount-$artifactSuffix',
       format: 'jpeg',
       width: 48,
       height: 32,
@@ -723,6 +907,7 @@ class _FakeSlimgApi implements SlimgApi {
   Future<double?> computePreviewPixelMatchPercentage({
     required PreviewArtifactRequest request,
   }) async {
+    pixelMatchCallCount += 1;
     if (pixelMatchDelay > Duration.zero) {
       await Future<void>.delayed(pixelMatchDelay);
     }
@@ -733,6 +918,7 @@ class _FakeSlimgApi implements SlimgApi {
   Future<double?> computePreviewMsSsim({
     required PreviewArtifactRequest request,
   }) async {
+    msSsimCallCount += 1;
     if (msSsimDelay > Duration.zero) {
       await Future<void>.delayed(msSsimDelay);
     }
@@ -743,6 +929,7 @@ class _FakeSlimgApi implements SlimgApi {
   Future<double?> computePreviewSsimulacra2({
     required PreviewArtifactRequest request,
   }) async {
+    ssimulacra2CallCount += 1;
     if (ssimulacra2Delay > Duration.zero) {
       await Future<void>.delayed(ssimulacra2Delay);
     }
@@ -765,7 +952,9 @@ class _FakeSlimgApi implements SlimgApi {
   }
 
   @override
-  Future<void> disposePreviewArtifact({required String artifactId}) async {}
+  Future<void> disposePreviewArtifact({required String artifactId}) async {
+    disposedPreviewArtifactIds.add(artifactId);
+  }
 
   @override
   Future<ProcessResult> processFile({required ProcessFileRequest request}) {

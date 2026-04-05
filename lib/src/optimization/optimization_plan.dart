@@ -27,21 +27,22 @@ OptimizationPlan buildOptimizationPlan({
   final targetCodec = settings.effectiveCodec;
   final targetFormat = codecIdOf(targetCodec);
   final usesSourceCodec = file.metadata.format == targetFormat;
+  final effectiveQuality = settings.showsQualityControl ? settings.quality : 100;
   final useSourceImageForPreview = switch (targetCodec) {
     PreferredCodec.png => true,
-    PreferredCodec.webp => settings.quality == 100,
-    PreferredCodec.jxl => settings.quality == 100,
+    PreferredCodec.webp => effectiveQuality == 100,
+    PreferredCodec.jxl => effectiveQuality == 100,
     _ => false,
   };
   final operation = usesSourceCodec
       ? ImageOperation.optimize(
           OptimizeOptions(
-            quality: settings.quality,
+            quality: effectiveQuality,
             writeOnlyIfSmaller: true,
           ),
         )
       : ImageOperation.convert(
-          ConvertOptions(targetFormat: targetFormat, quality: settings.quality),
+          ConvertOptions(targetFormat: targetFormat, quality: effectiveQuality),
         );
 
   return OptimizationPlan(
