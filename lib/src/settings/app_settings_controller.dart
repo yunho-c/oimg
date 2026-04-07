@@ -69,6 +69,14 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     );
   }
 
+  Future<void> setPreviewPathHeaderEnabled(bool previewPathHeaderEnabled) async {
+    await _update(
+      (settings) => settings.copyWith(
+        previewPathHeaderEnabled: previewPathHeaderEnabled,
+      ),
+    );
+  }
+
   Future<void> _update(
     AppSettings Function(AppSettings settings) transform,
   ) async {

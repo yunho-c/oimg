@@ -163,6 +163,7 @@ void main() {
 
       expect(settings.developerModeEnabled, isFalse);
       expect(settings.timingLogsEnabled, isFalse);
+      expect(settings.previewPathHeaderEnabled, isFalse);
     });
   });
 }

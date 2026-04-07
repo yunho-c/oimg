@@ -662,6 +662,7 @@ class _ImageStage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final appSettings = ref.watch(appSettingsProvider).asData?.value;
     final plan = ref.watch(currentOptimizationPlanProvider);
     final preview = ref.watch(currentPreviewProvider);
     final optimizedDisplay = ref.watch(currentOptimizedDisplayProvider);
@@ -678,6 +679,9 @@ class _ImageStage extends ConsumerWidget {
         differenceUnavailableTooltip == null &&
         optimizedDisplay.width == currentFile.metadata.width &&
         optimizedDisplay.height == currentFile.metadata.height;
+    final showPreviewPathHeader =
+        appSettings?.developerModeEnabled == true &&
+        appSettings?.previewPathHeaderEnabled == true;
 
     void selectOriginal() {
       ref
@@ -737,13 +741,15 @@ class _ImageStage extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      FileOpenController.directoryOf(currentFile.path),
-                      style: TextStyle(
-                        color: theme.colorScheme.mutedForeground,
-                      ),
-                    ).xSmall(),
-                    const SizedBox(height: 4),
+                    if (showPreviewPathHeader) ...[
+                      Text(
+                        FileOpenController.directoryOf(currentFile.path),
+                        style: TextStyle(
+                          color: theme.colorScheme.mutedForeground,
+                        ),
+                      ).xSmall(),
+                      const SizedBox(height: 4),
+                    ],
                     Row(
                       children: [
                         Expanded(
@@ -2258,29 +2264,58 @@ class _DeveloperSettingsDialog extends ConsumerWidget {
                   const SizedBox(height: 14),
                   _DeveloperSection(
                     title: 'Diagnostics',
-                    child: Checkbox(
-                      state: settings.timingLogsEnabled
-                          ? CheckboxState.checked
-                          : CheckboxState.unchecked,
-                      onChanged: settings.developerModeEnabled
-                          ? (value) {
-                              notifier.setTimingLogsEnabled(
-                                value == CheckboxState.checked,
-                              );
-                            }
-                          : null,
-                      trailing: Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Timing logs').small().medium(),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Measure preview and optimize timings in Dart and Rust.',
-                            ).xSmall().muted(),
-                          ],
+                    child: Column(
+                      children: [
+                        Checkbox(
+                          state: settings.timingLogsEnabled
+                              ? CheckboxState.checked
+                              : CheckboxState.unchecked,
+                          onChanged: settings.developerModeEnabled
+                              ? (value) {
+                                  notifier.setTimingLogsEnabled(
+                                    value == CheckboxState.checked,
+                                  );
+                                }
+                              : null,
+                          trailing: Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Timing logs').small().medium(),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Measure preview and optimize timings in Dart and Rust.',
+                                ).xSmall().muted(),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 10),
+                        Checkbox(
+                          state: settings.previewPathHeaderEnabled
+                              ? CheckboxState.checked
+                              : CheckboxState.unchecked,
+                          onChanged: settings.developerModeEnabled
+                              ? (value) {
+                                  notifier.setPreviewPathHeaderEnabled(
+                                    value == CheckboxState.checked,
+                                  );
+                                }
+                              : null,
+                          trailing: Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Preview path header').small().medium(),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Show the directory and file name above the preview.',
+                                ).xSmall().muted(),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

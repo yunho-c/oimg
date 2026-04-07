@@ -24,6 +24,7 @@ class AppSettings {
     required this.quality,
     required this.developerModeEnabled,
     required this.timingLogsEnabled,
+    this.previewPathHeaderEnabled = false,
   });
 
   final CompressionMethod compressionMethod;
@@ -33,6 +34,7 @@ class AppSettings {
   final int quality;
   final bool developerModeEnabled;
   final bool timingLogsEnabled;
+  final bool previewPathHeaderEnabled;
 
   static const defaults = AppSettings(
     compressionMethod: CompressionMethod.lossy,
@@ -42,6 +44,7 @@ class AppSettings {
     quality: 80,
     developerModeEnabled: false,
     timingLogsEnabled: false,
+    previewPathHeaderEnabled: false,
   );
 
   PreferredCodec get effectiveCodec {
@@ -95,6 +98,7 @@ class AppSettings {
     int? quality,
     bool? developerModeEnabled,
     bool? timingLogsEnabled,
+    bool? previewPathHeaderEnabled,
   }) {
     return AppSettings(
       compressionMethod: compressionMethod ?? this.compressionMethod,
@@ -104,6 +108,8 @@ class AppSettings {
       quality: quality ?? this.quality,
       developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,
       timingLogsEnabled: timingLogsEnabled ?? this.timingLogsEnabled,
+      previewPathHeaderEnabled:
+          previewPathHeaderEnabled ?? this.previewPathHeaderEnabled,
     );
   }
 
@@ -116,6 +122,7 @@ class AppSettings {
       'quality': quality,
       'developerModeEnabled': developerModeEnabled,
       'timingLogsEnabled': timingLogsEnabled,
+      'previewPathHeaderEnabled': previewPathHeaderEnabled,
     };
   }
 
@@ -147,6 +154,9 @@ class AppSettings {
           defaults.developerModeEnabled,
       timingLogsEnabled:
           json['timingLogsEnabled'] as bool? ?? defaults.timingLogsEnabled,
+      previewPathHeaderEnabled:
+          json['previewPathHeaderEnabled'] as bool? ??
+          defaults.previewPathHeaderEnabled,
     );
   }
 
@@ -159,7 +169,8 @@ class AppSettings {
         other.preferredCodec == preferredCodec &&
         other.quality == quality &&
         other.developerModeEnabled == developerModeEnabled &&
-        other.timingLogsEnabled == timingLogsEnabled;
+        other.timingLogsEnabled == timingLogsEnabled &&
+        other.previewPathHeaderEnabled == previewPathHeaderEnabled;
   }
 
   @override
@@ -171,5 +182,6 @@ class AppSettings {
     quality,
     developerModeEnabled,
     timingLogsEnabled,
+    previewPathHeaderEnabled,
   );
 }
