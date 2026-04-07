@@ -781,11 +781,13 @@ class OptimizationPreview {
     required this.sourceFile,
     required this.plan,
     required this.result,
+    required this.elapsedMilliseconds,
   });
 
   final OpenedImageFile sourceFile;
   final OptimizationPlan plan;
   final PreviewResult result;
+  final int elapsedMilliseconds;
 
   _PreviewCacheKey get _cacheKey => _PreviewCacheKey(
     filePath: sourceFile.path,
@@ -874,6 +876,7 @@ final currentPreviewProvider = FutureProvider.autoDispose<OptimizationPreview?>(
       sourceFile: plan.sourceFile,
       plan: plan,
       result: result,
+      elapsedMilliseconds: previewStopwatch.elapsedMilliseconds,
     );
     cache.cachePreview(cacheKey, preview);
     return preview;

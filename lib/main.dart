@@ -2621,8 +2621,18 @@ class _BottomStatTile extends ConsumerWidget {
       ),
     );
 
+    final decoratedTile = stat.tooltip == null || stat.loading
+        ? tile
+        : Tooltip(
+            waitDuration: const Duration(milliseconds: 250),
+            showDuration: const Duration(milliseconds: 120),
+            tooltip: (context) =>
+                TooltipContainer(child: Text(stat.tooltip!)),
+            child: tile,
+          );
+
     if (!isToggleable) {
-      return tile;
+      return decoratedTile;
     }
 
     return MouseRegion(
@@ -2632,7 +2642,7 @@ class _BottomStatTile extends ConsumerWidget {
         onTap: () {
           ref.read(_savingsDisplayModeProvider.notifier).toggle();
         },
-        child: tile,
+        child: decoratedTile,
       ),
     );
   }
@@ -2739,6 +2749,9 @@ class _BottomQualitySection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final previewState = ref.watch(currentPreviewProvider);
+    final previewPendingBeforeMetrics =
+        previewState.isLoading && previewState.asData?.value == null;
     final rows = isFolderSelected
         ? const <_BottomMetricRowState>[
             _BottomMetricRowState.text(label: 'Pixel Match', value: 'N/A'),
@@ -2750,16 +2763,19 @@ class _BottomQualitySection extends ConsumerWidget {
               label: 'Pixel Match',
               metric: ref.watch(currentPreviewPixelMatchProvider),
               formatter: _formatNullableMetricPercent,
+              previewPendingBeforeMetrics: previewPendingBeforeMetrics,
             ),
             _metricRowState(
               label: 'MS-SSIM',
               metric: ref.watch(currentPreviewMsSsimProvider),
               formatter: _formatNullableMetric,
+              previewPendingBeforeMetrics: previewPendingBeforeMetrics,
             ),
             _metricRowState(
               label: 'SSIMULACRA 2',
               metric: ref.watch(currentPreviewSsimulacra2Provider),
               formatter: (value) => _formatNullableMetric(value, digits: 1),
+              previewPendingBeforeMetrics: previewPendingBeforeMetrics,
             ),
           ];
 
@@ -2788,7 +2804,11 @@ _BottomMetricRowState _metricRowState({
   required String label,
   required AsyncValue<PreviewMetricResult?> metric,
   required String Function(double?) formatter,
+  required bool previewPendingBeforeMetrics,
 }) {
+  if (previewPendingBeforeMetrics) {
+    return _BottomMetricRowState.text(label: label, value: '—');
+  }
   return metric.when(
     data: (result) => _BottomMetricRowState.text(
       label: label,
@@ -3049,6 +3069,9 @@ class _BottomSummaryViewModel {
         analyzeSample?.format ??
         file.lastResult?.format ??
         (plan == null ? null : codecIdOf(plan.targetCodec));
+    final optimizedTimingTooltip = analyzeSample == null && preview != null
+        ? _formatMetricTimingTooltip(preview.elapsedMilliseconds)
+        : null;
     return _BottomSummaryViewModel(
       stats: [
         _BottomStatData(
@@ -3061,6 +3084,7 @@ class _BottomSummaryViewModel {
           value: _formatNullableBytes(newBytes),
           color: const Color(0xFF2563EB),
           loading: isOptimizedPreviewPending,
+          tooltip: optimizedTimingTooltip,
         ),
         _BottomStatData(
           label: 'Savings',
@@ -3192,6 +3216,7 @@ class _BottomStatData {
     this.alternateValue,
     this.loading = false,
     this.toggleable = false,
+    this.tooltip,
   });
 
   final String label;
@@ -3200,6 +3225,7 @@ class _BottomStatData {
   final String? alternateValue;
   final bool loading;
   final bool toggleable;
+  final String? tooltip;
 }
 
 class _BottomInfoRowData {
