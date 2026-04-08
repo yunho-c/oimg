@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 
+use img_parts::{DynImage, ImageEXIF, ImageICC};
 use slimg_core::{
     codec::{get_codec, EncodeOptions},
     convert as core_convert, decode, CropMode, ExtendMode, FillColor, Format, PipelineOptions,
@@ -158,11 +159,13 @@ pub(crate) fn process_file_request_with_threads(
     request: ProcessFileRequest,
     threads: Option<usize>,
 ) -> Result<ProcessResult> {
-    process_file_path_with_threads(
+    process_file_path_with_metadata(
         request.input_path,
         request.output_path,
         None,
         request.overwrite,
+        request.preserve_exif,
+        request.preserve_color_profile,
         request.operation,
         threads,
     )
@@ -173,6 +176,28 @@ pub(crate) fn process_file_path_with_threads(
     explicit_output_path: Option<String>,
     output_dir: Option<PathBuf>,
     overwrite: bool,
+    operation: ImageOperation,
+    threads: Option<usize>,
+) -> Result<ProcessResult> {
+    process_file_path_with_metadata(
+        input_path,
+        explicit_output_path,
+        output_dir,
+        overwrite,
+        false,
+        false,
+        operation,
+        threads,
+    )
+}
+
+fn process_file_path_with_metadata(
+    input_path: String,
+    explicit_output_path: Option<String>,
+    output_dir: Option<PathBuf>,
+    overwrite: bool,
+    preserve_exif: bool,
+    preserve_color_profile: bool,
     operation: ImageOperation,
     threads: Option<usize>,
 ) -> Result<ProcessResult> {
@@ -195,7 +220,15 @@ pub(crate) fn process_file_path_with_threads(
         target_format,
     )?;
 
-    let output = run_operation(&input_bytes, &operation, threads)?;
+    let mut output = run_operation(&input_bytes, &operation, threads)?;
+    if output.should_write {
+        output.data = preserve_metadata(
+            &input_bytes,
+            output.data,
+            preserve_exif,
+            preserve_color_profile,
+        )?;
+    }
     crate::diagnostics::timing_log(format!(
         "process resolved input={} output={} source_format={} target_format={} should_write={} overwrite={}",
         input_path,
@@ -243,6 +276,49 @@ pub(crate) fn process_file_path_with_threads(
         total_start.elapsed().as_millis()
     ));
     Ok(result)
+}
+
+fn preserve_metadata(
+    input_bytes: &[u8],
+    output_bytes: Vec<u8>,
+    preserve_exif: bool,
+    preserve_color_profile: bool,
+) -> Result<Vec<u8>> {
+    if !preserve_exif && !preserve_color_profile {
+        return Ok(output_bytes);
+    }
+
+    let Some(source_image) = DynImage::from_bytes(input_bytes.to_vec().into())
+        .map_err(|error| SlimgBridgeError::Internal {
+            message: format!("metadata source parse failed: {error}"),
+        })?
+    else {
+        return Ok(output_bytes);
+    };
+
+    let Some(mut output_image) = DynImage::from_bytes(output_bytes.clone().into())
+        .map_err(|error| SlimgBridgeError::Internal {
+            message: format!("metadata output parse failed: {error}"),
+        })?
+    else {
+        return Ok(output_bytes);
+    };
+
+    if preserve_exif {
+        output_image.set_exif(source_image.exif());
+    }
+    if preserve_color_profile {
+        output_image.set_icc_profile(source_image.icc_profile());
+    }
+
+    let mut encoded = Vec::new();
+    output_image
+        .encoder()
+        .write_to(&mut encoded)
+        .map_err(|error| SlimgBridgeError::Internal {
+            message: format!("metadata encode failed: {error}"),
+        })?;
+    Ok(encoded)
 }
 
 fn run_operation(

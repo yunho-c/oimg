@@ -298,6 +298,8 @@ mod tests {
                 input_path: "/tmp/example.png".to_string(),
                 output_path: None,
                 overwrite: true,
+                preserve_exif: false,
+                preserve_color_profile: false,
                 operation: ImageOperation::Convert(ConvertOptions {
                     target_format: "avif".to_string(),
                     quality: 80,
@@ -321,6 +323,8 @@ mod tests {
                 input_path: "/tmp/example.unknown".to_string(),
                 output_path: None,
                 overwrite: true,
+                preserve_exif: false,
+                preserve_color_profile: false,
                 operation: ImageOperation::Optimize(OptimizeOptions {
                     quality: 80,
                     write_only_if_smaller: true,

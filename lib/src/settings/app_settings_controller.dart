@@ -92,6 +92,20 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     );
   }
 
+  Future<void> setPreserveExif(bool preserveExif) async {
+    await _update(
+      (settings) => settings.copyWith(preserveExif: preserveExif),
+    );
+  }
+
+  Future<void> setPreserveColorProfile(bool preserveColorProfile) async {
+    await _update(
+      (settings) => settings.copyWith(
+        preserveColorProfile: preserveColorProfile,
+      ),
+    );
+  }
+
   Future<void> setDeveloperModeEnabled(bool developerModeEnabled) async {
     await _update(
       (settings) => settings.copyWith(

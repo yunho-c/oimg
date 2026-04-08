@@ -453,7 +453,7 @@ class ImageMetadata {
     required this.height,
     required this.format,
     this.fileSize,
-    this.hasTransparency = false,
+    required this.hasTransparency,
   });
 
   @override
@@ -628,12 +628,16 @@ class ProcessFileRequest {
   final String inputPath;
   final String? outputPath;
   final bool overwrite;
+  final bool preserveExif;
+  final bool preserveColorProfile;
   final ImageOperation operation;
 
   const ProcessFileRequest({
     required this.inputPath,
     this.outputPath,
     required this.overwrite,
+    required this.preserveExif,
+    required this.preserveColorProfile,
     required this.operation,
   });
 
@@ -642,6 +646,8 @@ class ProcessFileRequest {
       inputPath.hashCode ^
       outputPath.hashCode ^
       overwrite.hashCode ^
+      preserveExif.hashCode ^
+      preserveColorProfile.hashCode ^
       operation.hashCode;
 
   @override
@@ -652,6 +658,8 @@ class ProcessFileRequest {
           inputPath == other.inputPath &&
           outputPath == other.outputPath &&
           overwrite == other.overwrite &&
+          preserveExif == other.preserveExif &&
+          preserveColorProfile == other.preserveColorProfile &&
           operation == other.operation;
 }
 

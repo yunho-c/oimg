@@ -25,6 +25,8 @@ void main() {
         sameFolderAction: SameFolderAction.replaceSource,
         preserveFolderStructure: true,
         preserveOriginalDate: true,
+        preserveExif: true,
+        preserveColorProfile: true,
         developerModeEnabled: true,
         timingLogsEnabled: true,
       );

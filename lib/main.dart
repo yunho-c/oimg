@@ -1841,6 +1841,7 @@ class _MetadataCollapsibleState extends ConsumerState<_MetadataCollapsible> {
     final controlsLocked = runState.isRunning || analyzeState.isRunning;
 
     Widget option({
+      required Key key,
       required String label,
       required bool value,
       required ValueChanged<bool> onChanged,
@@ -1848,7 +1849,7 @@ class _MetadataCollapsibleState extends ConsumerState<_MetadataCollapsible> {
       return Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: Checkbox(
-          key: const ValueKey('metadata-preserve-original-date'),
+          key: key,
           state: value ? CheckboxState.checked : CheckboxState.unchecked,
           onChanged: controlsLocked
               ? null
@@ -1915,9 +1916,26 @@ class _MetadataCollapsibleState extends ConsumerState<_MetadataCollapsible> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             option(
+                              key: const ValueKey(
+                                'metadata-preserve-original-date',
+                              ),
                               label: 'Preserve original date',
                               value: settings.preserveOriginalDate,
                               onChanged: notifier.setPreserveOriginalDate,
+                            ),
+                            option(
+                              key: const ValueKey(
+                                'metadata-preserve-color-profile',
+                              ),
+                              label: 'Preserve color profile',
+                              value: settings.preserveColorProfile,
+                              onChanged: notifier.setPreserveColorProfile,
+                            ),
+                            option(
+                              key: const ValueKey('metadata-preserve-exif'),
+                              label: 'Preserve camera info (EXIF)',
+                              value: settings.preserveExif,
+                              onChanged: notifier.setPreserveExif,
                             ),
                           ],
                         ),

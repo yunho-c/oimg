@@ -32,6 +32,8 @@ class AppSettings {
     required this.sameFolderAction,
     required this.preserveFolderStructure,
     required this.preserveOriginalDate,
+    required this.preserveExif,
+    required this.preserveColorProfile,
     required this.developerModeEnabled,
     required this.timingLogsEnabled,
     this.differentLocationPath,
@@ -48,6 +50,8 @@ class AppSettings {
   final String? differentLocationPath;
   final bool preserveFolderStructure;
   final bool preserveOriginalDate;
+  final bool preserveExif;
+  final bool preserveColorProfile;
   final bool developerModeEnabled;
   final bool timingLogsEnabled;
   final bool previewPathHeaderEnabled;
@@ -62,6 +66,8 @@ class AppSettings {
     sameFolderAction: SameFolderAction.replaceSource,
     preserveFolderStructure: true,
     preserveOriginalDate: false,
+    preserveExif: false,
+    preserveColorProfile: false,
     developerModeEnabled: false,
     timingLogsEnabled: false,
     previewPathHeaderEnabled: false,
@@ -121,6 +127,8 @@ class AppSettings {
     Object? differentLocationPath = _noAppSettingsValue,
     bool? preserveFolderStructure,
     bool? preserveOriginalDate,
+    bool? preserveExif,
+    bool? preserveColorProfile,
     bool? developerModeEnabled,
     bool? timingLogsEnabled,
     bool? previewPathHeaderEnabled,
@@ -143,6 +151,9 @@ class AppSettings {
       preserveFolderStructure:
           preserveFolderStructure ?? this.preserveFolderStructure,
       preserveOriginalDate: preserveOriginalDate ?? this.preserveOriginalDate,
+      preserveExif: preserveExif ?? this.preserveExif,
+      preserveColorProfile:
+          preserveColorProfile ?? this.preserveColorProfile,
       developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,
       timingLogsEnabled: timingLogsEnabled ?? this.timingLogsEnabled,
       previewPathHeaderEnabled:
@@ -162,6 +173,8 @@ class AppSettings {
       'differentLocationPath': differentLocationPath,
       'preserveFolderStructure': preserveFolderStructure,
       'preserveOriginalDate': preserveOriginalDate,
+      'preserveExif': preserveExif,
+      'preserveColorProfile': preserveColorProfile,
       'developerModeEnabled': developerModeEnabled,
       'timingLogsEnabled': timingLogsEnabled,
       'previewPathHeaderEnabled': previewPathHeaderEnabled,
@@ -206,6 +219,10 @@ class AppSettings {
           defaults.preserveFolderStructure,
       preserveOriginalDate:
           json['preserveOriginalDate'] as bool? ?? defaults.preserveOriginalDate,
+      preserveExif: json['preserveExif'] as bool? ?? defaults.preserveExif,
+      preserveColorProfile:
+          json['preserveColorProfile'] as bool? ??
+          defaults.preserveColorProfile,
       developerModeEnabled:
           json['developerModeEnabled'] as bool? ??
           defaults.developerModeEnabled,
@@ -230,6 +247,8 @@ class AppSettings {
         other.differentLocationPath == differentLocationPath &&
         other.preserveFolderStructure == preserveFolderStructure &&
         other.preserveOriginalDate == preserveOriginalDate &&
+        other.preserveExif == preserveExif &&
+        other.preserveColorProfile == preserveColorProfile &&
         other.developerModeEnabled == developerModeEnabled &&
         other.timingLogsEnabled == timingLogsEnabled &&
         other.previewPathHeaderEnabled == previewPathHeaderEnabled;
@@ -247,6 +266,8 @@ class AppSettings {
     differentLocationPath,
     preserveFolderStructure,
     preserveOriginalDate,
+    preserveExif,
+    preserveColorProfile,
     developerModeEnabled,
     timingLogsEnabled,
     previewPathHeaderEnabled,

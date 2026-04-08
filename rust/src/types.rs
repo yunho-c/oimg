@@ -141,6 +141,8 @@ pub struct ProcessFileRequest {
     pub input_path: String,
     pub output_path: Option<String>,
     pub overwrite: bool,
+    pub preserve_exif: bool,
+    pub preserve_color_profile: bool,
     pub operation: ImageOperation,
 }
 

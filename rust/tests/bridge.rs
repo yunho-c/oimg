@@ -272,6 +272,8 @@ fn process_file_derives_suffixed_output_when_overwrite_is_false() {
         input_path: input_path.to_string_lossy().into_owned(),
         output_path: None,
         overwrite: false,
+        preserve_exif: false,
+        preserve_color_profile: false,
         operation: ImageOperation::Resize(ResizeOptions {
             resize: ResizeSpec::Width { value: 24 },
             target_format: None,
@@ -301,6 +303,8 @@ fn process_file_reports_skipped_write_when_optimized_result_is_not_smaller() {
         input_path: input_path.to_string_lossy().into_owned(),
         output_path: None,
         overwrite: true,
+        preserve_exif: false,
+        preserve_color_profile: false,
         operation: ImageOperation::Optimize(OptimizeOptions {
             quality: 100,
             write_only_if_smaller: true,
@@ -364,6 +368,8 @@ fn process_file_batch_supports_mixed_operations() {
                 input_path: first_path.to_string_lossy().into_owned(),
                 output_path: None,
                 overwrite: true,
+                preserve_exif: false,
+                preserve_color_profile: false,
                 operation: ImageOperation::Optimize(OptimizeOptions {
                     quality: 80,
                     write_only_if_smaller: true,
@@ -373,6 +379,8 @@ fn process_file_batch_supports_mixed_operations() {
                 input_path: second_path.to_string_lossy().into_owned(),
                 output_path: Some(second_output.to_string_lossy().into_owned()),
                 overwrite: true,
+                preserve_exif: false,
+                preserve_color_profile: false,
                 operation: ImageOperation::Convert(ConvertOptions {
                     target_format: "jpeg".to_string(),
                     quality: 80,
@@ -410,6 +418,8 @@ fn process_file_batch_job_reports_progress_and_can_be_disposed() {
                 input_path: first_path.to_string_lossy().into_owned(),
                 output_path: Some(first_output.to_string_lossy().into_owned()),
                 overwrite: true,
+                preserve_exif: false,
+                preserve_color_profile: false,
                 operation: ImageOperation::Convert(ConvertOptions {
                     target_format: "jpeg".to_string(),
                     quality: 80,
@@ -419,6 +429,8 @@ fn process_file_batch_job_reports_progress_and_can_be_disposed() {
                 input_path: second_path.to_string_lossy().into_owned(),
                 output_path: Some(second_output.to_string_lossy().into_owned()),
                 overwrite: true,
+                preserve_exif: false,
+                preserve_color_profile: false,
                 operation: ImageOperation::Convert(ConvertOptions {
                     target_format: "jpeg".to_string(),
                     quality: 80,
@@ -469,6 +481,8 @@ fn cancel_process_file_batch_job_stops_remaining_files() {
             input_path: input_path.to_string_lossy().into_owned(),
             output_path: Some(output_path.to_string_lossy().into_owned()),
             overwrite: true,
+            preserve_exif: false,
+            preserve_color_profile: false,
             operation: ImageOperation::Convert(ConvertOptions {
                 target_format: "jpeg".to_string(),
                 quality: 90,

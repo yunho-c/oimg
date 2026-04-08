@@ -1525,11 +1525,15 @@ impl SseDecode for crate::types::ProcessFileRequest {
         let mut var_inputPath = <String>::sse_decode(deserializer);
         let mut var_outputPath = <Option<String>>::sse_decode(deserializer);
         let mut var_overwrite = <bool>::sse_decode(deserializer);
+        let mut var_preserveExif = <bool>::sse_decode(deserializer);
+        let mut var_preserveColorProfile = <bool>::sse_decode(deserializer);
         let mut var_operation = <crate::types::ImageOperation>::sse_decode(deserializer);
         return crate::types::ProcessFileRequest {
             input_path: var_inputPath,
             output_path: var_outputPath,
             overwrite: var_overwrite,
+            preserve_exif: var_preserveExif,
+            preserve_color_profile: var_preserveColorProfile,
             operation: var_operation,
         };
     }
@@ -2400,6 +2404,8 @@ impl flutter_rust_bridge::IntoDart for crate::types::ProcessFileRequest {
             self.input_path.into_into_dart().into_dart(),
             self.output_path.into_into_dart().into_dart(),
             self.overwrite.into_into_dart().into_dart(),
+            self.preserve_exif.into_into_dart().into_dart(),
+            self.preserve_color_profile.into_into_dart().into_dart(),
             self.operation.into_into_dart().into_dart(),
         ]
         .into_dart()
@@ -3070,6 +3076,8 @@ impl SseEncode for crate::types::ProcessFileRequest {
         <String>::sse_encode(self.input_path, serializer);
         <Option<String>>::sse_encode(self.output_path, serializer);
         <bool>::sse_encode(self.overwrite, serializer);
+        <bool>::sse_encode(self.preserve_exif, serializer);
+        <bool>::sse_encode(self.preserve_color_profile, serializer);
         <crate::types::ImageOperation>::sse_encode(self.operation, serializer);
     }
 }

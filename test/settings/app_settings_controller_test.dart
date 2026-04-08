@@ -47,6 +47,8 @@ void main() {
       await notifier.setDifferentLocationPath('/tmp/export');
       await notifier.setPreserveFolderStructure(false);
       await notifier.setPreserveOriginalDate(true);
+      await notifier.setPreserveExif(true);
+      await notifier.setPreserveColorProfile(true);
       await notifier.setDeveloperModeEnabled(true);
       await notifier.setTimingLogsEnabled(true);
 
@@ -64,6 +66,8 @@ void main() {
           differentLocationPath: '/tmp/export',
           preserveFolderStructure: false,
           preserveOriginalDate: true,
+          preserveExif: true,
+          preserveColorProfile: true,
           developerModeEnabled: true,
           timingLogsEnabled: true,
         ),

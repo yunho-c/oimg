@@ -213,6 +213,8 @@ fn build_batch_request(
             input_path,
             output_path,
             overwrite,
+            preserve_exif: false,
+            preserve_color_profile: false,
             operation,
         });
     }

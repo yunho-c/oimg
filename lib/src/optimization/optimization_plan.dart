@@ -67,6 +67,8 @@ OptimizationPlan buildOptimizationPlan({
       inputPath: file.path,
       outputPath: storageDecision.outputPath,
       overwrite: storageDecision.overwrite,
+      preserveExif: settings.preserveExif,
+      preserveColorProfile: settings.preserveColorProfile,
       operation: operation,
     ),
     previewRequest: PreviewFileRequest(inputPath: file.path, operation: operation),
