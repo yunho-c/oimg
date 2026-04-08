@@ -959,6 +959,162 @@ void main() {
     expect(store.value, contains('"timingLogsEnabled":true'));
   });
 
+  testWidgets('title bar keeps developer left of settings', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpAndSettle();
+
+    final developerPosition = tester.getTopLeft(
+      find.byKey(const ValueKey('title-bar-developer-button')),
+    );
+    final settingsPosition = tester.getTopLeft(
+      find.byKey(const ValueKey('title-bar-settings-button')),
+    );
+
+    expect(developerPosition.dx, lessThan(settingsPosition.dx));
+  });
+
+  testWidgets('title bar developer button still opens the developer dialog', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('title-bar-developer-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Developer'), findsOneWidget);
+  });
+
+  testWidgets('title bar settings menu cycles persisted theme preference', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final store = _FakeAppSettingsStore();
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(
+      _buildApp(controller: controller, slimg: slimg, store: store),
+    );
+    await tester.pumpAndSettle();
+
+    final settingsButton = find.byKey(
+      const ValueKey('title-bar-settings-button'),
+    );
+
+    await tester.tap(settingsButton);
+    await tester.pumpAndSettle();
+    expect(find.text('Theme: System'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('title-bar-theme-toggle')));
+    await tester.pumpAndSettle();
+    expect(
+      AppSettings.fromJsonString((await store.read())!).themePreference,
+      AppThemePreference.light,
+    );
+
+    await tester.tap(settingsButton);
+    await tester.pumpAndSettle();
+    expect(find.text('Theme: Light'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('title-bar-theme-toggle')));
+    await tester.pumpAndSettle();
+    expect(
+      AppSettings.fromJsonString((await store.read())!).themePreference,
+      AppThemePreference.dark,
+    );
+
+    await tester.tap(settingsButton);
+    await tester.pumpAndSettle();
+    expect(find.text('Theme: Dark'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('title-bar-theme-toggle')));
+    await tester.pumpAndSettle();
+    expect(
+      AppSettings.fromJsonString((await store.read())!).themePreference,
+      AppThemePreference.system,
+    );
+  });
+
+  testWidgets('stored theme preference maps to app theme mode', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    Future<void> pumpWithTheme(AppThemePreference themePreference) async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+
+      final store = _FakeAppSettingsStore()
+        ..value = AppSettings.defaults
+            .copyWith(themePreference: themePreference)
+            .toJsonString();
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      );
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+      await tester.pumpWidget(
+        _buildApp(controller: controller, slimg: slimg, store: store),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await pumpWithTheme(AppThemePreference.light);
+    expect(
+      tester.widget<ShadcnApp>(find.byType(ShadcnApp)).themeMode,
+      ThemeMode.light,
+    );
+
+    await pumpWithTheme(AppThemePreference.dark);
+    expect(
+      tester.widget<ShadcnApp>(find.byType(ShadcnApp)).themeMode,
+      ThemeMode.dark,
+    );
+
+    await pumpWithTheme(AppThemePreference.system);
+    expect(
+      tester.widget<ShadcnApp>(find.byType(ShadcnApp)).themeMode,
+      ThemeMode.system,
+    );
+  });
+
   testWidgets(
     'lossless preview shows the source image while estimating in background',
     (tester) async {

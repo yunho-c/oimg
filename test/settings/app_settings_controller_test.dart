@@ -50,6 +50,7 @@ void main() {
       await notifier.setPreserveExif(true);
       await notifier.setPreserveColorProfile(true);
       await notifier.setQualityMetricColorsEnabled(true);
+      await notifier.setThemePreference(AppThemePreference.dark);
       await notifier.setDeveloperModeEnabled(true);
       await notifier.setTimingLogsEnabled(true);
 
@@ -70,6 +71,7 @@ void main() {
           preserveExif: true,
           preserveColorProfile: true,
           qualityMetricColorsEnabled: true,
+          themePreference: AppThemePreference.dark,
           developerModeEnabled: true,
           timingLogsEnabled: true,
         ),

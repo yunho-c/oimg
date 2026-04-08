@@ -106,12 +106,13 @@ Future<void> _configureWindow() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final baseTypography = const Typography.geist().scale(_uiScale);
+    final settings = ref.watch(appSettingsProvider).asData?.value;
 
     return ShadcnApp(
       title: 'OIMG',
@@ -132,7 +133,7 @@ class MyApp extends StatelessWidget {
         surfaceOpacity: 0.88,
         surfaceBlur: 12,
       ),
-      themeMode: ThemeMode.system,
+      themeMode: settings?.themePreference.themeMode ?? ThemeMode.system,
       home: const OimgHomePage(),
     );
   }
@@ -263,10 +264,17 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
               ),
               Align(
                 alignment: Alignment.centerRight,
-                child: _DeveloperButton(
-                  onPressed: () {
-                    unawaited(_openDeveloperDialog());
-                  },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _DeveloperButton(
+                      onPressed: () {
+                        unawaited(_openDeveloperDialog());
+                      },
+                    ),
+                    const SizedBox(width: 6),
+                    const _TitleBarSettingsButton(),
+                  ],
                 ),
               ),
             ],
@@ -2642,11 +2650,64 @@ class _DeveloperButton extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onPressed,
         child: SizedBox(
+          key: const ValueKey('title-bar-developer-button'),
           width: 16,
           height: 16,
           child: Icon(
             LucideIcons.wrench,
             size: 10,
+            color: theme.colorScheme.mutedForeground.withValues(alpha: 0.2),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TitleBarSettingsButton extends ConsumerWidget {
+  const _TitleBarSettingsButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final settings = ref.watch(appSettingsProvider).asData?.value;
+
+    return SizedBox(
+      width: 16,
+      height: 16,
+      child: Center(
+        child: GhostButton(
+          key: const ValueKey('title-bar-settings-button'),
+          size: ButtonSize.xSmall,
+          density: ButtonDensity.iconDense,
+          onPressed: settings == null
+              ? null
+              : () {
+                  showDropdown(
+                    context: context,
+                    builder: (context) {
+                      final currentTheme = settings.themePreference;
+                      return DropdownMenu(
+                        children: [
+                          MenuButton(
+                            key: const ValueKey('title-bar-theme-toggle'),
+                            onPressed: (context) {
+                              unawaited(
+                                ref
+                                    .read(appSettingsProvider.notifier)
+                                    .cycleThemePreference(),
+                              );
+                            },
+                            child: Text('Theme: ${currentTheme.label}'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+          child: Icon(
+            Icons.settings,
+            size: 11,
             color: theme.colorScheme.mutedForeground.withValues(alpha: 0.55),
           ),
         ),
@@ -3268,52 +3329,55 @@ class _BottomQualitySection extends ConsumerWidget {
               SizedBox(
                 width: 18,
                 height: 18,
-                child: GhostButton(
-                  key: const ValueKey('quality-metric-colors-button'),
-                  density: ButtonDensity.icon,
-                  onPressed: settings == null
-                      ? null
-                      : () {
-                          showDropdown(
-                            context: context,
-                            builder: (context) {
-                              return DropdownMenu(
-                                children: [
-                                  MenuButton(
-                                    key: const ValueKey(
-                                      'quality-metric-colors-toggle',
+                child: Center(
+                  child: GhostButton(
+                    key: const ValueKey('quality-metric-colors-button'),
+                    size: ButtonSize.xSmall,
+                    density: ButtonDensity.iconDense,
+                    onPressed: settings == null
+                        ? null
+                        : () {
+                            showDropdown(
+                              context: context,
+                              builder: (context) {
+                                return DropdownMenu(
+                                  children: [
+                                    MenuButton(
+                                      key: const ValueKey(
+                                        'quality-metric-colors-toggle',
+                                      ),
+                                      leading: Icon(
+                                        colorCodingEnabled
+                                            ? Icons.check
+                                            : Icons.palette_outlined,
+                                        size: 14,
+                                      ),
+                                      onPressed: (context) {
+                                        unawaited(
+                                          ref
+                                              .read(appSettingsProvider.notifier)
+                                              .setQualityMetricColorsEnabled(
+                                                !colorCodingEnabled,
+                                              ),
+                                        );
+                                      },
+                                      child: Text(
+                                        colorCodingEnabled
+                                            ? 'Disable metric colors'
+                                            : 'Enable metric colors',
+                                      ),
                                     ),
-                                    leading: Icon(
-                                      colorCodingEnabled
-                                          ? Icons.check
-                                          : Icons.palette_outlined,
-                                      size: 14,
-                                    ),
-                                    onPressed: (context) {
-                                      unawaited(
-                                        ref
-                                            .read(appSettingsProvider.notifier)
-                                            .setQualityMetricColorsEnabled(
-                                              !colorCodingEnabled,
-                                            ),
-                                      );
-                                    },
-                                    child: Text(
-                                      colorCodingEnabled
-                                          ? 'Disable metric colors'
-                                          : 'Enable metric colors',
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
-                        },
-                  child: Icon(
-                    Icons.settings,
-                    size: 11,
-                    color: theme.colorScheme.mutedForeground.withValues(
-                      alpha: 0.55,
+                                  ],
+                                );
+                              },
+                            );
+                          },
+                    child: Icon(
+                      Icons.settings,
+                      size: 11,
+                      color: theme.colorScheme.mutedForeground.withValues(
+                        alpha: 0.55,
+                      ),
                     ),
                   ),
                 ),

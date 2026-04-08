@@ -116,6 +116,19 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     );
   }
 
+  Future<void> setThemePreference(AppThemePreference themePreference) async {
+    await _update(
+      (settings) => settings.copyWith(themePreference: themePreference),
+    );
+  }
+
+  Future<void> cycleThemePreference() async {
+    await _update(
+      (settings) =>
+          settings.copyWith(themePreference: settings.themePreference.next),
+    );
+  }
+
   Future<void> setDeveloperModeEnabled(bool developerModeEnabled) async {
     await _update(
       (settings) => settings.copyWith(

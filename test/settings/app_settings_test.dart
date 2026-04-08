@@ -238,6 +238,7 @@ void main() {
       expect(settings.preserveExif, isFalse);
       expect(settings.preserveColorProfile, isFalse);
       expect(settings.qualityMetricColorsEnabled, isFalse);
+      expect(settings.themePreference, AppThemePreference.system);
     });
   });
 }

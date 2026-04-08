@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:shadcn_flutter/shadcn_flutter.dart';
+
 enum CompressionMethod { lossless, lossy }
 
 enum CompressionPriority { compatibility, efficiency }
@@ -10,6 +12,8 @@ enum StorageDestinationMode { sameFolder, differentLocation }
 
 enum SameFolderAction { replaceSource, keepSource }
 
+enum AppThemePreference { system, light, dark }
+
 const Object _noAppSettingsValue = Object();
 
 extension PreferredCodecCapabilities on PreferredCodec {
@@ -17,6 +21,32 @@ extension PreferredCodecCapabilities on PreferredCodec {
     return switch (this) {
       PreferredCodec.jpeg => false,
       _ => true,
+    };
+  }
+}
+
+extension AppThemePreferenceValues on AppThemePreference {
+  ThemeMode get themeMode {
+    return switch (this) {
+      AppThemePreference.system => ThemeMode.system,
+      AppThemePreference.light => ThemeMode.light,
+      AppThemePreference.dark => ThemeMode.dark,
+    };
+  }
+
+  String get label {
+    return switch (this) {
+      AppThemePreference.system => 'System',
+      AppThemePreference.light => 'Light',
+      AppThemePreference.dark => 'Dark',
+    };
+  }
+
+  AppThemePreference get next {
+    return switch (this) {
+      AppThemePreference.system => AppThemePreference.light,
+      AppThemePreference.light => AppThemePreference.dark,
+      AppThemePreference.dark => AppThemePreference.system,
     };
   }
 }
@@ -35,6 +65,7 @@ class AppSettings {
     required this.preserveExif,
     required this.preserveColorProfile,
     this.qualityMetricColorsEnabled = false,
+    this.themePreference = AppThemePreference.system,
     required this.developerModeEnabled,
     required this.timingLogsEnabled,
     this.differentLocationPath,
@@ -54,6 +85,7 @@ class AppSettings {
   final bool preserveExif;
   final bool preserveColorProfile;
   final bool qualityMetricColorsEnabled;
+  final AppThemePreference themePreference;
   final bool developerModeEnabled;
   final bool timingLogsEnabled;
   final bool previewPathHeaderEnabled;
@@ -71,6 +103,7 @@ class AppSettings {
     preserveExif: false,
     preserveColorProfile: false,
     qualityMetricColorsEnabled: false,
+    themePreference: AppThemePreference.system,
     developerModeEnabled: false,
     timingLogsEnabled: false,
     previewPathHeaderEnabled: false,
@@ -133,6 +166,7 @@ class AppSettings {
     bool? preserveExif,
     bool? preserveColorProfile,
     bool? qualityMetricColorsEnabled,
+    AppThemePreference? themePreference,
     bool? developerModeEnabled,
     bool? timingLogsEnabled,
     bool? previewPathHeaderEnabled,
@@ -160,6 +194,7 @@ class AppSettings {
           preserveColorProfile ?? this.preserveColorProfile,
       qualityMetricColorsEnabled:
           qualityMetricColorsEnabled ?? this.qualityMetricColorsEnabled,
+      themePreference: themePreference ?? this.themePreference,
       developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,
       timingLogsEnabled: timingLogsEnabled ?? this.timingLogsEnabled,
       previewPathHeaderEnabled:
@@ -182,6 +217,7 @@ class AppSettings {
       'preserveExif': preserveExif,
       'preserveColorProfile': preserveColorProfile,
       'qualityMetricColorsEnabled': qualityMetricColorsEnabled,
+      'themePreference': themePreference.name,
       'developerModeEnabled': developerModeEnabled,
       'timingLogsEnabled': timingLogsEnabled,
       'previewPathHeaderEnabled': previewPathHeaderEnabled,
@@ -233,6 +269,9 @@ class AppSettings {
       qualityMetricColorsEnabled:
           json['qualityMetricColorsEnabled'] as bool? ??
           defaults.qualityMetricColorsEnabled,
+      themePreference: AppThemePreference.values.byName(
+        json['themePreference'] as String? ?? defaults.themePreference.name,
+      ),
       developerModeEnabled:
           json['developerModeEnabled'] as bool? ??
           defaults.developerModeEnabled,
@@ -260,6 +299,7 @@ class AppSettings {
         other.preserveExif == preserveExif &&
         other.preserveColorProfile == preserveColorProfile &&
         other.qualityMetricColorsEnabled == qualityMetricColorsEnabled &&
+        other.themePreference == themePreference &&
         other.developerModeEnabled == developerModeEnabled &&
         other.timingLogsEnabled == timingLogsEnabled &&
         other.previewPathHeaderEnabled == previewPathHeaderEnabled;
@@ -280,6 +320,7 @@ class AppSettings {
     preserveExif,
     preserveColorProfile,
     qualityMetricColorsEnabled,
+    themePreference,
     developerModeEnabled,
     timingLogsEnabled,
     previewPathHeaderEnabled,

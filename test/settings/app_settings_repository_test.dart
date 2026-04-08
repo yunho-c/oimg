@@ -28,6 +28,7 @@ void main() {
         preserveExif: true,
         preserveColorProfile: true,
         qualityMetricColorsEnabled: true,
+        themePreference: AppThemePreference.light,
         developerModeEnabled: true,
         timingLogsEnabled: true,
       );
