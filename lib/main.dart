@@ -1997,50 +1997,59 @@ class _StorageCollapsibleState extends ConsumerState<_StorageCollapsible> {
                       LayoutBuilder(
                         builder: (context, constraints) {
                           final cardWidth = (constraints.maxWidth - 8) / 2;
-                          return RadioGroup<StorageDestinationMode>(
-                            value: widget.settings.storageDestinationMode,
-                            onChanged: widget.controlsLocked
-                                ? null
-                                : (_) {},
-                            child: Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                SizedBox(
-                                  width: cardWidth,
-                                  child: _StorageDestinationCard(
-                                    value: StorageDestinationMode.sameFolder,
-                                    enabled: !widget.controlsLocked,
-                                    onTap: _handleSameFolderSelection,
-                                    child: const _ChoiceCard(
-                                      title: 'Same folder',
+                          return ComponentTheme(
+                            data: const RadioCardTheme(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                            ),
+                            child: RadioGroup<StorageDestinationMode>(
+                              value: widget.settings.storageDestinationMode,
+                              onChanged: widget.controlsLocked
+                                  ? null
+                                  : (_) {},
+                              child: Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  SizedBox(
+                                    width: cardWidth,
+                                    child: _StorageDestinationCard(
+                                      value: StorageDestinationMode.sameFolder,
+                                      enabled: !widget.controlsLocked,
+                                      onTap: _handleSameFolderSelection,
+                                      child: const _ChoiceCard(
+                                        title: 'Same folder',
+                                      ),
                                     ),
                                   ),
-                                ),
-                                SizedBox(
-                                  width: cardWidth,
-                                  child: _StorageDestinationCard(
-                                    value:
-                                        StorageDestinationMode.differentLocation,
-                                    enabled:
-                                        !widget.controlsLocked &&
-                                        !_isPickingFolder,
-                                    onTap: () =>
-                                        _handleDifferentLocationSelection(
-                                          forcePicker:
-                                              widget.settings
-                                                  .storageDestinationMode ==
-                                              StorageDestinationMode
-                                                  .differentLocation,
-                                        ),
-                                    child: _ChoiceCard(
-                                      title: _isPickingFolder
-                                          ? 'Choosing...'
-                                          : 'Different location',
+                                  SizedBox(
+                                    width: cardWidth,
+                                    child: _StorageDestinationCard(
+                                      value:
+                                          StorageDestinationMode
+                                              .differentLocation,
+                                      enabled:
+                                          !widget.controlsLocked &&
+                                          !_isPickingFolder,
+                                      onTap: () =>
+                                          _handleDifferentLocationSelection(
+                                            forcePicker:
+                                                widget.settings
+                                                    .storageDestinationMode ==
+                                                StorageDestinationMode
+                                                    .differentLocation,
+                                          ),
+                                      child: _ChoiceCard(
+                                        title: _isPickingFolder
+                                            ? 'Choosing...'
+                                            : 'Different location',
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           );
                         },
