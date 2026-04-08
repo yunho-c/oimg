@@ -1395,7 +1395,7 @@ class _ExplorerSidebar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
             child: Text(
               'Files',
               style: TextStyle(
@@ -1411,7 +1411,7 @@ class _ExplorerSidebar extends StatelessWidget {
               nodes: nodes,
               branchLine: BranchLine.none,
               expandIcon: false,
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 10),
               builder: (context, node) {
                 final entry = node.data;
                 return TreeItemView(
