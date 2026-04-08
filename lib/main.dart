@@ -32,7 +32,7 @@ const _maxSidebarWidth = 420.0;
 const _defaultSettingsSidebarWidth = 320.0;
 const _minSettingsSidebarWidth = 240.0;
 const _maxSettingsSidebarWidth = 420.0;
-const _defaultBottomSidebarHeight = 188.0;
+const _defaultBottomSidebarHeight = 165.0;
 const _minBottomSidebarHeight = 140.0;
 const _maxBottomSidebarHeight = 320.0;
 
@@ -920,7 +920,7 @@ class _FolderStage extends StatelessWidget {
               ],
             ),
           ),
-          const Divider(),
+          // const Divider(),
           Expanded(
             child: Container(
               color: theme.colorScheme.background,
@@ -1405,7 +1405,7 @@ class _ExplorerSidebar extends StatelessWidget {
               ),
             ).xSmall(),
           ),
-          const Divider(),
+          // const Divider(),
           Expanded(
             child: TreeView<_ExplorerEntry>(
               nodes: nodes,
@@ -2496,18 +2496,6 @@ class _BottomSidebar extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-            child: Text(
-              'Details',
-              style: TextStyle(
-                color: theme.colorScheme.mutedForeground,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.6,
-              ),
-            ).xSmall(),
-          ),
-          const Divider(),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(14),
