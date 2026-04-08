@@ -1778,8 +1778,15 @@ class _SettingsModeSwitcher extends StatelessWidget {
   }
 }
 
-class _MetadataCollapsible extends StatelessWidget {
+class _MetadataCollapsible extends StatefulWidget {
   const _MetadataCollapsible();
+
+  @override
+  State<_MetadataCollapsible> createState() => _MetadataCollapsibleState();
+}
+
+class _MetadataCollapsibleState extends State<_MetadataCollapsible> {
+  bool _isExpanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -1803,35 +1810,59 @@ class _MetadataCollapsible extends StatelessWidget {
 
     return SizedBox(
       width: double.infinity,
-      child: ComponentTheme(
-        data: const CollapsibleTheme(
-          iconCollapsed: Icons.add,
-          iconExpanded: Icons.remove,
-        ),
-        child: Collapsible(
-          isExpanded: false,
-          children: [
-            CollapsibleTrigger(
-              child: Row(
-                children: [
-                  const Text('Metadata').small().medium(),
-                ],
-              ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Expanded(child: const Text('Metadata').small().medium()),
+                GhostButton(
+                  onPressed: () {
+                    setState(() {
+                      _isExpanded = !_isExpanded;
+                    });
+                  },
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    transitionBuilder: (child, animation) {
+                      return FadeTransition(opacity: animation, child: child);
+                    },
+                    child: Icon(
+                      _isExpanded ? Icons.remove : Icons.add,
+                      key: ValueKey<bool>(_isExpanded),
+                    ).iconXSmall(),
+                  ),
+                ),
+              ],
             ),
-            CollapsibleContent(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    option('Preserve EXIF'),
-                    option('Preserve color profile'),
-                  ],
+          ),
+          ClipRect(
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOutCubic,
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: _isExpanded
+                    ? const BoxConstraints()
+                    : const BoxConstraints(maxHeight: 0),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      option('Preserve EXIF'),
+                      option('Preserve color profile'),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
