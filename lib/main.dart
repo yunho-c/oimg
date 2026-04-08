@@ -243,7 +243,7 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
       headers: [
         AppBar(
           height: _titleBarHeight,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
           child: Stack(
             alignment: Alignment.center,
             children: [
@@ -2721,7 +2721,7 @@ class _TitleBarSettingsButton extends ConsumerWidget {
           child: Icon(
             Icons.settings,
             size: 11,
-            color: theme.colorScheme.mutedForeground.withValues(alpha: 0.55),
+            color: theme.colorScheme.mutedForeground.withValues(alpha: 0.35),
           ),
         ),
       ),
@@ -3401,7 +3401,7 @@ class _BottomQualitySection extends ConsumerWidget {
                       Icons.settings,
                       size: 11,
                       color: theme.colorScheme.mutedForeground.withValues(
-                        alpha: 0.55,
+                        alpha: 0.35,
                       ),
                     ),
                   ),
