@@ -2644,19 +2644,19 @@ class _DeveloperButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onPressed,
-        child: SizedBox(
+    return SizedBox(
+      width: 16,
+      height: 16,
+      child: Center(
+        child: GhostButton(
           key: const ValueKey('title-bar-developer-button'),
-          width: 16,
-          height: 16,
+          size: ButtonSize.xSmall,
+          density: ButtonDensity.iconDense,
+          onPressed: onPressed,
           child: Icon(
             LucideIcons.wrench,
             size: 10,
-            color: theme.colorScheme.mutedForeground.withValues(alpha: 0.2),
+            color: theme.colorScheme.mutedForeground.withValues(alpha: 0.05),
           ),
         ),
       ),
