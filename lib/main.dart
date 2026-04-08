@@ -769,7 +769,7 @@ class _ImageStage extends ConsumerWidget {
               Expanded(
                 child: Container(
                   color: theme.colorScheme.background,
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
                   child: plan.when(
                     data: (_) {
                       final fileName = FileOpenController.fileNameOf(
@@ -842,7 +842,7 @@ class _ImageStage extends ConsumerWidget {
                   ),
                 ),
               ),
-              const Divider(),
+              // const Divider(),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
                 child: _PreviewDisplayModeRow(
