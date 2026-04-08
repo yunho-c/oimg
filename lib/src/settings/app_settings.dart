@@ -34,6 +34,7 @@ class AppSettings {
     required this.preserveOriginalDate,
     required this.preserveExif,
     required this.preserveColorProfile,
+    this.qualityMetricColorsEnabled = false,
     required this.developerModeEnabled,
     required this.timingLogsEnabled,
     this.differentLocationPath,
@@ -52,6 +53,7 @@ class AppSettings {
   final bool preserveOriginalDate;
   final bool preserveExif;
   final bool preserveColorProfile;
+  final bool qualityMetricColorsEnabled;
   final bool developerModeEnabled;
   final bool timingLogsEnabled;
   final bool previewPathHeaderEnabled;
@@ -68,6 +70,7 @@ class AppSettings {
     preserveOriginalDate: false,
     preserveExif: false,
     preserveColorProfile: false,
+    qualityMetricColorsEnabled: false,
     developerModeEnabled: false,
     timingLogsEnabled: false,
     previewPathHeaderEnabled: false,
@@ -129,6 +132,7 @@ class AppSettings {
     bool? preserveOriginalDate,
     bool? preserveExif,
     bool? preserveColorProfile,
+    bool? qualityMetricColorsEnabled,
     bool? developerModeEnabled,
     bool? timingLogsEnabled,
     bool? previewPathHeaderEnabled,
@@ -154,6 +158,8 @@ class AppSettings {
       preserveExif: preserveExif ?? this.preserveExif,
       preserveColorProfile:
           preserveColorProfile ?? this.preserveColorProfile,
+      qualityMetricColorsEnabled:
+          qualityMetricColorsEnabled ?? this.qualityMetricColorsEnabled,
       developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,
       timingLogsEnabled: timingLogsEnabled ?? this.timingLogsEnabled,
       previewPathHeaderEnabled:
@@ -175,6 +181,7 @@ class AppSettings {
       'preserveOriginalDate': preserveOriginalDate,
       'preserveExif': preserveExif,
       'preserveColorProfile': preserveColorProfile,
+      'qualityMetricColorsEnabled': qualityMetricColorsEnabled,
       'developerModeEnabled': developerModeEnabled,
       'timingLogsEnabled': timingLogsEnabled,
       'previewPathHeaderEnabled': previewPathHeaderEnabled,
@@ -223,6 +230,9 @@ class AppSettings {
       preserveColorProfile:
           json['preserveColorProfile'] as bool? ??
           defaults.preserveColorProfile,
+      qualityMetricColorsEnabled:
+          json['qualityMetricColorsEnabled'] as bool? ??
+          defaults.qualityMetricColorsEnabled,
       developerModeEnabled:
           json['developerModeEnabled'] as bool? ??
           defaults.developerModeEnabled,
@@ -249,6 +259,7 @@ class AppSettings {
         other.preserveOriginalDate == preserveOriginalDate &&
         other.preserveExif == preserveExif &&
         other.preserveColorProfile == preserveColorProfile &&
+        other.qualityMetricColorsEnabled == qualityMetricColorsEnabled &&
         other.developerModeEnabled == developerModeEnabled &&
         other.timingLogsEnabled == timingLogsEnabled &&
         other.previewPathHeaderEnabled == previewPathHeaderEnabled;
@@ -268,6 +279,7 @@ class AppSettings {
     preserveOriginalDate,
     preserveExif,
     preserveColorProfile,
+    qualityMetricColorsEnabled,
     developerModeEnabled,
     timingLogsEnabled,
     previewPathHeaderEnabled,

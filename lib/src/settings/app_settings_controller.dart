@@ -106,6 +106,16 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     );
   }
 
+  Future<void> setQualityMetricColorsEnabled(
+    bool qualityMetricColorsEnabled,
+  ) async {
+    await _update(
+      (settings) => settings.copyWith(
+        qualityMetricColorsEnabled: qualityMetricColorsEnabled,
+      ),
+    );
+  }
+
   Future<void> setDeveloperModeEnabled(bool developerModeEnabled) async {
     await _update(
       (settings) => settings.copyWith(

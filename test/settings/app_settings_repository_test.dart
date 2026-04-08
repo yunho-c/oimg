@@ -27,6 +27,7 @@ void main() {
         preserveOriginalDate: true,
         preserveExif: true,
         preserveColorProfile: true,
+        qualityMetricColorsEnabled: true,
         developerModeEnabled: true,
         timingLogsEnabled: true,
       );

@@ -237,6 +237,7 @@ void main() {
       expect(settings.preserveOriginalDate, isFalse);
       expect(settings.preserveExif, isFalse);
       expect(settings.preserveColorProfile, isFalse);
+      expect(settings.qualityMetricColorsEnabled, isFalse);
     });
   });
 }

@@ -35,6 +35,14 @@ const _maxSettingsSidebarWidth = 420.0;
 const _defaultBottomSidebarHeight = 165.0;
 const _minBottomSidebarHeight = 140.0;
 const _maxBottomSidebarHeight = 320.0;
+const List<({double value, Color color})> _qualityMetricColorStops = [
+  (value: 0, color: Color(0xFF440000)),
+  (value: 20, color: Color(0xFFAA0000)),
+  (value: 40, color: Color(0xFFDE602E)),
+  (value: 60, color: Color(0xFFDBDE25)),
+  (value: 80, color: Color(0xFF34C759)),
+  (value: 100, color: Color(0xFF0094D9)),
+];
 
 enum _SavingsDisplayMode { percent, ratio }
 
@@ -3202,9 +3210,11 @@ class _BottomQualitySection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final settings = ref.watch(appSettingsProvider).asData?.value;
     final previewState = ref.watch(currentPreviewProvider);
     final previewPendingBeforeMetrics =
         previewState.isLoading && previewState.asData?.value == null;
+    final colorCodingEnabled = settings?.qualityMetricColorsEnabled ?? false;
     final rows = isFolderSelected
         ? const <_BottomMetricRowState>[
             _BottomMetricRowState.text(label: 'Pixel Match', value: 'N/A'),
@@ -3216,18 +3226,23 @@ class _BottomQualitySection extends ConsumerWidget {
               label: 'Pixel Match',
               metric: ref.watch(currentPreviewPixelMatchProvider),
               formatter: _formatNullableMetricPercent,
+              scoreMapper: (value) => value?.clamp(0, 100).toDouble(),
               previewPendingBeforeMetrics: previewPendingBeforeMetrics,
             ),
             _metricRowState(
               label: 'MS-SSIM',
               metric: ref.watch(currentPreviewMsSsimProvider),
               formatter: _formatNullableMetric,
+              scoreMapper: (value) => value == null
+                  ? null
+                  : (value * 100).clamp(0, 100).toDouble(),
               previewPendingBeforeMetrics: previewPendingBeforeMetrics,
             ),
             _metricRowState(
               label: 'SSIMULACRA 2',
               metric: ref.watch(currentPreviewSsimulacra2Provider),
               formatter: (value) => _formatNullableMetric(value, digits: 1),
+              scoreMapper: (value) => value?.clamp(0, 100).toDouble(),
               previewPendingBeforeMetrics: previewPendingBeforeMetrics,
             ),
           ];
@@ -3241,10 +3256,70 @@ class _BottomQualitySection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Quality').xSmall().medium().muted(),
+          Row(
+            children: [
+              Expanded(child: const Text('Quality').small().medium().muted()),
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: GhostButton(
+                  key: const ValueKey('quality-metric-colors-button'),
+                  density: ButtonDensity.icon,
+                  onPressed: settings == null
+                      ? null
+                      : () {
+                          showDropdown(
+                            context: context,
+                            builder: (context) {
+                              return DropdownMenu(
+                                children: [
+                                  MenuButton(
+                                    key: const ValueKey(
+                                      'quality-metric-colors-toggle',
+                                    ),
+                                    leading: Icon(
+                                      colorCodingEnabled
+                                          ? Icons.check
+                                          : Icons.palette_outlined,
+                                      size: 14,
+                                    ),
+                                    onPressed: (context) {
+                                      unawaited(
+                                        ref
+                                            .read(appSettingsProvider.notifier)
+                                            .setQualityMetricColorsEnabled(
+                                              !colorCodingEnabled,
+                                            ),
+                                      );
+                                    },
+                                    child: Text(
+                                      colorCodingEnabled
+                                          ? 'Disable metric colors'
+                                          : 'Enable metric colors',
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
+                  child: Icon(
+                    Icons.settings,
+                    size: 11,
+                    color: theme.colorScheme.mutedForeground.withValues(
+                      alpha: 0.55,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 10),
           for (var index = 0; index < rows.length; index++) ...[
-            _BottomMetricRow(row: rows[index]),
+            _BottomMetricRow(
+              row: rows[index],
+              colorCodingEnabled: colorCodingEnabled,
+            ),
             if (index + 1 < rows.length) const SizedBox(height: 8),
           ],
         ],
@@ -3257,6 +3332,7 @@ _BottomMetricRowState _metricRowState({
   required String label,
   required AsyncValue<PreviewMetricResult?> metric,
   required String Function(double?) formatter,
+  required double? Function(double? value) scoreMapper,
   required bool previewPendingBeforeMetrics,
 }) {
   if (previewPendingBeforeMetrics) {
@@ -3266,6 +3342,7 @@ _BottomMetricRowState _metricRowState({
     data: (result) => _BottomMetricRowState.text(
       label: label,
       value: formatter(result?.value),
+      qualityScore: scoreMapper(result?.value),
       timingTooltip: result == null
           ? null
           : _formatMetricTimingTooltip(result.elapsedMilliseconds),
@@ -3280,6 +3357,7 @@ class _BottomMetricRowState {
     required this.label,
     required this.state,
     this.value,
+    this.qualityScore,
     this.timingTooltip,
   });
 
@@ -3289,31 +3367,43 @@ class _BottomMetricRowState {
   const _BottomMetricRowState.text({
     required String label,
     required String value,
+    double? qualityScore,
     String? timingTooltip,
   }) : this._(
          label: label,
          state: _BottomMetricRowDisplayState.text,
          value: value,
+         qualityScore: qualityScore,
          timingTooltip: timingTooltip,
        );
 
   final String label;
   final _BottomMetricRowDisplayState state;
   final String? value;
+  final double? qualityScore;
   final String? timingTooltip;
 }
 
 enum _BottomMetricRowDisplayState { loading, text }
 
 class _BottomMetricRow extends StatelessWidget {
-  const _BottomMetricRow({required this.row});
+  const _BottomMetricRow({
+    required this.row,
+    required this.colorCodingEnabled,
+  });
 
   final _BottomMetricRowState row;
+  final bool colorCodingEnabled;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final labelWidget = Text(row.label).xSmall().medium().muted();
     final help = _metricHelpFor(row.label);
+    final valueColor =
+        colorCodingEnabled && row.qualityScore != null
+        ? _qualityMetricColor(row.qualityScore!)
+        : theme.colorScheme.mutedForeground;
 
     return Row(
       children: [
@@ -3330,7 +3420,10 @@ class _BottomMetricRow extends StatelessWidget {
           )
         else ...[
           (() {
-            final valueWidget = Text(row.value!).xSmall().medium().muted();
+            final valueWidget = Text(
+              row.value!,
+              style: TextStyle(color: valueColor),
+            ).xSmall().medium();
             return row.timingTooltip == null
                 ? valueWidget
                 : Tooltip(
@@ -3345,6 +3438,28 @@ class _BottomMetricRow extends StatelessWidget {
       ],
     );
   }
+}
+
+Color _qualityMetricColor(double score) {
+  final clampedScore = score.clamp(0, 100).toDouble();
+
+  for (var index = 1; index < _qualityMetricColorStops.length; index++) {
+    final lower = _qualityMetricColorStops[index - 1];
+    final upper = _qualityMetricColorStops[index];
+    if (clampedScore > upper.value) {
+      continue;
+    }
+
+    final range = upper.value - lower.value;
+    if (range <= 0) {
+      return upper.color;
+    }
+
+    final t = (clampedScore - lower.value) / range;
+    return Color.lerp(lower.color, upper.color, t) ?? upper.color;
+  }
+
+  return _qualityMetricColorStops.last.color;
 }
 
 class _MetricHelpData {

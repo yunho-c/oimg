@@ -49,6 +49,7 @@ void main() {
       await notifier.setPreserveOriginalDate(true);
       await notifier.setPreserveExif(true);
       await notifier.setPreserveColorProfile(true);
+      await notifier.setQualityMetricColorsEnabled(true);
       await notifier.setDeveloperModeEnabled(true);
       await notifier.setTimingLogsEnabled(true);
 
@@ -68,6 +69,7 @@ void main() {
           preserveOriginalDate: true,
           preserveExif: true,
           preserveColorProfile: true,
+          qualityMetricColorsEnabled: true,
           developerModeEnabled: true,
           timingLogsEnabled: true,
         ),

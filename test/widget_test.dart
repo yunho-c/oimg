@@ -1084,6 +1084,51 @@ void main() {
     expect(settings.preserveExif, isTrue);
   });
 
+  testWidgets('quality section toggles metric colors from the settings menu', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final store = _FakeAppSettingsStore();
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/source.png': _metadata('png', 2400)},
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/source.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(
+      _buildApp(controller: controller, slimg: slimg, store: store),
+    );
+    await tester.pumpAndSettle();
+
+    final initialMetricText = tester.widget<Text>(find.text('98.7%').first);
+    final initialMetricColor = initialMetricText.style?.color;
+
+    await tester.tap(
+      find.byKey(const ValueKey('quality-metric-colors-button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Enable metric colors'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey('quality-metric-colors-toggle')),
+    );
+    await tester.pumpAndSettle();
+
+    final settings = AppSettings.fromJsonString((await store.read())!);
+    expect(settings.qualityMetricColorsEnabled, isTrue);
+
+    final metricText = tester.widget<Text>(find.text('98.7%').first);
+    expect(metricText.style?.color, isNotNull);
+    expect(metricText.style?.color, isNot(equals(initialMetricColor)));
+  });
+
   testWidgets('folder collage supports show-in-file-manager context menu', (
     tester,
   ) async {
