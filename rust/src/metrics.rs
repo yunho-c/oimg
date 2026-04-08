@@ -125,6 +125,9 @@ pub(crate) fn compute_preview_pixel_match_percentage(
 ) -> crate::error::Result<Option<f64>> {
     let artifact = request_artifact(&request)?;
     Ok(*artifact.pixel_match_percentage.get_or_init(|| {
+        if artifact.decoded_pixels_equal() {
+            return Some(100.0);
+        }
         compute_pixel_match_percentage(
             artifact.original_width,
             artifact.original_height,
@@ -141,6 +144,9 @@ pub(crate) fn compute_preview_ms_ssim(
 ) -> crate::error::Result<Option<f64>> {
     let artifact = request_artifact(&request)?;
     Ok(*artifact.ms_ssim.get_or_init(|| {
+        if artifact.decoded_pixels_equal() {
+            return Some(100.0);
+        }
         compute_ms_ssim(
             artifact.original_width,
             artifact.original_height,
@@ -157,6 +163,9 @@ pub(crate) fn compute_preview_ssimulacra2(
 ) -> crate::error::Result<Option<f64>> {
     let artifact = request_artifact(&request)?;
     Ok(*artifact.ssimulacra2.get_or_init(|| {
+        if artifact.decoded_pixels_equal() {
+            return Some(100.0);
+        }
         compute_ssimulacra2_score(
             artifact.original_width,
             artifact.original_height,
@@ -325,7 +334,10 @@ fn supported_ms_ssim_scales(width: usize, height: usize) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::preview_artifacts::PreviewArtifact;
+    use crate::types::PreviewArtifactRequest;
     use slimg_core::ImageData;
+    use std::sync::Arc;
 
     fn gradient_image(width: u32, height: u32) -> ImageData {
         let mut data = vec![0_u8; (width * height * 4) as usize];
@@ -339,6 +351,17 @@ mod tests {
             }
         }
         ImageData::new(width, height, data)
+    }
+
+    fn insert_preview_artifact(original: &ImageData, preview: &ImageData) -> String {
+        preview_artifact_store().insert(PreviewArtifact::new(
+            original.width,
+            original.height,
+            preview.width,
+            preview.height,
+            Arc::<[u8]>::from(original.data.clone()),
+            Arc::<[u8]>::from(preview.data.clone()),
+        ))
     }
 
     #[test]
@@ -642,5 +665,88 @@ mod tests {
             &distorted.data,
         )
         .is_none());
+    }
+
+    #[test]
+    fn identical_preview_artifact_returns_full_scores_for_all_metrics() {
+        let image = gradient_image(32, 32);
+        let artifact_id = insert_preview_artifact(&image, &image);
+        let request = PreviewArtifactRequest {
+            artifact_id: artifact_id.clone(),
+        };
+
+        assert_eq!(
+            compute_preview_pixel_match_percentage(request.clone())
+                .expect("pixel match should compute"),
+            Some(100.0)
+        );
+        assert_eq!(
+            compute_preview_ms_ssim(request.clone()).expect("ms-ssim should compute"),
+            Some(100.0)
+        );
+        assert_eq!(
+            compute_preview_ssimulacra2(request).expect("ssimulacra2 should compute"),
+            Some(100.0)
+        );
+
+        preview_artifact_store().remove(&artifact_id);
+    }
+
+    #[test]
+    fn differing_preview_artifact_does_not_force_full_scores() {
+        let reference = gradient_image(32, 32);
+        let mut distorted = reference.clone();
+        for pixel in distorted.data.chunks_exact_mut(4) {
+            pixel[0] = 0;
+            pixel[1] = 0;
+            pixel[2] = 0;
+        }
+
+        let artifact_id = insert_preview_artifact(&reference, &distorted);
+        let request = PreviewArtifactRequest {
+            artifact_id: artifact_id.clone(),
+        };
+
+        assert_ne!(
+            compute_preview_pixel_match_percentage(request.clone())
+                .expect("pixel match should compute"),
+            Some(100.0)
+        );
+        assert_ne!(
+            compute_preview_ms_ssim(request.clone()).expect("ms-ssim should compute"),
+            Some(100.0)
+        );
+        assert_ne!(
+            compute_preview_ssimulacra2(request).expect("ssimulacra2 should compute"),
+            Some(100.0)
+        );
+
+        preview_artifact_store().remove(&artifact_id);
+    }
+
+    #[test]
+    fn dimension_mismatch_preview_artifact_does_not_take_fast_path() {
+        let reference = gradient_image(32, 32);
+        let preview = gradient_image(16, 32);
+        let artifact_id = insert_preview_artifact(&reference, &preview);
+        let request = PreviewArtifactRequest {
+            artifact_id: artifact_id.clone(),
+        };
+
+        assert_eq!(
+            compute_preview_pixel_match_percentage(request.clone())
+                .expect("pixel match should compute"),
+            None
+        );
+        assert_eq!(
+            compute_preview_ms_ssim(request.clone()).expect("ms-ssim should compute"),
+            None
+        );
+        assert_eq!(
+            compute_preview_ssimulacra2(request).expect("ssimulacra2 should compute"),
+            None
+        );
+
+        preview_artifact_store().remove(&artifact_id);
     }
 }

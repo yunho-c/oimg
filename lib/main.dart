@@ -1975,7 +1975,8 @@ class _StorageCollapsible extends ConsumerStatefulWidget {
   final bool controlsLocked;
 
   @override
-  ConsumerState<_StorageCollapsible> createState() => _StorageCollapsibleState();
+  ConsumerState<_StorageCollapsible> createState() =>
+      _StorageCollapsibleState();
 }
 
 class _StorageCollapsibleState extends ConsumerState<_StorageCollapsible> {
@@ -2102,9 +2103,7 @@ class _StorageCollapsibleState extends ConsumerState<_StorageCollapsible> {
                             ),
                             child: RadioGroup<StorageDestinationMode>(
                               value: widget.settings.storageDestinationMode,
-                              onChanged: widget.controlsLocked
-                                  ? null
-                                  : (_) {},
+                              onChanged: widget.controlsLocked ? null : (_) {},
                               child: Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
@@ -2123,16 +2122,16 @@ class _StorageCollapsibleState extends ConsumerState<_StorageCollapsible> {
                                   SizedBox(
                                     width: cardWidth,
                                     child: _StorageDestinationCard(
-                                      value:
-                                          StorageDestinationMode
-                                              .differentLocation,
+                                      value: StorageDestinationMode
+                                          .differentLocation,
                                       enabled:
                                           !widget.controlsLocked &&
                                           !_isPickingFolder,
                                       onTap: () =>
                                           _handleDifferentLocationSelection(
                                             forcePicker:
-                                                widget.settings
+                                                widget
+                                                    .settings
                                                     .storageDestinationMode ==
                                                 StorageDestinationMode
                                                     .differentLocation,
@@ -2178,7 +2177,8 @@ class _StorageCollapsibleState extends ConsumerState<_StorageCollapsible> {
                       ],
                       if (widget.settings.storageDestinationMode ==
                           StorageDestinationMode.differentLocation) ...[
-                        if (widget.settings.differentLocationPath case final path?)
+                        if (widget.settings.differentLocationPath
+                            case final path?)
                           Padding(
                             padding: const EdgeInsets.only(top: 10, left: 4),
                             child: Text(
@@ -3167,8 +3167,7 @@ class _BottomStatTile extends ConsumerWidget {
         : Tooltip(
             waitDuration: const Duration(milliseconds: 250),
             showDuration: const Duration(milliseconds: 120),
-            tooltip: (context) =>
-                TooltipContainer(child: Text(stat.tooltip!)),
+            tooltip: (context) => TooltipContainer(child: Text(stat.tooltip!)),
             child: tile,
           );
 
@@ -3313,9 +3312,8 @@ class _BottomQualitySection extends ConsumerWidget {
               label: 'MS-SSIM',
               metric: ref.watch(currentPreviewMsSsimProvider),
               formatter: _formatNullableMetric,
-              scoreMapper: (value) => value == null
-                  ? null
-                  : (value * 100).clamp(0, 100).toDouble(),
+              scoreMapper: (value) =>
+                  value == null ? null : (value * 100).clamp(0, 100).toDouble(),
               previewPendingBeforeMetrics: previewPendingBeforeMetrics,
             ),
             _metricRowState(
@@ -3482,10 +3480,7 @@ class _BottomMetricRowState {
 enum _BottomMetricRowDisplayState { loading, text }
 
 class _BottomMetricRow extends StatelessWidget {
-  const _BottomMetricRow({
-    required this.row,
-    required this.colorCodingEnabled,
-  });
+  const _BottomMetricRow({required this.row, required this.colorCodingEnabled});
 
   final _BottomMetricRowState row;
   final bool colorCodingEnabled;
@@ -3495,8 +3490,7 @@ class _BottomMetricRow extends StatelessWidget {
     final theme = Theme.of(context);
     final labelWidget = Text(row.label).xSmall().medium().muted();
     final help = _metricHelpFor(row.label);
-    final valueColor =
-        colorCodingEnabled && row.qualityScore != null
+    final valueColor = colorCodingEnabled && row.qualityScore != null
         ? _qualityMetricColor(row.qualityScore!)
         : theme.colorScheme.mutedForeground;
 
@@ -3887,10 +3881,7 @@ class _BottomSummaryViewModel {
 }
 
 class _DerivedSimilarityStat {
-  const _DerivedSimilarityStat({
-    required this.value,
-    required this.loading,
-  });
+  const _DerivedSimilarityStat({required this.value, required this.loading});
 
   final String value;
   final bool loading;

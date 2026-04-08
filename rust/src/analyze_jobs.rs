@@ -83,7 +83,9 @@ pub(crate) fn cancel_analyze_file_job(job_id: String) -> Result<()> {
 }
 
 pub(crate) fn dispose_analyze_file_job(job_id: String) -> Result<()> {
-    let record = registry_lock()?.remove(&job_id).ok_or_else(|| unknown_job(&job_id))?;
+    let record = registry_lock()?
+        .remove(&job_id)
+        .ok_or_else(|| unknown_job(&job_id))?;
     record.cancel_requested.store(true, Ordering::SeqCst);
     record.dispose_requested.store(true, Ordering::SeqCst);
     if is_terminal(record.snapshot_lock()?.state) {
@@ -122,10 +124,8 @@ fn run_analyze_job(record: &Arc<AnalyzeJobRecord>, request: AnalyzeFileRequest) 
     let (source_image, source_format) = decode(&input_bytes)?;
     let source_rgba = Arc::<[u8]>::from(source_image.data.clone());
 
-    let temp_dir = std::env::temp_dir().join(format!(
-        "oimg-analyze-{}",
-        record.snapshot_lock()?.job_id
-    ));
+    let temp_dir =
+        std::env::temp_dir().join(format!("oimg-analyze-{}", record.snapshot_lock()?.job_id));
     fs::create_dir_all(&temp_dir)?;
     *record.temp_dir_lock()? = Some(temp_dir.clone());
 

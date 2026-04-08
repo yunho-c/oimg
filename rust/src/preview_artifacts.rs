@@ -12,6 +12,7 @@ pub(crate) struct PreviewArtifact {
     pub preview_height: u32,
     pub original_rgba_bytes: Arc<[u8]>,
     pub preview_rgba_bytes: Arc<[u8]>,
+    pub decoded_pixels_equal: OnceLock<bool>,
     pub pixel_match_percentage: OnceLock<Option<f64>>,
     pub ms_ssim: OnceLock<Option<f64>>,
     pub ssimulacra2: OnceLock<Option<f64>>,
@@ -34,11 +35,20 @@ impl PreviewArtifact {
             preview_height,
             original_rgba_bytes,
             preview_rgba_bytes,
+            decoded_pixels_equal: OnceLock::new(),
             pixel_match_percentage: OnceLock::new(),
             ms_ssim: OnceLock::new(),
             ssimulacra2: OnceLock::new(),
             difference_image: OnceLock::new(),
         }
+    }
+
+    pub(crate) fn decoded_pixels_equal(&self) -> bool {
+        *self.decoded_pixels_equal.get_or_init(|| {
+            self.original_width == self.preview_width
+                && self.original_height == self.preview_height
+                && self.original_rgba_bytes.as_ref() == self.preview_rgba_bytes.as_ref()
+        })
     }
 }
 

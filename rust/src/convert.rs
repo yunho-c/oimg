@@ -288,17 +288,21 @@ fn preserve_metadata(
         return Ok(output_bytes);
     }
 
-    let Some(source_image) = DynImage::from_bytes(input_bytes.to_vec().into())
-        .map_err(|error| SlimgBridgeError::Internal {
-            message: format!("metadata source parse failed: {error}"),
+    let Some(source_image) =
+        DynImage::from_bytes(input_bytes.to_vec().into()).map_err(|error| {
+            SlimgBridgeError::Internal {
+                message: format!("metadata source parse failed: {error}"),
+            }
         })?
     else {
         return Ok(output_bytes);
     };
 
-    let Some(mut output_image) = DynImage::from_bytes(output_bytes.clone().into())
-        .map_err(|error| SlimgBridgeError::Internal {
-            message: format!("metadata output parse failed: {error}"),
+    let Some(mut output_image) =
+        DynImage::from_bytes(output_bytes.clone().into()).map_err(|error| {
+            SlimgBridgeError::Internal {
+                message: format!("metadata output parse failed: {error}"),
+            }
         })?
     else {
         return Ok(output_bytes);

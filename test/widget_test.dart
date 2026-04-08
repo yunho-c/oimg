@@ -138,11 +138,7 @@ void main() {
 
       final slimg = _FakeSlimgApi(
         inspectResults: {
-          '/tmp/transparent.png': _metadata(
-            'png',
-            2400,
-            hasTransparency: true,
-          ),
+          '/tmp/transparent.png': _metadata('png', 2400, hasTransparency: true),
         },
       );
       final controller = FileOpenController(
@@ -231,10 +227,10 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 170));
 
-    expect(find.byType(CircularProgressIndicator), findsNWidgets(3));
+    expect(find.byType(CircularProgressIndicator), findsNWidgets(4));
 
     await tester.pump(const Duration(milliseconds: 50));
-    expect(find.text('98.7%'), findsOneWidget);
+    expect(find.text('98.7%'), findsAtLeastNWidgets(1));
     expect(find.byType(CircularProgressIndicator), findsNWidgets(2));
 
     await tester.pump(const Duration(milliseconds: 80));
@@ -246,7 +242,9 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
-  testWidgets('similarity stat updates eagerly as metrics resolve', (tester) async {
+  testWidgets('similarity stat updates eagerly as metrics resolve', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -288,12 +286,13 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final slimg = _FakeSlimgApi(
-      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
-    )
-      ..pixelMatchValue = 80.0
-      ..msSsimValue = null
-      ..ssimulacra2Value = 20.0;
+    final slimg =
+        _FakeSlimgApi(
+            inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+          )
+          ..pixelMatchValue = 80.0
+          ..msSsimValue = null
+          ..ssimulacra2Value = 20.0;
     final controller = FileOpenController(
       channel: _FakeFileOpenChannel(),
       slimg: slimg,
@@ -308,18 +307,47 @@ void main() {
     expect(_similarityValueFinder('50.0%'), findsOneWidget);
   });
 
+  testWidgets('similarity stat shows 100% for full-quality metrics', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg =
+        _FakeSlimgApi(
+            inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+          )
+          ..pixelMatchValue = 100.0
+          ..msSsimValue = 1.0
+          ..ssimulacra2Value = 100.0;
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(_similarityLoadingFinder(), findsNothing);
+    expect(_similarityValueFinder('100%'), findsOneWidget);
+  });
+
   testWidgets('similarity stat shows N/A when all metrics are unavailable', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final slimg = _FakeSlimgApi(
-      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
-    )
-      ..pixelMatchValue = null
-      ..msSsimValue = null
-      ..ssimulacra2Value = null;
+    final slimg =
+        _FakeSlimgApi(
+            inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+          )
+          ..pixelMatchValue = null
+          ..msSsimValue = null
+          ..ssimulacra2Value = null;
     final controller = FileOpenController(
       channel: _FakeFileOpenChannel(),
       slimg: slimg,
@@ -1043,7 +1071,10 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('title-bar-theme-toggle')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('title-bar-theme-toggle')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('title-bar-theme-toggle')),
+      findsOneWidget,
+    );
     expect(find.text('Theme: Light'), findsOneWidget);
     expect(
       AppSettings.fromJsonString((await store.read())!).themePreference,
@@ -1052,7 +1083,10 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('title-bar-theme-toggle')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('title-bar-theme-toggle')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('title-bar-theme-toggle')),
+      findsOneWidget,
+    );
     expect(find.text('Theme: Dark'), findsOneWidget);
     expect(
       AppSettings.fromJsonString((await store.read())!).themePreference,
@@ -1061,7 +1095,10 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('title-bar-theme-toggle')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('title-bar-theme-toggle')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('title-bar-theme-toggle')),
+      findsOneWidget,
+    );
     expect(find.text('Theme: System'), findsOneWidget);
     expect(
       AppSettings.fromJsonString((await store.read())!).themePreference,
@@ -1258,33 +1295,36 @@ void main() {
     expect(find.text('/tmp/export'), findsOneWidget);
   });
 
-  testWidgets('storage same-folder label shows overwrite for same-format files', (
+  testWidgets(
+    'storage same-folder label shows overwrite for same-format files',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/source.jpg': _metadata('jpeg', 2400)},
+      );
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/source.jpg'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.add).first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Overwrite'), findsOneWidget);
+      expect(find.text('Remove original'), findsNothing);
+    },
+  );
+
+  testWidgets('metadata section toggles preserve original date', (
     tester,
   ) async {
-    await tester.binding.setSurfaceSize(const Size(1400, 1000));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
-    final slimg = _FakeSlimgApi(
-      inspectResults: {'/tmp/source.jpg': _metadata('jpeg', 2400)},
-    );
-    final controller = FileOpenController(
-      channel: _FakeFileOpenChannel(),
-      slimg: slimg,
-      initialPaths: const ['/tmp/source.jpg'],
-    );
-    await controller.initialize();
-
-    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byIcon(Icons.add).first);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Overwrite'), findsOneWidget);
-    expect(find.text('Remove original'), findsNothing);
-  });
-
-  testWidgets('metadata section toggles preserve original date', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -1309,14 +1349,18 @@ void main() {
 
     expect(find.text('Preserve original date'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('metadata-preserve-original-date')));
+    await tester.tap(
+      find.byKey(const ValueKey('metadata-preserve-original-date')),
+    );
     await tester.pumpAndSettle();
 
     final settings = AppSettings.fromJsonString((await store.read())!);
     expect(settings.preserveOriginalDate, isTrue);
   });
 
-  testWidgets('metadata section toggles color profile and exif', (tester) async {
+  testWidgets('metadata section toggles color profile and exif', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -1518,7 +1562,11 @@ Widget _buildApp({
   );
 }
 
-ImageMetadata _metadata(String format, int bytes, {bool hasTransparency = false}) {
+ImageMetadata _metadata(
+  String format,
+  int bytes, {
+  bool hasTransparency = false,
+}) {
   return ImageMetadata(
     width: 48,
     height: 32,

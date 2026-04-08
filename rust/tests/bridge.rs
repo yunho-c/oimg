@@ -89,7 +89,10 @@ fn wait_for_analyze_job(job_id: &str) -> oimg_rust::api::bridge::AnalyzeFileJobS
             return snapshot;
         }
 
-        assert!(Instant::now() < deadline, "timed out waiting for analyze job");
+        assert!(
+            Instant::now() < deadline,
+            "timed out waiting for analyze job"
+        );
         thread::sleep(Duration::from_millis(20));
     }
 }
