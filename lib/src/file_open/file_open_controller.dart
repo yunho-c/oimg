@@ -138,6 +138,10 @@ class FileOpenController extends ChangeNotifier {
     return paths.first;
   }
 
+  Future<void> showInFileManager(String path) async {
+    await _channel.showInFileManager(path);
+  }
+
   Future<void> openPaths(List<String> paths) async {
     final candidatePaths = await _expandCandidatePaths(paths);
     final inspectedFiles = <OpenedImageFile>[];

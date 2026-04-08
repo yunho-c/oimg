@@ -8,6 +8,7 @@ abstract class FileOpenChannel {
   Future<void> bind(OpenFilesHandler onOpenFiles);
   Future<List<String>> pickFiles();
   Future<List<String>> pickFolder();
+  Future<void> showInFileManager(String path);
 }
 
 class MethodChannelFileOpenChannel implements FileOpenChannel {
@@ -65,6 +66,15 @@ class MethodChannelFileOpenChannel implements FileOpenChannel {
       return _parsePathList(result);
     } on MissingPluginException {
       return const <String>[];
+    }
+  }
+
+  @override
+  Future<void> showInFileManager(String path) async {
+    try {
+      await _channel.invokeMethod<void>('showInFileManager', path);
+    } on MissingPluginException {
+      return;
     }
   }
 

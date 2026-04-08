@@ -46,6 +46,11 @@ class AppDelegate: FlutterAppDelegate {
             allowsMultipleSelection: false
           )
         )
+      } else if call.method == "showInFileManager" {
+        if let path = call.arguments as? String {
+          self.showInFileManager(path: path)
+        }
+        result(nil)
       } else {
         result(FlutterMethodNotImplemented)
       }
@@ -156,5 +161,18 @@ class AppDelegate: FlutterAppDelegate {
 
     retainSecurityScopedAccess(for: panel.urls)
     return panel.urls.filter(\.isFileURL).map(\.path)
+  }
+
+  private func showInFileManager(path: String) {
+    guard !path.isEmpty else {
+      return
+    }
+
+    let url = URL(fileURLWithPath: path)
+    guard FileManager.default.fileExists(atPath: url.path) else {
+      return
+    }
+
+    NSWorkspace.shared.activateFileViewerSelecting([url])
   }
 }

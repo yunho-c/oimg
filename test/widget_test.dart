@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:oimg/main.dart';
@@ -1006,6 +1007,102 @@ void main() {
     expect(find.text('Overwrite'), findsOneWidget);
     expect(find.text('Remove original'), findsNothing);
   });
+
+  testWidgets('folder collage supports show-in-file-manager context menu', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final channel = _FakeFileOpenChannel();
+    final slimg = _FakeSlimgApi(
+      inspectResults: {
+        '/tmp/animals/cat.png': _metadata('png', 2400),
+        '/tmp/animals/dog.png': _metadata('png', 2200),
+      },
+    );
+    final controller = FileOpenController(
+      channel: channel,
+      slimg: slimg,
+      initialPaths: const ['/tmp/animals/cat.png', '/tmp/animals/dog.png'],
+    );
+    await controller.initialize();
+    controller.showFolder('/tmp/animals');
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpAndSettle();
+
+    final tileFinder = find.byKey(
+      const ValueKey('folder-collage-tile-/tmp/animals/cat.png'),
+    );
+    final menuLabel = _showInFileManagerMenuLabel();
+
+    await tester.tap(tileFinder, buttons: kSecondaryButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text(menuLabel), findsOneWidget);
+
+    await tester.tap(find.text(menuLabel));
+    await tester.pumpAndSettle();
+
+    expect(channel.shownPaths, ['/tmp/animals/cat.png']);
+
+    await tester.tap(tileFinder);
+    await tester.pumpAndSettle();
+
+    expect(controller.currentPath, '/tmp/animals/cat.png');
+    expect(controller.isFolderSelected, isFalse);
+    expect(channel.shownPaths, ['/tmp/animals/cat.png']);
+    expect(find.text(menuLabel), findsNothing);
+  });
+
+  testWidgets('explorer sidebar supports show-in-file-manager context menu', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final channel = _FakeFileOpenChannel();
+    final slimg = _FakeSlimgApi(
+      inspectResults: {
+        '/tmp/animals/cat.png': _metadata('png', 2400),
+        '/tmp/animals/dog.png': _metadata('png', 2200),
+      },
+    );
+    final controller = FileOpenController(
+      channel: channel,
+      slimg: slimg,
+      initialPaths: const ['/tmp/animals/cat.png', '/tmp/animals/dog.png'],
+    );
+    await controller.initialize();
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpAndSettle();
+
+    final folderItemFinder = find.byKey(
+      const ValueKey('explorer-item-/tmp/animals'),
+    );
+    final fileItemFinder = find.byKey(
+      const ValueKey('explorer-item-/tmp/animals/cat.png'),
+    );
+    final menuLabel = _showInFileManagerMenuLabel();
+
+    await tester.tap(folderItemFinder, buttons: kSecondaryButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text(menuLabel), findsOneWidget);
+
+    await tester.tap(find.text(menuLabel));
+    await tester.pumpAndSettle();
+
+    expect(channel.shownPaths, ['/tmp/animals']);
+
+    await tester.tap(fileItemFinder, buttons: kSecondaryButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(menuLabel));
+    await tester.pumpAndSettle();
+
+    expect(channel.shownPaths, ['/tmp/animals', '/tmp/animals/cat.png']);
+  });
 }
 
 Widget _buildApp({
@@ -1035,10 +1132,21 @@ ImageMetadata _metadata(String format, int bytes, {bool hasTransparency = false}
   );
 }
 
+String _showInFileManagerMenuLabel() {
+  if (Platform.isMacOS) {
+    return 'Show in Finder';
+  }
+  if (Platform.isWindows) {
+    return 'Show in File Explorer';
+  }
+  return 'Show in File Manager';
+}
+
 class _FakeFileOpenChannel implements FileOpenChannel {
   OpenFilesHandler? _handler;
   List<String> pickFilesResult = const <String>[];
   List<String> pickFolderResult = const <String>[];
+  final List<String> shownPaths = <String>[];
   int pickFilesCallCount = 0;
   int pickFolderCallCount = 0;
 
@@ -1061,6 +1169,11 @@ class _FakeFileOpenChannel implements FileOpenChannel {
   Future<List<String>> pickFolder() async {
     pickFolderCallCount += 1;
     return pickFolderResult;
+  }
+
+  @override
+  Future<void> showInFileManager(String path) async {
+    shownPaths.add(path);
   }
 }
 

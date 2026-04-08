@@ -139,6 +139,32 @@ FlMethodResponse* show_picker_dialog(MyApplication* self,
   return FL_METHOD_RESPONSE(g_object_ref(response));
 }
 
+void show_in_file_manager(MyApplication* self, const gchar* path) {
+  if (path == nullptr || path[0] == '\0') {
+    return;
+  }
+
+  const gchar* target_path = path;
+  g_autofree gchar* parent_directory = nullptr;
+  if (!g_file_test(path, G_FILE_TEST_IS_DIR)) {
+    parent_directory = g_path_get_dirname(path);
+    target_path = parent_directory;
+  }
+
+  if (target_path == nullptr || target_path[0] == '\0') {
+    return;
+  }
+
+  g_autofree gchar* directory_uri =
+      g_filename_to_uri(target_path, nullptr, nullptr);
+  if (directory_uri == nullptr) {
+    return;
+  }
+
+  g_autoptr(GError) error = nullptr;
+  gtk_show_uri_on_window(self->window, directory_uri, GDK_CURRENT_TIME, &error);
+}
+
 // Called when the Dart side signals that it is ready to receive native events.
 static void file_open_method_call_cb(FlMethodChannel* channel,
                                      FlMethodCall* method_call,
@@ -156,6 +182,13 @@ static void file_open_method_call_cb(FlMethodChannel* channel,
   } else if (strcmp(fl_method_call_get_name(method_call), "pickFolder") == 0) {
     response =
         show_picker_dialog(self, GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER, FALSE);
+  } else if (strcmp(fl_method_call_get_name(method_call), "showInFileManager") ==
+             0) {
+    FlValue* args = fl_method_call_get_args(method_call);
+    if (args != nullptr && fl_value_get_type(args) == FL_VALUE_TYPE_STRING) {
+      show_in_file_manager(self, fl_value_get_string(args));
+    }
+    response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
   } else {
     response = FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
   }

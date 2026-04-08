@@ -2,6 +2,7 @@
 
 #include <flutter/encodable_value.h>
 #include <optional>
+#include <shlobj.h>
 #include <shobjidl.h>
 #include <wrl/client.h>
 
@@ -132,6 +133,26 @@ std::vector<std::string> DecodeOpenFilesCopyData(const COPYDATASTRUCT* copy_data
   return paths;
 }
 
+void ShowInFileManager(const std::string& path) {
+  if (path.empty()) {
+    return;
+  }
+
+  std::wstring wide_path = Utf16FromUtf8(path);
+  if (wide_path.empty()) {
+    return;
+  }
+
+  PIDLIST_ABSOLUTE item_id = nullptr;
+  if (FAILED(SHParseDisplayName(wide_path.c_str(), nullptr, &item_id, 0, nullptr)) ||
+      item_id == nullptr) {
+    return;
+  }
+
+  SHOpenFolderAndSelectItems(item_id, 0, nullptr, 0);
+  CoTaskMemFree(item_id);
+}
+
 }  // namespace
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
@@ -175,6 +196,14 @@ bool FlutterWindow::OnCreate() {
         }
         if (call.method_name() == "pickFolder") {
           result->Success(EncodableListFromPaths(ShowFilePicker(GetHandle(), true)));
+          return;
+        }
+        if (call.method_name() == "showInFileManager") {
+          const auto* path = std::get_if<std::string>(call.arguments());
+          if (path != nullptr) {
+            ShowInFileManager(*path);
+          }
+          result->Success();
           return;
         }
 

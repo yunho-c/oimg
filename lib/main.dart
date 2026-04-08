@@ -928,6 +928,7 @@ class _FolderStage extends StatelessWidget {
               child: _FolderCollage(
                 files: folderFiles,
                 onOpenFile: controller.showPath,
+                onRevealFile: controller.showInFileManager,
               ),
             ),
           ),
@@ -1022,10 +1023,15 @@ class _PreviewUnavailable extends StatelessWidget {
 }
 
 class _FolderCollage extends StatelessWidget {
-  const _FolderCollage({required this.files, required this.onOpenFile});
+  const _FolderCollage({
+    required this.files,
+    required this.onOpenFile,
+    required this.onRevealFile,
+  });
 
   final List<OpenedImageFile> files;
   final ValueChanged<String> onOpenFile;
+  final Future<void> Function(String) onRevealFile;
 
   @override
   Widget build(BuildContext context) {
@@ -1054,6 +1060,7 @@ class _FolderCollage extends StatelessWidget {
               file: file,
               tileWidth: tileWidth,
               onPressed: () => onOpenFile(file.path),
+              onRevealFile: () => onRevealFile(file.path),
             );
           },
         );
@@ -1067,73 +1074,90 @@ class _FolderCollageTile extends StatelessWidget {
     required this.file,
     required this.tileWidth,
     required this.onPressed,
+    required this.onRevealFile,
   });
 
   final OpenedImageFile file;
   final double tileWidth;
   final VoidCallback onPressed;
+  final Future<void> Function() onRevealFile;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
     final cacheWidth = math.max(1, (tileWidth * devicePixelRatio).round());
+    final showInFileManagerLabel = _showInFileManagerLabel();
+    final tile = GestureDetector(
+      key: ValueKey('folder-collage-tile-${file.path}'),
+      behavior: HitTestBehavior.opaque,
+      onTap: onPressed,
+      child: Card(
+        padding: EdgeInsets.zero,
+        borderRadius: theme.borderRadiusLg,
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Container(
+                color: theme.colorScheme.secondary,
+                alignment: Alignment.center,
+                child: Image.file(
+                  File(file.path),
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  cacheWidth: cacheWidth,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Icon(
+                      LucideIcons.imageOff,
+                      size: 24,
+                      color: theme.colorScheme.mutedForeground,
+                    );
+                  },
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      FileOpenController.fileNameOf(file.path),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ).small().medium(),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _fileSizeLabel(file) ?? 'Unknown',
+                    textAlign: TextAlign.right,
+                  ).xSmall().muted(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onPressed,
-        child: Card(
-          padding: EdgeInsets.zero,
-          borderRadius: theme.borderRadiusLg,
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: Container(
-                  color: theme.colorScheme.secondary,
-                  alignment: Alignment.center,
-                  child: Image.file(
-                    File(file.path),
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    cacheWidth: cacheWidth,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Icon(
-                        LucideIcons.imageOff,
-                        size: 24,
-                        color: theme.colorScheme.mutedForeground,
-                      );
-                    },
-                  ),
+      child: showInFileManagerLabel == null
+          ? tile
+          : ContextMenu(
+              items: [
+                MenuButton(
+                  onPressed: (context) {
+                    unawaited(onRevealFile());
+                  },
+                  child: Text(showInFileManagerLabel),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(10),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        FileOpenController.fileNameOf(file.path),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ).small().medium(),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _fileSizeLabel(file) ?? 'Unknown',
-                      textAlign: TextAlign.right,
-                    ).xSmall().muted(),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+              ],
+              child: tile,
+            ),
     );
   }
 }
@@ -1414,7 +1438,8 @@ class _ExplorerSidebar extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(8, 4, 8, 10),
               builder: (context, node) {
                 final entry = node.data;
-                return TreeItemView(
+                final item = TreeItemView(
+                  key: ValueKey('explorer-item-${entry.path}'),
                   leading: entry.isDirectory
                       ? Icon(
                           LucideIcons.folder,
@@ -1430,6 +1455,22 @@ class _ExplorerSidebar extends StatelessWidget {
                       ? () => controller.showFolder(entry.path)
                       : () => controller.showPath(entry.path),
                   child: Text(entry.label).small().mediumIf(entry.isDirectory),
+                );
+                final showInFileManagerLabel = _showInFileManagerLabel();
+                if (showInFileManagerLabel == null) {
+                  return item;
+                }
+
+                return ContextMenu(
+                  items: [
+                    MenuButton(
+                      onPressed: (context) {
+                        unawaited(controller.showInFileManager(entry.path));
+                      },
+                      child: Text(showInFileManagerLabel),
+                    ),
+                  ],
+                  child: item,
                 );
               },
             ),
@@ -3883,6 +3924,19 @@ String? _folderSizeLabel(List<OpenedImageFile> files) {
     return null;
   }
   return _formatBytes(totalBytes);
+}
+
+String? _showInFileManagerLabel() {
+  if (Platform.isMacOS) {
+    return 'Show in Finder';
+  }
+  if (Platform.isWindows) {
+    return 'Show in File Explorer';
+  }
+  if (Platform.isLinux) {
+    return 'Show in File Manager';
+  }
+  return null;
 }
 
 String _qualityValueLabel(AppSettings settings) {

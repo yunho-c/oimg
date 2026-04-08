@@ -156,6 +156,22 @@ void main() {
       expect(controller.currentPositionLabel, '2 / 3');
     });
 
+    test('delegates show-in-file-manager requests to the channel', () async {
+      final channel = _FakeFileOpenChannel();
+      final controller = FileOpenController(
+        channel: channel,
+        slimg: _FakeSlimgApi(
+          inspectResults: {'/tmp/animals/cat.png': _metadata('png')},
+        ),
+        initialPaths: const ['/tmp/animals/cat.png'],
+      );
+
+      await controller.initialize();
+      await controller.showInFileManager('/tmp/animals/cat.png');
+
+      expect(channel.shownPaths, ['/tmp/animals/cat.png']);
+    });
+
     test('expands dropped directories into nested file candidates', () async {
       final root = await Directory.systemTemp.createTemp('oimg-drop-test');
       addTearDown(() async {
@@ -283,6 +299,8 @@ ImageMetadata _metadata(String format) {
 }
 
 class _FakeFileOpenChannel implements FileOpenChannel {
+  final List<String> shownPaths = <String>[];
+
   @override
   Future<void> bind(OpenFilesHandler onOpenFiles) async {}
 
@@ -291,6 +309,11 @@ class _FakeFileOpenChannel implements FileOpenChannel {
 
   @override
   Future<List<String>> pickFolder() async => const <String>[];
+
+  @override
+  Future<void> showInFileManager(String path) async {
+    shownPaths.add(path);
+  }
 }
 
 class _FakeSlimgApi implements SlimgApi {
