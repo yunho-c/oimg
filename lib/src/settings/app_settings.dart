@@ -6,6 +6,12 @@ enum CompressionPriority { compatibility, efficiency }
 
 enum PreferredCodec { png, jpeg, webp, avif, jxl }
 
+enum StorageDestinationMode { sameFolder, differentLocation }
+
+enum SameFolderAction { replaceSource, keepSource }
+
+const Object _noAppSettingsValue = Object();
+
 extension PreferredCodecCapabilities on PreferredCodec {
   bool get supportsTransparency {
     return switch (this) {
@@ -22,8 +28,12 @@ class AppSettings {
     required this.advancedMode,
     required this.preferredCodec,
     required this.quality,
+    required this.storageDestinationMode,
+    required this.sameFolderAction,
+    required this.preserveFolderStructure,
     required this.developerModeEnabled,
     required this.timingLogsEnabled,
+    this.differentLocationPath,
     this.previewPathHeaderEnabled = false,
   });
 
@@ -32,6 +42,10 @@ class AppSettings {
   final bool advancedMode;
   final PreferredCodec preferredCodec;
   final int quality;
+  final StorageDestinationMode storageDestinationMode;
+  final SameFolderAction sameFolderAction;
+  final String? differentLocationPath;
+  final bool preserveFolderStructure;
   final bool developerModeEnabled;
   final bool timingLogsEnabled;
   final bool previewPathHeaderEnabled;
@@ -42,6 +56,9 @@ class AppSettings {
     advancedMode: false,
     preferredCodec: PreferredCodec.jpeg,
     quality: 80,
+    storageDestinationMode: StorageDestinationMode.sameFolder,
+    sameFolderAction: SameFolderAction.replaceSource,
+    preserveFolderStructure: true,
     developerModeEnabled: false,
     timingLogsEnabled: false,
     previewPathHeaderEnabled: false,
@@ -96,6 +113,10 @@ class AppSettings {
     bool? advancedMode,
     PreferredCodec? preferredCodec,
     int? quality,
+    StorageDestinationMode? storageDestinationMode,
+    SameFolderAction? sameFolderAction,
+    Object? differentLocationPath = _noAppSettingsValue,
+    bool? preserveFolderStructure,
     bool? developerModeEnabled,
     bool? timingLogsEnabled,
     bool? previewPathHeaderEnabled,
@@ -106,6 +127,17 @@ class AppSettings {
       advancedMode: advancedMode ?? this.advancedMode,
       preferredCodec: preferredCodec ?? this.preferredCodec,
       quality: quality ?? this.quality,
+      storageDestinationMode:
+          storageDestinationMode ?? this.storageDestinationMode,
+      sameFolderAction: sameFolderAction ?? this.sameFolderAction,
+      differentLocationPath: identical(
+        differentLocationPath,
+        _noAppSettingsValue,
+      )
+          ? this.differentLocationPath
+          : differentLocationPath as String?,
+      preserveFolderStructure:
+          preserveFolderStructure ?? this.preserveFolderStructure,
       developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,
       timingLogsEnabled: timingLogsEnabled ?? this.timingLogsEnabled,
       previewPathHeaderEnabled:
@@ -120,6 +152,10 @@ class AppSettings {
       'advancedMode': advancedMode,
       'preferredCodec': preferredCodec.name,
       'quality': quality,
+      'storageDestinationMode': storageDestinationMode.name,
+      'sameFolderAction': sameFolderAction.name,
+      'differentLocationPath': differentLocationPath,
+      'preserveFolderStructure': preserveFolderStructure,
       'developerModeEnabled': developerModeEnabled,
       'timingLogsEnabled': timingLogsEnabled,
       'previewPathHeaderEnabled': previewPathHeaderEnabled,
@@ -149,6 +185,19 @@ class AppSettings {
         json['preferredCodec'] as String,
       ),
       quality: json['quality'] as int? ?? defaults.quality,
+      storageDestinationMode: StorageDestinationMode.values.byName(
+        json['storageDestinationMode'] as String? ??
+            defaults.storageDestinationMode.name,
+      ),
+      sameFolderAction: SameFolderAction.values.byName(
+        json['sameFolderAction'] as String? ?? defaults.sameFolderAction.name,
+      ),
+      differentLocationPath:
+          json['differentLocationPath'] as String? ??
+          defaults.differentLocationPath,
+      preserveFolderStructure:
+          json['preserveFolderStructure'] as bool? ??
+          defaults.preserveFolderStructure,
       developerModeEnabled:
           json['developerModeEnabled'] as bool? ??
           defaults.developerModeEnabled,
@@ -168,6 +217,10 @@ class AppSettings {
         other.advancedMode == advancedMode &&
         other.preferredCodec == preferredCodec &&
         other.quality == quality &&
+        other.storageDestinationMode == storageDestinationMode &&
+        other.sameFolderAction == sameFolderAction &&
+        other.differentLocationPath == differentLocationPath &&
+        other.preserveFolderStructure == preserveFolderStructure &&
         other.developerModeEnabled == developerModeEnabled &&
         other.timingLogsEnabled == timingLogsEnabled &&
         other.previewPathHeaderEnabled == previewPathHeaderEnabled;
@@ -180,6 +233,10 @@ class AppSettings {
     advancedMode,
     preferredCodec,
     quality,
+    storageDestinationMode,
+    sameFolderAction,
+    differentLocationPath,
+    preserveFolderStructure,
     developerModeEnabled,
     timingLogsEnabled,
     previewPathHeaderEnabled,

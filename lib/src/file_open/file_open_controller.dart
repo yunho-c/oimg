@@ -130,6 +130,14 @@ class FileOpenController extends ChangeNotifier {
     await openPaths(paths);
   }
 
+  Future<String?> pickStorageFolder() async {
+    final paths = await _channel.pickFolder();
+    if (paths.isEmpty) {
+      return null;
+    }
+    return paths.first;
+  }
+
   Future<void> openPaths(List<String> paths) async {
     final candidatePaths = await _expandCandidatePaths(paths);
     final inspectedFiles = <OpenedImageFile>[];
@@ -211,7 +219,11 @@ class FileOpenController extends ChangeNotifier {
     return notice;
   }
 
-  Future<void> applyProcessResults(List<BatchItemResult> results) async {
+  Future<void> applyProcessResults(
+    List<BatchItemResult> results, {
+    Set<String> keepSourceEntries = const <String>{},
+    Set<String> deleteSourcesAfterSuccess = const <String>{},
+  }) async {
     if (_sessionFiles.isEmpty) {
       return;
     }
@@ -242,6 +254,21 @@ class FileOpenController extends ChangeNotifier {
       }
 
       final result = item.result!;
+      final keepSourceEntry = keepSourceEntries.contains(item.inputPath);
+      final deleteSourceAfterSuccess =
+          deleteSourcesAfterSuccess.contains(item.inputPath);
+      if (keepSourceEntry) {
+        DeveloperDiagnostics.logTiming(
+          'optimize-results',
+          'retained-source input=${item.inputPath} output=${result.outputPath} didWrite=${result.didWrite}',
+        );
+        updatedFiles[index] = updatedFiles[index].copyWith(
+          lastResult: result,
+          clearLastError: true,
+        );
+        continue;
+      }
+
       final refreshedFile = await _inspectPath(result.outputPath);
       if (refreshedFile == null) {
         DeveloperDiagnostics.logTiming(
@@ -259,6 +286,18 @@ class FileOpenController extends ChangeNotifier {
         'optimize-results',
         'applied input=${item.inputPath} output=${result.outputPath} didWrite=${result.didWrite} original=${result.originalSize} new=${result.newSize}',
       );
+      if (deleteSourceAfterSuccess &&
+          result.didWrite &&
+          result.outputPath != item.inputPath) {
+        try {
+          final inputFile = File(item.inputPath);
+          if (await inputFile.exists()) {
+            await inputFile.delete();
+          }
+        } on Object {
+          // Best-effort cleanup; the optimized file has already been written.
+        }
+      }
       updatedFiles[index] = refreshedFile.copyWith(
         lastResult: result,
         clearLastError: true,

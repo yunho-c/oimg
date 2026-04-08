@@ -40,6 +40,12 @@ void main() {
       await notifier.setAdvancedMode(true);
       await notifier.setPreferredCodec(PreferredCodec.webp);
       await notifier.setQuality(92);
+      await notifier.setStorageDestinationMode(
+        StorageDestinationMode.differentLocation,
+      );
+      await notifier.setSameFolderAction(SameFolderAction.keepSource);
+      await notifier.setDifferentLocationPath('/tmp/export');
+      await notifier.setPreserveFolderStructure(false);
       await notifier.setDeveloperModeEnabled(true);
       await notifier.setTimingLogsEnabled(true);
 
@@ -52,6 +58,10 @@ void main() {
           advancedMode: true,
           preferredCodec: PreferredCodec.webp,
           quality: 92,
+          storageDestinationMode: StorageDestinationMode.differentLocation,
+          sameFolderAction: SameFolderAction.keepSource,
+          differentLocationPath: '/tmp/export',
+          preserveFolderStructure: false,
           developerModeEnabled: true,
           timingLogsEnabled: true,
         ),

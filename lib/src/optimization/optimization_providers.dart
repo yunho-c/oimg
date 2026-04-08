@@ -1335,6 +1335,8 @@ final optimizationRunControllerProvider =
 
 class OptimizationRunController extends Notifier<OptimizationRunState> {
   List<String> _activeInputPaths = const <String>[];
+  Set<String> _keepSourceEntryPaths = const <String>{};
+  Set<String> _deleteSourceAfterSuccessPaths = const <String>{};
 
   @override
   OptimizationRunState build() => const OptimizationRunState();
@@ -1381,9 +1383,18 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
       return;
     }
 
+    final fileController = ref.read(fileOpenControllerProvider);
     final settings = await ref.read(appSettingsProvider.future);
-    final requests = files
-        .map((file) => buildOptimizationPlan(file: file, settings: settings))
+    final plans = files
+        .map(
+          (file) => buildOptimizationPlan(
+            file: file,
+            settings: settings,
+            sourceRootPath: fileController.selectedFolderPath,
+          ),
+        )
+        .toList(growable: false);
+    final requests = plans
         .map((plan) => plan.processRequest)
         .toList(growable: false);
     final inputPaths = files.map((file) => file.path).toList(growable: false);
@@ -1406,6 +1417,14 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
             ),
           );
       _activeInputPaths = inputPaths;
+      _keepSourceEntryPaths = plans
+          .where((plan) => plan.keepSourceEntry)
+          .map((plan) => plan.sourceFile.path)
+          .toSet();
+      _deleteSourceAfterSuccessPaths = plans
+          .where((plan) => plan.deleteSourceAfterSuccess)
+          .map((plan) => plan.sourceFile.path)
+          .toSet();
       state = OptimizationRunState(
         jobId: handle.jobId,
         jobState: BatchJobState.running,
@@ -1452,6 +1471,8 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
             globalError: snapshot.error?.toString(),
           );
           _activeInputPaths = const <String>[];
+          _keepSourceEntryPaths = const <String>{};
+          _deleteSourceAfterSuccessPaths = const <String>{};
           return;
         }
       } on Object catch (error) {
@@ -1466,6 +1487,8 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
           globalError: error.toString(),
         );
         _activeInputPaths = const <String>[];
+        _keepSourceEntryPaths = const <String>{};
+        _deleteSourceAfterSuccessPaths = const <String>{};
         return;
       }
 
@@ -1482,7 +1505,11 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
           'result input=${item.inputPath} success=${item.success} error=${item.error} output=${item.result?.outputPath} didWrite=${item.result?.didWrite}',
         );
       }
-      await ref.read(fileOpenControllerProvider).applyProcessResults(newResults);
+      await ref.read(fileOpenControllerProvider).applyProcessResults(
+        newResults,
+        keepSourceEntries: _keepSourceEntryPaths,
+        deleteSourcesAfterSuccess: _deleteSourceAfterSuccessPaths,
+      );
       if (state.jobId != jobId) {
         return;
       }
@@ -1523,7 +1550,10 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
       }
 
       final result = item.result!;
-      nextItems[result.outputPath] = OptimizationItemState(
+      final displayPath = _keepSourceEntryPaths.contains(item.inputPath)
+          ? item.inputPath
+          : result.outputPath;
+      nextItems[displayPath] = OptimizationItemState(
         status: result.didWrite
             ? OptimizationItemStatus.written
             : OptimizationItemStatus.skipped,

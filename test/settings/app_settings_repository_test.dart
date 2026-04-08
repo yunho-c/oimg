@@ -21,6 +21,9 @@ void main() {
         advancedMode: true,
         preferredCodec: PreferredCodec.webp,
         quality: 90,
+        storageDestinationMode: StorageDestinationMode.sameFolder,
+        sameFolderAction: SameFolderAction.replaceSource,
+        preserveFolderStructure: true,
         developerModeEnabled: true,
         timingLogsEnabled: true,
       );

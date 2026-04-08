@@ -1,3 +1,5 @@
+import 'package:path/path.dart' as p;
+
 import 'package:oimg/src/file_open/opened_image_file.dart';
 import 'package:oimg/src/rust/types.dart';
 import 'package:oimg/src/settings/app_settings.dart';
@@ -9,6 +11,8 @@ class OptimizationPlan {
     required this.processRequest,
     required this.previewRequest,
     required this.useSourceImageForPreview,
+    required this.keepSourceEntry,
+    required this.deleteSourceAfterSuccess,
   });
 
   final OpenedImageFile sourceFile;
@@ -16,6 +20,8 @@ class OptimizationPlan {
   final ProcessFileRequest processRequest;
   final PreviewFileRequest previewRequest;
   final bool useSourceImageForPreview;
+  final bool keepSourceEntry;
+  final bool deleteSourceAfterSuccess;
 
   bool get usesSourceCodec => sourceFile.metadata.format == codecIdOf(targetCodec);
 }
@@ -23,6 +29,7 @@ class OptimizationPlan {
 OptimizationPlan buildOptimizationPlan({
   required OpenedImageFile file,
   required AppSettings settings,
+  String? sourceRootPath,
 }) {
   final targetCodec = settings.effectiveCodec;
   final targetFormat = codecIdOf(targetCodec);
@@ -44,6 +51,13 @@ OptimizationPlan buildOptimizationPlan({
       : ImageOperation.convert(
           ConvertOptions(targetFormat: targetFormat, quality: effectiveQuality),
         );
+  final storageDecision = _resolveStorageDecision(
+    file: file,
+    settings: settings,
+    targetFormat: targetFormat,
+    usesSourceCodec: usesSourceCodec,
+    sourceRootPath: sourceRootPath,
+  );
 
   return OptimizationPlan(
     sourceFile: file,
@@ -51,13 +65,13 @@ OptimizationPlan buildOptimizationPlan({
     useSourceImageForPreview: useSourceImageForPreview,
     processRequest: ProcessFileRequest(
       inputPath: file.path,
-      outputPath: usesSourceCodec
-          ? null
-          : _optimizedSiblingPath(file.path, targetFormat),
-      overwrite: true,
+      outputPath: storageDecision.outputPath,
+      overwrite: storageDecision.overwrite,
       operation: operation,
     ),
     previewRequest: PreviewFileRequest(inputPath: file.path, operation: operation),
+    keepSourceEntry: storageDecision.keepSourceEntry,
+    deleteSourceAfterSuccess: storageDecision.deleteSourceAfterSuccess,
   );
 }
 
@@ -99,11 +113,106 @@ String formatLabel(String format) {
 }
 
 String _optimizedSiblingPath(String path, String targetFormat) {
-  final normalized = path.replaceAll('\\', '/');
-  final slash = normalized.lastIndexOf('/');
-  final directory = slash >= 0 ? normalized.substring(0, slash + 1) : '';
-  final fileName = slash >= 0 ? normalized.substring(slash + 1) : normalized;
-  final dot = fileName.lastIndexOf('.');
-  final stem = dot > 0 ? fileName.substring(0, dot) : fileName;
-  return '$directory$stem.optimized.$targetFormat';
+  final stem = p.basenameWithoutExtension(path);
+  return p.join(p.dirname(path), '$stem.optimized.$targetFormat');
+}
+
+class _StorageDecision {
+  const _StorageDecision({
+    required this.outputPath,
+    required this.overwrite,
+    required this.keepSourceEntry,
+    required this.deleteSourceAfterSuccess,
+  });
+
+  final String? outputPath;
+  final bool overwrite;
+  final bool keepSourceEntry;
+  final bool deleteSourceAfterSuccess;
+}
+
+_StorageDecision _resolveStorageDecision({
+  required OpenedImageFile file,
+  required AppSettings settings,
+  required String targetFormat,
+  required bool usesSourceCodec,
+  required String? sourceRootPath,
+}) {
+  if (settings.storageDestinationMode == StorageDestinationMode.sameFolder) {
+    if (settings.sameFolderAction == SameFolderAction.keepSource) {
+      return _StorageDecision(
+        outputPath: usesSourceCodec
+            ? null
+            : _optimizedSiblingPath(file.path, targetFormat),
+        overwrite: !usesSourceCodec,
+        keepSourceEntry: true,
+        deleteSourceAfterSuccess: false,
+      );
+    }
+
+    return _StorageDecision(
+      outputPath: usesSourceCodec
+          ? null
+          : _optimizedSiblingPath(file.path, targetFormat),
+      overwrite: true,
+      keepSourceEntry: false,
+      deleteSourceAfterSuccess: !usesSourceCodec,
+    );
+  }
+
+  final outputRoot = settings.differentLocationPath;
+  if (outputRoot == null || outputRoot.isEmpty) {
+    return _StorageDecision(
+      outputPath: usesSourceCodec
+          ? null
+          : _optimizedSiblingPath(file.path, targetFormat),
+      overwrite: true,
+      keepSourceEntry: false,
+      deleteSourceAfterSuccess: !usesSourceCodec,
+    );
+  }
+
+  return _StorageDecision(
+    outputPath: _differentLocationOutputPath(
+      filePath: file.path,
+      outputRoot: outputRoot,
+      targetFormat: targetFormat,
+      preserveFolderStructure: settings.preserveFolderStructure,
+      sourceRootPath: sourceRootPath,
+    ),
+    overwrite: true,
+    keepSourceEntry: true,
+    deleteSourceAfterSuccess: false,
+  );
+}
+
+String _differentLocationOutputPath({
+  required String filePath,
+  required String outputRoot,
+  required String targetFormat,
+  required bool preserveFolderStructure,
+  required String? sourceRootPath,
+}) {
+  final fileName = '${p.basenameWithoutExtension(filePath)}.optimized.$targetFormat';
+  if (!preserveFolderStructure || sourceRootPath == null) {
+    return p.join(outputRoot, fileName);
+  }
+
+  final sourceDirectory = p.dirname(filePath);
+  final normalizedRoot = p.normalize(sourceRootPath);
+  final normalizedDirectory = p.normalize(sourceDirectory);
+  if (!p.isWithin(normalizedRoot, normalizedDirectory) &&
+      normalizedDirectory != normalizedRoot) {
+    return p.join(outputRoot, fileName);
+  }
+
+  final relativeDirectory = p.relative(
+    normalizedDirectory,
+    from: normalizedRoot,
+  );
+  if (relativeDirectory == '.') {
+    return p.join(outputRoot, fileName);
+  }
+
+  return p.join(outputRoot, relativeDirectory, fileName);
 }

@@ -52,6 +52,38 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     await _update((settings) => settings.copyWith(quality: quality));
   }
 
+  Future<void> setStorageDestinationMode(
+    StorageDestinationMode storageDestinationMode,
+  ) async {
+    await _update(
+      (settings) => settings.copyWith(
+        storageDestinationMode: storageDestinationMode,
+      ),
+    );
+  }
+
+  Future<void> setSameFolderAction(SameFolderAction sameFolderAction) async {
+    await _update(
+      (settings) => settings.copyWith(sameFolderAction: sameFolderAction),
+    );
+  }
+
+  Future<void> setDifferentLocationPath(String? differentLocationPath) async {
+    await _update(
+      (settings) => settings.copyWith(
+        differentLocationPath: differentLocationPath,
+      ),
+    );
+  }
+
+  Future<void> setPreserveFolderStructure(bool preserveFolderStructure) async {
+    await _update(
+      (settings) => settings.copyWith(
+        preserveFolderStructure: preserveFolderStructure,
+      ),
+    );
+  }
+
   Future<void> setDeveloperModeEnabled(bool developerModeEnabled) async {
     await _update(
       (settings) => settings.copyWith(
