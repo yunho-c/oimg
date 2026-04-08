@@ -1683,6 +1683,8 @@ class _SettingsSidebar extends ConsumerWidget {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  const _MetadataCollapsible(),
                   if (showAnalyzePanel) ...[
                     const SizedBox(height: 12),
                     Container(height: 1, color: theme.colorScheme.border),
@@ -1771,6 +1773,65 @@ class _SettingsModeSwitcher extends StatelessWidget {
                 controlsLocked: controlsLocked,
                 notifier: notifier,
               ),
+      ),
+    );
+  }
+}
+
+class _MetadataCollapsible extends StatelessWidget {
+  const _MetadataCollapsible();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    Widget option(String label) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Checkbox(
+          state: CheckboxState.unchecked,
+          onChanged: null,
+          trailing: Expanded(
+            child: Text(
+              label,
+              style: TextStyle(color: theme.colorScheme.mutedForeground),
+            ).small(),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: ComponentTheme(
+        data: const CollapsibleTheme(
+          iconCollapsed: Icons.add,
+          iconExpanded: Icons.remove,
+        ),
+        child: Collapsible(
+          isExpanded: false,
+          children: [
+            CollapsibleTrigger(
+              child: Row(
+                children: [
+                  const Text('Metadata').small().medium(),
+                ],
+              ),
+            ),
+            CollapsibleContent(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    option('Preserve EXIF'),
+                    option('Preserve color profile'),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
