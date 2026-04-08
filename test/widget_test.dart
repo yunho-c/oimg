@@ -246,6 +246,120 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
+  testWidgets('similarity stat updates eagerly as metrics resolve', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg =
+        _FakeSlimgApi(
+            inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+          )
+          ..pixelMatchDelay = const Duration(milliseconds: 40)
+          ..msSsimDelay = const Duration(milliseconds: 120)
+          ..ssimulacra2Delay = const Duration(milliseconds: 200)
+          ..pixelMatchValue = 90.0
+          ..msSsimValue = 0.5
+          ..ssimulacra2Value = 30.0;
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 170));
+
+    expect(_similarityLoadingFinder(), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(_similarityLoadingFinder(), findsNothing);
+    expect(_similarityValueFinder('90.0%'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 80));
+    expect(_similarityValueFinder('70.0%'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(_similarityValueFinder('56.7%'), findsOneWidget);
+  });
+
+  testWidgets('similarity stat ignores unavailable metrics', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+    )
+      ..pixelMatchValue = 80.0
+      ..msSsimValue = null
+      ..ssimulacra2Value = 20.0;
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(_similarityValueFinder('50.0%'), findsOneWidget);
+  });
+
+  testWidgets('similarity stat shows N/A when all metrics are unavailable', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+    )
+      ..pixelMatchValue = null
+      ..msSsimValue = null
+      ..ssimulacra2Value = null;
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(_similarityLoadingFinder(), findsNothing);
+    expect(_similarityValueFinder('N/A'), findsOneWidget);
+  });
+
+  testWidgets('folder mode keeps similarity stat as N/A', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {
+        '/tmp/animals/cat.png': _metadata('png', 2400),
+        '/tmp/animals/dog.png': _metadata('png', 2200),
+      },
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/animals/cat.png', '/tmp/animals/dog.png'],
+    );
+    await controller.initialize();
+    controller.showFolder('/tmp/animals');
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpAndSettle();
+
+    expect(_similarityLoadingFinder(), findsNothing);
+    expect(_similarityValueFinder('N/A'), findsOneWidget);
+  });
+
   testWidgets('preview mode row defaults to original until preview exists', (
     tester,
   ) async {
@@ -1263,6 +1377,24 @@ String _showInFileManagerMenuLabel() {
   return 'Show in File Manager';
 }
 
+Finder _similarityTileFinder() {
+  return find.byKey(const ValueKey('bottom-stat-Similarity'));
+}
+
+Finder _similarityValueFinder(String value) {
+  return find.descendant(
+    of: _similarityTileFinder(),
+    matching: find.text(value),
+  );
+}
+
+Finder _similarityLoadingFinder() {
+  return find.descendant(
+    of: _similarityTileFinder(),
+    matching: find.byType(CircularProgressIndicator),
+  );
+}
+
 class _FakeFileOpenChannel implements FileOpenChannel {
   OpenFilesHandler? _handler;
   List<String> pickFilesResult = const <String>[];
@@ -1378,6 +1510,9 @@ class _FakeSlimgApi implements SlimgApi {
   Duration ssimulacra2Delay = Duration.zero;
   Duration differenceDelay = Duration.zero;
   Duration analyzeSampleDelay = Duration.zero;
+  double? pixelMatchValue = 98.7;
+  double? msSsimValue = 0.9874;
+  double? ssimulacra2Value = 92.4;
 
   @override
   Future<double?> computePreviewPixelMatchPercentage({
@@ -1387,7 +1522,7 @@ class _FakeSlimgApi implements SlimgApi {
     if (pixelMatchDelay > Duration.zero) {
       await Future<void>.delayed(pixelMatchDelay);
     }
-    return 98.7;
+    return pixelMatchValue;
   }
 
   @override
@@ -1398,7 +1533,7 @@ class _FakeSlimgApi implements SlimgApi {
     if (msSsimDelay > Duration.zero) {
       await Future<void>.delayed(msSsimDelay);
     }
-    return 0.9874;
+    return msSsimValue;
   }
 
   @override
@@ -1409,7 +1544,7 @@ class _FakeSlimgApi implements SlimgApi {
     if (ssimulacra2Delay > Duration.zero) {
       await Future<void>.delayed(ssimulacra2Delay);
     }
-    return 92.4;
+    return ssimulacra2Value;
   }
 
   @override

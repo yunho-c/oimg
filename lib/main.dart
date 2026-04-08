@@ -2833,6 +2833,9 @@ class _BottomSidebar extends ConsumerWidget {
     final analyzeState = ref.watch(analyzeRunControllerProvider);
     final runController = ref.read(optimizationRunControllerProvider.notifier);
     final selectedAnalyzeSample = ref.watch(selectedAnalyzeSampleProvider);
+    final pixelMatchMetric = ref.watch(currentPreviewPixelMatchProvider);
+    final msSsimMetric = ref.watch(currentPreviewMsSsimProvider);
+    final ssimulacra2Metric = ref.watch(currentPreviewSsimulacra2Provider);
     final progressValue = runState.totalCount > 0
         ? (runState.completedCount / runState.totalCount).clamp(0.0, 1.0)
         : 0.0;
@@ -2845,6 +2848,9 @@ class _BottomSidebar extends ConsumerWidget {
       isPreviewPending: previewState.isLoading,
       plan: plan,
       settings: settings,
+      pixelMatchMetric: pixelMatchMetric,
+      msSsimMetric: msSsimMetric,
+      ssimulacra2Metric: ssimulacra2Metric,
     );
 
     return Card(
@@ -3570,6 +3576,9 @@ class _BottomSummaryViewModel {
     required bool isPreviewPending,
     required OptimizationPlan? plan,
     required AppSettings? settings,
+    required AsyncValue<PreviewMetricResult?> pixelMatchMetric,
+    required AsyncValue<PreviewMetricResult?> msSsimMetric,
+    required AsyncValue<PreviewMetricResult?> ssimulacra2Metric,
   }) {
     if (controller.isFolderSelected) {
       return _buildFolder(
@@ -3586,6 +3595,9 @@ class _BottomSummaryViewModel {
       analyzeSample: analyzeSample,
       isPreviewPending: isPreviewPending,
       plan: plan,
+      pixelMatchMetric: pixelMatchMetric,
+      msSsimMetric: msSsimMetric,
+      ssimulacra2Metric: ssimulacra2Metric,
     );
   }
 
@@ -3596,6 +3608,9 @@ class _BottomSummaryViewModel {
     required AnalyzeSampleResult? analyzeSample,
     required bool isPreviewPending,
     required OptimizationPlan? plan,
+    required AsyncValue<PreviewMetricResult?> pixelMatchMetric,
+    required AsyncValue<PreviewMetricResult?> msSsimMetric,
+    required AsyncValue<PreviewMetricResult?> ssimulacra2Metric,
   }) {
     final originalBytes = _originalFileSizeBytes(file);
     final hasSavedResult = file.lastResult != null;
@@ -3640,6 +3655,11 @@ class _BottomSummaryViewModel {
     final optimizedTimingTooltip = analyzeSample == null && preview != null
         ? _formatMetricTimingTooltip(preview.elapsedMilliseconds)
         : null;
+    final similarityStat = _deriveSimilarityStat(
+      pixelMatchMetric: pixelMatchMetric,
+      msSsimMetric: msSsimMetric,
+      ssimulacra2Metric: ssimulacra2Metric,
+    );
     return _BottomSummaryViewModel(
       stats: [
         _BottomStatData(
@@ -3661,10 +3681,11 @@ class _BottomSummaryViewModel {
           color: const Color(0xFF16A34A),
           toggleable: true,
         ),
-        const _BottomStatData(
+        _BottomStatData(
           label: 'Similarity',
-          value: 'N/A',
+          value: similarityStat.value,
           color: Color(0xFFF59E0B),
+          loading: similarityStat.loading,
         ),
       ],
       originalSectionTitle: 'Original',
@@ -3774,6 +3795,65 @@ class _BottomSummaryViewModel {
       ],
     );
   }
+}
+
+class _DerivedSimilarityStat {
+  const _DerivedSimilarityStat({
+    required this.value,
+    required this.loading,
+  });
+
+  final String value;
+  final bool loading;
+}
+
+_DerivedSimilarityStat _deriveSimilarityStat({
+  required AsyncValue<PreviewMetricResult?> pixelMatchMetric,
+  required AsyncValue<PreviewMetricResult?> msSsimMetric,
+  required AsyncValue<PreviewMetricResult?> ssimulacra2Metric,
+}) {
+  final normalizedValues = <double>[
+    ..._normalizedSimilarityValues(
+      pixelMatchMetric,
+      transform: (value) => value.clamp(0, 100).toDouble(),
+    ),
+    ..._normalizedSimilarityValues(
+      msSsimMetric,
+      transform: (value) => (value * 100).clamp(0, 100).toDouble(),
+    ),
+    ..._normalizedSimilarityValues(
+      ssimulacra2Metric,
+      transform: (value) => value.clamp(0, 100).toDouble(),
+    ),
+  ];
+
+  if (normalizedValues.isNotEmpty) {
+    final average =
+        normalizedValues.reduce((sum, value) => sum + value) /
+        normalizedValues.length;
+    return _DerivedSimilarityStat(
+      value: _formatSimilarityPercentValue(average),
+      loading: false,
+    );
+  }
+
+  final isLoading =
+      pixelMatchMetric.isLoading ||
+      msSsimMetric.isLoading ||
+      ssimulacra2Metric.isLoading;
+  return _DerivedSimilarityStat(value: 'N/A', loading: isLoading);
+}
+
+Iterable<double> _normalizedSimilarityValues(
+  AsyncValue<PreviewMetricResult?> metric, {
+  required double Function(double value) transform,
+}) sync* {
+  final result = metric.asData?.value;
+  final value = result?.value;
+  if (value == null) {
+    return;
+  }
+  yield transform(value);
 }
 
 class _BottomStatData {
@@ -3898,6 +3978,19 @@ String? _formatNullablePercent(double? value) {
 
 String _formatNullablePercentValue(double? value) {
   return _formatNullablePercent(value) ?? '—';
+}
+
+String _formatSimilarityPercentValue(double? value) {
+  if (value == null) {
+    return '—';
+  }
+
+  final rounded = value.toStringAsFixed(1);
+  if (rounded == '100.0') {
+    return '100%';
+  }
+
+  return '$rounded%';
 }
 
 String _formatNullableBpp(double? value) {
