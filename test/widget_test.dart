@@ -857,6 +857,9 @@ void main() {
           advancedMode: false,
           preferredCodec: PreferredCodec.jpeg,
           quality: 80,
+          storageDestinationMode: StorageDestinationMode.sameFolder,
+          sameFolderAction: SameFolderAction.replaceSource,
+          preserveFolderStructure: true,
           developerModeEnabled: false,
           timingLogsEnabled: false,
         ).toJsonString();
@@ -897,6 +900,9 @@ void main() {
           advancedMode: false,
           preferredCodec: PreferredCodec.jpeg,
           quality: 80,
+          storageDestinationMode: StorageDestinationMode.sameFolder,
+          sameFolderAction: SameFolderAction.replaceSource,
+          preserveFolderStructure: true,
           developerModeEnabled: false,
           timingLogsEnabled: false,
         ).toJsonString();
@@ -925,6 +931,81 @@ void main() {
       expect(slimg.differenceCallCount, 0);
     },
   );
+
+  testWidgets('storage section shows picker-driven different-location flow', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final channel = _FakeFileOpenChannel()..pickFolderResult = ['/tmp/export'];
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/source.png': _metadata('png', 2400)},
+    );
+    final controller = FileOpenController(
+      channel: channel,
+      slimg: slimg,
+      initialPaths: const ['/tmp/source.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Storage'), findsOneWidget);
+    expect(find.text('Metadata'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Storage')).dy,
+      lessThan(tester.getTopLeft(find.text('Metadata')).dy),
+    );
+
+    await tester.tap(find.byIcon(Icons.add).first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Remove original'), findsOneWidget);
+    expect(find.text('Keep original'), findsOneWidget);
+    expect(find.text('Preserve folder structure'), findsNothing);
+
+    await tester.tap(find.text('Different location'));
+    await tester.pumpAndSettle();
+
+    expect(channel.pickFolderCallCount, 1);
+    expect(find.text('/tmp/export'), findsOneWidget);
+    expect(find.text('Preserve folder structure'), findsOneWidget);
+
+    channel.pickFolderResult = const <String>[];
+    await tester.tap(find.text('Different location'));
+    await tester.pumpAndSettle();
+
+    expect(channel.pickFolderCallCount, 2);
+    expect(find.text('/tmp/export'), findsOneWidget);
+  });
+
+  testWidgets('storage same-folder label shows overwrite for same-format files', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/source.jpg': _metadata('jpeg', 2400)},
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/source.jpg'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.add).first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Overwrite'), findsOneWidget);
+    expect(find.text('Remove original'), findsNothing);
+  });
 }
 
 Widget _buildApp({

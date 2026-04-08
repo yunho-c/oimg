@@ -1671,6 +1671,19 @@ class _SettingsSidebar extends ConsumerWidget {
                       ),
                     ),
                   ),
+                  settings.when(
+                    data: (settings) => Column(
+                      children: [
+                        const SizedBox(height: 12),
+                        _StorageCollapsible(
+                          settings: settings,
+                          controlsLocked: controlsLocked,
+                        ),
+                      ],
+                    ),
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, _) => const SizedBox.shrink(),
+                  ),
                   const SizedBox(height: 12),
                   const _MetadataCollapsible(),
                   if (showAnalyzePanel) ...[
@@ -1844,6 +1857,254 @@ class _MetadataCollapsibleState extends State<_MetadataCollapsible> {
                     children: [
                       option('Preserve EXIF'),
                       option('Preserve color profile'),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StorageCollapsible extends ConsumerStatefulWidget {
+  const _StorageCollapsible({
+    required this.settings,
+    required this.controlsLocked,
+  });
+
+  final AppSettings settings;
+  final bool controlsLocked;
+
+  @override
+  ConsumerState<_StorageCollapsible> createState() => _StorageCollapsibleState();
+}
+
+class _StorageCollapsibleState extends ConsumerState<_StorageCollapsible> {
+  bool _isExpanded = false;
+  bool _isPickingFolder = false;
+
+  Future<void> _handleSameFolderSelection() async {
+    if (widget.controlsLocked) {
+      return;
+    }
+    await ref
+        .read(appSettingsProvider.notifier)
+        .setStorageDestinationMode(StorageDestinationMode.sameFolder);
+  }
+
+  Future<void> _handleDifferentLocationSelection({
+    required bool forcePicker,
+  }) async {
+    if (widget.controlsLocked || _isPickingFolder) {
+      return;
+    }
+
+    final currentPath = widget.settings.differentLocationPath;
+    final needsPicker =
+        forcePicker ||
+        currentPath == null ||
+        currentPath.isEmpty ||
+        widget.settings.storageDestinationMode !=
+            StorageDestinationMode.differentLocation;
+    if (!needsPicker) {
+      return;
+    }
+
+    setState(() {
+      _isPickingFolder = true;
+    });
+    final pickedPath = await ref
+        .read(fileOpenControllerProvider)
+        .pickStorageFolder();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _isPickingFolder = false;
+    });
+    if (pickedPath == null || pickedPath.isEmpty) {
+      return;
+    }
+
+    final notifier = ref.read(appSettingsProvider.notifier);
+    await notifier.setDifferentLocationPath(pickedPath);
+    await notifier.setStorageDestinationMode(
+      StorageDestinationMode.differentLocation,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final notifier = ref.read(appSettingsProvider.notifier);
+    final currentFile = ref.watch(fileOpenControllerProvider).currentFile;
+    final primarySameFolderLabel =
+        currentFile != null &&
+            currentFile.metadata.format !=
+                codecIdOf(widget.settings.effectiveCodec)
+        ? 'Remove original'
+        : 'Overwrite';
+
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Expanded(child: const Text('Storage').small().medium()),
+                GhostButton(
+                  onPressed: () {
+                    setState(() {
+                      _isExpanded = !_isExpanded;
+                    });
+                  },
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    transitionBuilder: (child, animation) {
+                      return FadeTransition(opacity: animation, child: child);
+                    },
+                    child: Icon(
+                      _isExpanded ? Icons.remove : Icons.add,
+                      key: ValueKey<bool>(_isExpanded),
+                    ).iconXSmall(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ClipRect(
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOutCubic,
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: _isExpanded
+                    ? const BoxConstraints()
+                    : const BoxConstraints(maxHeight: 0),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final cardWidth = (constraints.maxWidth - 8) / 2;
+                          return RadioGroup<StorageDestinationMode>(
+                            value: widget.settings.storageDestinationMode,
+                            onChanged: widget.controlsLocked
+                                ? null
+                                : (_) {},
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                SizedBox(
+                                  width: cardWidth,
+                                  child: _StorageDestinationCard(
+                                    value: StorageDestinationMode.sameFolder,
+                                    enabled: !widget.controlsLocked,
+                                    onTap: _handleSameFolderSelection,
+                                    child: const _ChoiceCard(
+                                      title: 'Same folder',
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: cardWidth,
+                                  child: _StorageDestinationCard(
+                                    value:
+                                        StorageDestinationMode.differentLocation,
+                                    enabled:
+                                        !widget.controlsLocked &&
+                                        !_isPickingFolder,
+                                    onTap: () =>
+                                        _handleDifferentLocationSelection(
+                                          forcePicker:
+                                              widget.settings
+                                                  .storageDestinationMode ==
+                                              StorageDestinationMode
+                                                  .differentLocation,
+                                        ),
+                                    child: _ChoiceCard(
+                                      title: _isPickingFolder
+                                          ? 'Choosing...'
+                                          : 'Different location',
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                      if (widget.settings.storageDestinationMode ==
+                          StorageDestinationMode.sameFolder) ...[
+                        const SizedBox(height: 10),
+                        RadioGroup<SameFolderAction>(
+                          value: widget.settings.sameFolderAction,
+                          onChanged: widget.controlsLocked
+                              ? null
+                              : notifier.setSameFolderAction,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              RadioItem<SameFolderAction>(
+                                value: SameFolderAction.replaceSource,
+                                enabled: !widget.controlsLocked,
+                                trailing: Text(primarySameFolderLabel).small(),
+                              ),
+                              const SizedBox(height: 8),
+                              RadioItem<SameFolderAction>(
+                                value: SameFolderAction.keepSource,
+                                enabled: !widget.controlsLocked,
+                                trailing: const Text('Keep original').small(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      if (widget.settings.storageDestinationMode ==
+                          StorageDestinationMode.differentLocation) ...[
+                        if (widget.settings.differentLocationPath case final path?)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 10, left: 4),
+                            child: Text(
+                              path,
+                              style: TextStyle(
+                                color: theme.colorScheme.mutedForeground,
+                              ),
+                            ).xSmall(),
+                          ),
+                        const SizedBox(height: 10),
+                        Checkbox(
+                          state: widget.settings.preserveFolderStructure
+                              ? CheckboxState.checked
+                              : CheckboxState.unchecked,
+                          onChanged: widget.controlsLocked
+                              ? null
+                              : (value) {
+                                  notifier.setPreserveFolderStructure(
+                                    value == CheckboxState.checked,
+                                  );
+                                },
+                          trailing: Expanded(
+                            child: Text(
+                              'Preserve folder structure',
+                              style: TextStyle(
+                                color: theme.colorScheme.mutedForeground,
+                              ),
+                            ).small(),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -3535,6 +3796,35 @@ class _ChoiceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Basic(title: Text(title).small().medium());
+  }
+}
+
+class _StorageDestinationCard extends StatelessWidget {
+  const _StorageDestinationCard({
+    required this.value,
+    required this.enabled,
+    required this.onTap,
+    required this.child,
+  });
+
+  final StorageDestinationMode value;
+  final bool enabled;
+  final VoidCallback onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: enabled ? onTap : null,
+      child: IgnorePointer(
+        child: RadioCard<StorageDestinationMode>(
+          value: value,
+          enabled: enabled,
+          child: child,
+        ),
+      ),
+    );
   }
 }
 
