@@ -461,7 +461,7 @@ class _ImageSessionViewState extends ConsumerState<_ImageSessionView> {
     }
 
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final wideLayout = constraints.maxWidth >= 1120;
@@ -3992,7 +3992,7 @@ class _EmptyState extends ConsumerWidget {
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(28),
+        padding: const EdgeInsets.fromLTRB(28, 8, 28, 28),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1180),
           child: LayoutBuilder(
