@@ -861,6 +861,7 @@ void main() {
           storageDestinationMode: StorageDestinationMode.sameFolder,
           sameFolderAction: SameFolderAction.replaceSource,
           preserveFolderStructure: true,
+          preserveOriginalDate: false,
           developerModeEnabled: false,
           timingLogsEnabled: false,
         ).toJsonString();
@@ -904,6 +905,7 @@ void main() {
           storageDestinationMode: StorageDestinationMode.sameFolder,
           sameFolderAction: SameFolderAction.replaceSource,
           preserveFolderStructure: true,
+          preserveOriginalDate: false,
           developerModeEnabled: false,
           timingLogsEnabled: false,
         ).toJsonString();
@@ -1006,6 +1008,38 @@ void main() {
 
     expect(find.text('Overwrite'), findsOneWidget);
     expect(find.text('Remove original'), findsNothing);
+  });
+
+  testWidgets('metadata section toggles preserve original date', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final store = _FakeAppSettingsStore();
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/source.png': _metadata('png', 2400)},
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/source.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(
+      _buildApp(controller: controller, slimg: slimg, store: store),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('metadata-collapsible-toggle')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Preserve original date'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('metadata-preserve-original-date')));
+    await tester.pumpAndSettle();
+
+    final settings = AppSettings.fromJsonString((await store.read())!);
+    expect(settings.preserveOriginalDate, isTrue);
   });
 
   testWidgets('folder collage supports show-in-file-manager context menu', (

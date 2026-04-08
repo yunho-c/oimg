@@ -46,6 +46,7 @@ void main() {
       await notifier.setSameFolderAction(SameFolderAction.keepSource);
       await notifier.setDifferentLocationPath('/tmp/export');
       await notifier.setPreserveFolderStructure(false);
+      await notifier.setPreserveOriginalDate(true);
       await notifier.setDeveloperModeEnabled(true);
       await notifier.setTimingLogsEnabled(true);
 
@@ -62,6 +63,7 @@ void main() {
           sameFolderAction: SameFolderAction.keepSource,
           differentLocationPath: '/tmp/export',
           preserveFolderStructure: false,
+          preserveOriginalDate: true,
           developerModeEnabled: true,
           timingLogsEnabled: true,
         ),

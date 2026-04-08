@@ -14,6 +14,7 @@ void main() {
           storageDestinationMode: StorageDestinationMode.sameFolder,
           sameFolderAction: SameFolderAction.replaceSource,
           preserveFolderStructure: true,
+          preserveOriginalDate: false,
           developerModeEnabled: false,
           timingLogsEnabled: false,
         ).effectiveCodec,
@@ -30,6 +31,7 @@ void main() {
           storageDestinationMode: StorageDestinationMode.sameFolder,
           sameFolderAction: SameFolderAction.replaceSource,
           preserveFolderStructure: true,
+          preserveOriginalDate: false,
           developerModeEnabled: false,
           timingLogsEnabled: false,
         ).effectiveCodec,
@@ -46,6 +48,7 @@ void main() {
           storageDestinationMode: StorageDestinationMode.sameFolder,
           sameFolderAction: SameFolderAction.replaceSource,
           preserveFolderStructure: true,
+          preserveOriginalDate: false,
           developerModeEnabled: false,
           timingLogsEnabled: false,
         ).effectiveCodec,
@@ -62,6 +65,7 @@ void main() {
           storageDestinationMode: StorageDestinationMode.sameFolder,
           sameFolderAction: SameFolderAction.replaceSource,
           preserveFolderStructure: true,
+          preserveOriginalDate: false,
           developerModeEnabled: false,
           timingLogsEnabled: false,
         ).effectiveCodec,
@@ -80,6 +84,7 @@ void main() {
           storageDestinationMode: StorageDestinationMode.sameFolder,
           sameFolderAction: SameFolderAction.replaceSource,
           preserveFolderStructure: true,
+          preserveOriginalDate: false,
           developerModeEnabled: false,
           timingLogsEnabled: false,
         ).effectiveCodec,
@@ -100,6 +105,7 @@ void main() {
           storageDestinationMode: StorageDestinationMode.sameFolder,
           sameFolderAction: SameFolderAction.replaceSource,
           preserveFolderStructure: true,
+          preserveOriginalDate: false,
           developerModeEnabled: false,
           timingLogsEnabled: false,
         ).showsQualityControl,
@@ -116,6 +122,7 @@ void main() {
           storageDestinationMode: StorageDestinationMode.sameFolder,
           sameFolderAction: SameFolderAction.replaceSource,
           preserveFolderStructure: true,
+          preserveOriginalDate: false,
           developerModeEnabled: false,
           timingLogsEnabled: false,
         ).showsQualityControl,
@@ -132,6 +139,7 @@ void main() {
           storageDestinationMode: StorageDestinationMode.sameFolder,
           sameFolderAction: SameFolderAction.replaceSource,
           preserveFolderStructure: true,
+          preserveOriginalDate: false,
           developerModeEnabled: false,
           timingLogsEnabled: false,
         ).showsQualityControl,
@@ -150,6 +158,7 @@ void main() {
           storageDestinationMode: StorageDestinationMode.sameFolder,
           sameFolderAction: SameFolderAction.replaceSource,
           preserveFolderStructure: true,
+          preserveOriginalDate: false,
           developerModeEnabled: false,
           timingLogsEnabled: false,
         ).qualitySupportsLosslessAtMax,
@@ -166,6 +175,7 @@ void main() {
           storageDestinationMode: StorageDestinationMode.sameFolder,
           sameFolderAction: SameFolderAction.replaceSource,
           preserveFolderStructure: true,
+          preserveOriginalDate: false,
           developerModeEnabled: false,
           timingLogsEnabled: false,
         ).qualitySupportsLosslessAtMax,
@@ -182,6 +192,7 @@ void main() {
           storageDestinationMode: StorageDestinationMode.sameFolder,
           sameFolderAction: SameFolderAction.replaceSource,
           preserveFolderStructure: true,
+          preserveOriginalDate: false,
           developerModeEnabled: false,
           timingLogsEnabled: false,
         ).qualitySupportsLosslessAtMax,
@@ -201,6 +212,7 @@ void main() {
       expect(settings.sameFolderAction, SameFolderAction.replaceSource);
       expect(settings.differentLocationPath, isNull);
       expect(settings.preserveFolderStructure, isTrue);
+      expect(settings.preserveOriginalDate, isFalse);
     });
   });
 }

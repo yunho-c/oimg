@@ -24,6 +24,7 @@ void main() {
         storageDestinationMode: StorageDestinationMode.sameFolder,
         sameFolderAction: SameFolderAction.replaceSource,
         preserveFolderStructure: true,
+        preserveOriginalDate: true,
         developerModeEnabled: true,
         timingLogsEnabled: true,
       );

@@ -1820,26 +1820,41 @@ class _SettingsModeSwitcher extends StatelessWidget {
   }
 }
 
-class _MetadataCollapsible extends StatefulWidget {
+class _MetadataCollapsible extends ConsumerStatefulWidget {
   const _MetadataCollapsible();
 
   @override
-  State<_MetadataCollapsible> createState() => _MetadataCollapsibleState();
+  ConsumerState<_MetadataCollapsible> createState() =>
+      _MetadataCollapsibleState();
 }
 
-class _MetadataCollapsibleState extends State<_MetadataCollapsible> {
+class _MetadataCollapsibleState extends ConsumerState<_MetadataCollapsible> {
   bool _isExpanded = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final settings = ref.watch(appSettingsProvider).asData?.value;
+    final notifier = ref.read(appSettingsProvider.notifier);
+    final runState = ref.watch(optimizationRunControllerProvider);
+    final analyzeState = ref.watch(analyzeRunControllerProvider);
+    final controlsLocked = runState.isRunning || analyzeState.isRunning;
 
-    Widget option(String label) {
+    Widget option({
+      required String label,
+      required bool value,
+      required ValueChanged<bool> onChanged,
+    }) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: Checkbox(
-          state: CheckboxState.unchecked,
-          onChanged: null,
+          key: const ValueKey('metadata-preserve-original-date'),
+          state: value ? CheckboxState.checked : CheckboxState.unchecked,
+          onChanged: controlsLocked
+              ? null
+              : (next) {
+                  onChanged(next == CheckboxState.checked);
+                },
           trailing: Expanded(
             child: Text(
               label,
@@ -1861,6 +1876,7 @@ class _MetadataCollapsibleState extends State<_MetadataCollapsible> {
               children: [
                 Expanded(child: const Text('Metadata').small().medium()),
                 GhostButton(
+                  key: const ValueKey('metadata-collapsible-toggle'),
                   onPressed: () {
                     setState(() {
                       _isExpanded = !_isExpanded;
@@ -1893,13 +1909,18 @@ class _MetadataCollapsibleState extends State<_MetadataCollapsible> {
                     : const BoxConstraints(maxHeight: 0),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      option('Preserve EXIF'),
-                      option('Preserve color profile'),
-                    ],
-                  ),
+                  child: settings == null
+                      ? const SizedBox.shrink()
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            option(
+                              label: 'Preserve original date',
+                              value: settings.preserveOriginalDate,
+                              onChanged: notifier.setPreserveOriginalDate,
+                            ),
+                          ],
+                        ),
                 ),
               ),
             ),

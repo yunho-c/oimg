@@ -31,6 +31,7 @@ class AppSettings {
     required this.storageDestinationMode,
     required this.sameFolderAction,
     required this.preserveFolderStructure,
+    required this.preserveOriginalDate,
     required this.developerModeEnabled,
     required this.timingLogsEnabled,
     this.differentLocationPath,
@@ -46,6 +47,7 @@ class AppSettings {
   final SameFolderAction sameFolderAction;
   final String? differentLocationPath;
   final bool preserveFolderStructure;
+  final bool preserveOriginalDate;
   final bool developerModeEnabled;
   final bool timingLogsEnabled;
   final bool previewPathHeaderEnabled;
@@ -59,6 +61,7 @@ class AppSettings {
     storageDestinationMode: StorageDestinationMode.sameFolder,
     sameFolderAction: SameFolderAction.replaceSource,
     preserveFolderStructure: true,
+    preserveOriginalDate: false,
     developerModeEnabled: false,
     timingLogsEnabled: false,
     previewPathHeaderEnabled: false,
@@ -117,6 +120,7 @@ class AppSettings {
     SameFolderAction? sameFolderAction,
     Object? differentLocationPath = _noAppSettingsValue,
     bool? preserveFolderStructure,
+    bool? preserveOriginalDate,
     bool? developerModeEnabled,
     bool? timingLogsEnabled,
     bool? previewPathHeaderEnabled,
@@ -138,6 +142,7 @@ class AppSettings {
           : differentLocationPath as String?,
       preserveFolderStructure:
           preserveFolderStructure ?? this.preserveFolderStructure,
+      preserveOriginalDate: preserveOriginalDate ?? this.preserveOriginalDate,
       developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,
       timingLogsEnabled: timingLogsEnabled ?? this.timingLogsEnabled,
       previewPathHeaderEnabled:
@@ -156,6 +161,7 @@ class AppSettings {
       'sameFolderAction': sameFolderAction.name,
       'differentLocationPath': differentLocationPath,
       'preserveFolderStructure': preserveFolderStructure,
+      'preserveOriginalDate': preserveOriginalDate,
       'developerModeEnabled': developerModeEnabled,
       'timingLogsEnabled': timingLogsEnabled,
       'previewPathHeaderEnabled': previewPathHeaderEnabled,
@@ -198,6 +204,8 @@ class AppSettings {
       preserveFolderStructure:
           json['preserveFolderStructure'] as bool? ??
           defaults.preserveFolderStructure,
+      preserveOriginalDate:
+          json['preserveOriginalDate'] as bool? ?? defaults.preserveOriginalDate,
       developerModeEnabled:
           json['developerModeEnabled'] as bool? ??
           defaults.developerModeEnabled,
@@ -221,6 +229,7 @@ class AppSettings {
         other.sameFolderAction == sameFolderAction &&
         other.differentLocationPath == differentLocationPath &&
         other.preserveFolderStructure == preserveFolderStructure &&
+        other.preserveOriginalDate == preserveOriginalDate &&
         other.developerModeEnabled == developerModeEnabled &&
         other.timingLogsEnabled == timingLogsEnabled &&
         other.previewPathHeaderEnabled == previewPathHeaderEnabled;
@@ -237,6 +246,7 @@ class AppSettings {
     sameFolderAction,
     differentLocationPath,
     preserveFolderStructure,
+    preserveOriginalDate,
     developerModeEnabled,
     timingLogsEnabled,
     previewPathHeaderEnabled,

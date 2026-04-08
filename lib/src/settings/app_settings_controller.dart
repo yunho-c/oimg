@@ -84,6 +84,14 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     );
   }
 
+  Future<void> setPreserveOriginalDate(bool preserveOriginalDate) async {
+    await _update(
+      (settings) => settings.copyWith(
+        preserveOriginalDate: preserveOriginalDate,
+      ),
+    );
+  }
+
   Future<void> setDeveloperModeEnabled(bool developerModeEnabled) async {
     await _update(
       (settings) => settings.copyWith(

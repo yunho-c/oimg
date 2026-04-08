@@ -227,6 +227,7 @@ class FileOpenController extends ChangeNotifier {
     List<BatchItemResult> results, {
     Set<String> keepSourceEntries = const <String>{},
     Set<String> deleteSourcesAfterSuccess = const <String>{},
+    Map<String, DateTime> preserveModifiedTimes = const <String, DateTime>{},
   }) async {
     if (_sessionFiles.isEmpty) {
       return;
@@ -261,7 +262,14 @@ class FileOpenController extends ChangeNotifier {
       final keepSourceEntry = keepSourceEntries.contains(item.inputPath);
       final deleteSourceAfterSuccess =
           deleteSourcesAfterSuccess.contains(item.inputPath);
+      final preserveModifiedTime = preserveModifiedTimes[item.inputPath];
       if (keepSourceEntry) {
+        if (preserveModifiedTime != null) {
+          await _restoreModifiedTime(
+            path: result.outputPath,
+            modifiedTime: preserveModifiedTime,
+          );
+        }
         DeveloperDiagnostics.logTiming(
           'optimize-results',
           'retained-source input=${item.inputPath} output=${result.outputPath} didWrite=${result.didWrite}',
@@ -290,6 +298,12 @@ class FileOpenController extends ChangeNotifier {
         'optimize-results',
         'applied input=${item.inputPath} output=${result.outputPath} didWrite=${result.didWrite} original=${result.originalSize} new=${result.newSize}',
       );
+      if (preserveModifiedTime != null) {
+        await _restoreModifiedTime(
+          path: result.outputPath,
+          modifiedTime: preserveModifiedTime,
+        );
+      }
       if (deleteSourceAfterSuccess &&
           result.didWrite &&
           result.outputPath != item.inputPath) {
@@ -321,6 +335,20 @@ class FileOpenController extends ChangeNotifier {
       }
     }
     notifyListeners();
+  }
+
+  Future<void> _restoreModifiedTime({
+    required String path,
+    required DateTime modifiedTime,
+  }) async {
+    try {
+      final file = File(path);
+      if (await file.exists()) {
+        await file.setLastModified(modifiedTime);
+      }
+    } on Object {
+      // Best-effort timestamp preservation.
+    }
   }
 
   Future<OpenedImageFile?> _inspectPath(String path) async {
