@@ -25,7 +25,7 @@ import 'package:window_manager/window_manager.dart';
 
 const _uiScale = 0.8;
 const _uiRadius = 0.4;
-const _titleBarHeight = 24.0;
+const _titleBarHeight = 19.0;
 const _defaultSidebarWidth = 280.0;
 const _minSidebarWidth = 180.0;
 const _maxSidebarWidth = 420.0;
@@ -234,48 +234,36 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
       headers: [
         AppBar(
           height: _titleBarHeight,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
           child: Stack(
             alignment: Alignment.center,
             children: [
-              const Positioned.fill(
-                child: DragToMoveArea(child: Center(child: Text('OIMG'))),
+              Positioned.fill(
+                child: DragToMoveArea(
+                  child: Center(
+                    child: Text(
+                      'OIMG',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.4,
+                        color: Theme.of(context).colorScheme.mutedForeground,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-              if (controller.currentPositionLabel case final position?)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Card(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        child: Text(position),
-                      ),
-                      const SizedBox(width: 6),
-                      _DeveloperButton(
-                        onPressed: () {
-                          unawaited(_openDeveloperDialog());
-                        },
-                      ),
-                    ],
-                  ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: _DeveloperButton(
+                  onPressed: () {
+                    unawaited(_openDeveloperDialog());
+                  },
                 ),
-              if (controller.currentPositionLabel == null)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: _DeveloperButton(
-                    onPressed: () {
-                      unawaited(_openDeveloperDialog());
-                    },
-                  ),
-                ),
+              ),
             ],
           ),
         ),
-        const Divider(),
       ],
       child: _FileDropSurface(
         child: controller.hasSession
