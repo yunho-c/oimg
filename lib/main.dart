@@ -2670,7 +2670,7 @@ class _TitleBarSettingsButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final settings = ref.watch(appSettingsProvider).asData?.value;
+    final hasSettings = ref.watch(appSettingsProvider).hasValue;
 
     return SizedBox(
       width: 16,
@@ -2680,27 +2680,40 @@ class _TitleBarSettingsButton extends ConsumerWidget {
           key: const ValueKey('title-bar-settings-button'),
           size: ButtonSize.xSmall,
           density: ButtonDensity.iconDense,
-          onPressed: settings == null
+          onPressed: !hasSettings
               ? null
               : () {
                   showDropdown(
                     context: context,
                     builder: (context) {
-                      final currentTheme = settings.themePreference;
-                      return DropdownMenu(
-                        children: [
-                          MenuButton(
-                            key: const ValueKey('title-bar-theme-toggle'),
-                            onPressed: (context) {
-                              unawaited(
-                                ref
-                                    .read(appSettingsProvider.notifier)
-                                    .cycleThemePreference(),
-                              );
-                            },
-                            child: Text('Theme: ${currentTheme.label}'),
-                          ),
-                        ],
+                      return Consumer(
+                        builder: (context, ref, child) {
+                          final settings = ref
+                              .watch(appSettingsProvider)
+                              .asData
+                              ?.value;
+                          if (settings == null) {
+                            return const SizedBox.shrink();
+                          }
+                          return DropdownMenu(
+                            children: [
+                              MenuButton(
+                                key: const ValueKey('title-bar-theme-toggle'),
+                                autoClose: false,
+                                onPressed: (context) {
+                                  unawaited(
+                                    ref
+                                        .read(appSettingsProvider.notifier)
+                                        .cycleThemePreference(),
+                                  );
+                                },
+                                child: Text(
+                                  'Theme: ${settings.themePreference.label}',
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       );
                     },
                   );
@@ -3340,34 +3353,46 @@ class _BottomQualitySection extends ConsumerWidget {
                             showDropdown(
                               context: context,
                               builder: (context) {
-                                return DropdownMenu(
-                                  children: [
-                                    MenuButton(
-                                      key: const ValueKey(
-                                        'quality-metric-colors-toggle',
-                                      ),
-                                      leading: Icon(
-                                        colorCodingEnabled
-                                            ? Icons.check
-                                            : Icons.palette_outlined,
-                                        size: 14,
-                                      ),
-                                      onPressed: (context) {
-                                        unawaited(
-                                          ref
-                                              .read(appSettingsProvider.notifier)
-                                              .setQualityMetricColorsEnabled(
-                                                !colorCodingEnabled,
-                                              ),
-                                        );
-                                      },
-                                      child: Text(
-                                        colorCodingEnabled
-                                            ? 'Disable metric colors'
-                                            : 'Enable metric colors',
-                                      ),
-                                    ),
-                                  ],
+                                return Consumer(
+                                  builder: (context, ref, child) {
+                                    final settings = ref
+                                        .watch(appSettingsProvider)
+                                        .asData
+                                        ?.value;
+                                    if (settings == null) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    final colorCodingEnabled =
+                                        settings.qualityMetricColorsEnabled;
+                                    return DropdownMenu(
+                                      children: [
+                                        MenuCheckbox(
+                                          key: const ValueKey(
+                                            'quality-metric-colors-toggle',
+                                          ),
+                                          value: colorCodingEnabled,
+                                          autoClose: false,
+                                          onChanged: (context, value) {
+                                            unawaited(
+                                              ref
+                                                  .read(
+                                                    appSettingsProvider
+                                                        .notifier,
+                                                  )
+                                                  .setQualityMetricColorsEnabled(
+                                                    value,
+                                                  ),
+                                            );
+                                          },
+                                          child: Text(
+                                            colorCodingEnabled
+                                                ? 'Disable metric colors'
+                                                : 'Enable metric colors',
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
                                 );
                               },
                             );

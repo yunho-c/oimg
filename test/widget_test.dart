@@ -1043,26 +1043,26 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('title-bar-theme-toggle')));
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('title-bar-theme-toggle')), findsOneWidget);
+    expect(find.text('Theme: Light'), findsOneWidget);
     expect(
       AppSettings.fromJsonString((await store.read())!).themePreference,
       AppThemePreference.light,
     );
 
-    await tester.tap(settingsButton);
-    await tester.pumpAndSettle();
-    expect(find.text('Theme: Light'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('title-bar-theme-toggle')));
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('title-bar-theme-toggle')), findsOneWidget);
+    expect(find.text('Theme: Dark'), findsOneWidget);
     expect(
       AppSettings.fromJsonString((await store.read())!).themePreference,
       AppThemePreference.dark,
     );
 
-    await tester.tap(settingsButton);
-    await tester.pumpAndSettle();
-    expect(find.text('Theme: Dark'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('title-bar-theme-toggle')));
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('title-bar-theme-toggle')), findsOneWidget);
+    expect(find.text('Theme: System'), findsOneWidget);
     expect(
       AppSettings.fromJsonString((await store.read())!).themePreference,
       AppThemePreference.system,
@@ -1390,6 +1390,11 @@ void main() {
       find.byKey(const ValueKey('quality-metric-colors-toggle')),
     );
     await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('quality-metric-colors-toggle')),
+      findsOneWidget,
+    );
+    expect(find.text('Disable metric colors'), findsOneWidget);
 
     final settings = AppSettings.fromJsonString((await store.read())!);
     expect(settings.qualityMetricColorsEnabled, isTrue);
