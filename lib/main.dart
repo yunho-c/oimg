@@ -725,7 +725,7 @@ class _ImageStage extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -745,7 +745,7 @@ class _ImageStage extends ConsumerWidget {
                             title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.w700),
+                            style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -765,7 +765,7 @@ class _ImageStage extends ConsumerWidget {
                   ],
                 ),
               ),
-              const Divider(),
+              Divider(color: theme.colorScheme.border.withValues(alpha: 0.4)),
               Expanded(
                 child: Container(
                   color: theme.colorScheme.background,
