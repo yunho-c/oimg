@@ -1281,6 +1281,7 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
           label: 'Optimized',
           selected: displayMode == PreviewDisplayMode.optimized,
           enabled: hasOptimizedPreview,
+          tooltip: optimizedLoading ? 'Optimizing image...' : null,
           loading: optimizedLoading,
           onPressed: onSelectOptimized,
         ),
@@ -3951,10 +3952,7 @@ class _BottomStatData {
 }
 
 class _BottomInfoRowData {
-  const _BottomInfoRowData({
-    required this.label,
-    required this.value,
-  });
+  const _BottomInfoRowData({required this.label, required this.value});
 
   final String label;
   final String value;
