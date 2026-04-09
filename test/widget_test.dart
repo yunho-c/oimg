@@ -160,6 +160,64 @@ void main() {
     },
   );
 
+  testWidgets(
+    'preview header shows transparent as a separate label before the resolution',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final slimg = _FakeSlimgApi(
+        inspectResults: {
+          '/tmp/transparent.png': _metadata('png', 2400, hasTransparency: true),
+        },
+      );
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/transparent.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+      await tester.pumpAndSettle();
+
+      expect(find.text('transparent'), findsOneWidget);
+      expect(find.text('48 x 32'), findsOneWidget);
+      expect(find.textContaining('|'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'preview header shows only the resolution for opaque images and keeps the megapixel tooltip wrapper',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      );
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+      await tester.pumpAndSettle();
+
+      expect(find.text('48 x 32'), findsOneWidget);
+      expect(find.text('transparent'), findsNothing);
+      expect(
+        find.ancestor(
+          of: find.text('48 x 32'),
+          matching: find.byType(Tooltip),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('renders startup session, preview, and actions', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));

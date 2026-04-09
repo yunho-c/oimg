@@ -770,24 +770,38 @@ class _ImageStage extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Tooltip(
-                          waitDuration: const Duration(milliseconds: 250),
-                          showDuration: const Duration(milliseconds: 120),
-                          tooltip: (context) => TooltipContainer(
-                            child: Text(
-                              _formatMegapixels(
-                                currentFile.metadata.width,
-                                currentFile.metadata.height,
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (currentFile.metadata.hasTransparency) ...[
+                              Text(
+                                'transparent',
+                                style: TextStyle(
+                                  color: theme.colorScheme.mutedForeground,
+                                ),
+                              ).xSmall(),
+                              const SizedBox(width: 10),
+                            ],
+                            Tooltip(
+                              waitDuration: const Duration(milliseconds: 250),
+                              showDuration: const Duration(milliseconds: 120),
+                              tooltip: (context) => TooltipContainer(
+                                child: Text(
+                                  _formatMegapixels(
+                                    currentFile.metadata.width,
+                                    currentFile.metadata.height,
+                                  ),
+                                ),
                               ),
+                              child: Text(
+                                '${currentFile.metadata.width} x ${currentFile.metadata.height}',
+                                textAlign: TextAlign.right,
+                                style: TextStyle(
+                                  color: theme.colorScheme.mutedForeground,
+                                ),
+                              ).xSmall(),
                             ),
-                          ),
-                          child: Text(
-                            '${currentFile.metadata.width} x ${currentFile.metadata.height}',
-                            textAlign: TextAlign.right,
-                            style: TextStyle(
-                              color: theme.colorScheme.mutedForeground,
-                            ),
-                          ).xSmall(),
+                          ],
                         ),
                       ],
                     ),
