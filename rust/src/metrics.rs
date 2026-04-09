@@ -145,7 +145,7 @@ pub(crate) fn compute_preview_ms_ssim(
     let artifact = request_artifact(&request)?;
     Ok(*artifact.ms_ssim.get_or_init(|| {
         if artifact.decoded_pixels_equal() {
-            return Some(100.0);
+            return Some(1.0);
         }
         compute_ms_ssim(
             artifact.original_width,
@@ -682,7 +682,7 @@ mod tests {
         );
         assert_eq!(
             compute_preview_ms_ssim(request.clone()).expect("ms-ssim should compute"),
-            Some(100.0)
+            Some(1.0)
         );
         assert_eq!(
             compute_preview_ssimulacra2(request).expect("ssimulacra2 should compute"),
@@ -714,7 +714,7 @@ mod tests {
         );
         assert_ne!(
             compute_preview_ms_ssim(request.clone()).expect("ms-ssim should compute"),
-            Some(100.0)
+            Some(1.0)
         );
         assert_ne!(
             compute_preview_ssimulacra2(request).expect("ssimulacra2 should compute"),

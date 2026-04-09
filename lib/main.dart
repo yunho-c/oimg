@@ -2539,7 +2539,7 @@ class _AnalyzeChart extends StatelessWidget {
                     };
                     final sample = point.sample;
                     return LineTooltipItem(
-                      'Q${sample.quality}\n${_formatBytes(sample.sizeBytes.toInt())}\nPixel ${_formatNullableMetricPercent(sample.pixelMatch)}\nSSIM ${_formatNullableMetric(sample.ssimulacra2, digits: 1)}',
+                      'Q${sample.quality}\n${_formatBytes(sample.sizeBytes.toInt())}\nPixel ${_formatNullableMetricPercent(sample.pixelMatch)}\nSSIM ${_formatNullableMetric(sample.ssimulacra2, digits: 1, trimIfHundred: true)}',
                       TextStyle(
                         color: theme.colorScheme.foreground,
                         fontSize: 10,
@@ -2631,7 +2631,7 @@ class _AnalyzeSelectionSummary extends StatelessWidget {
           ).xSmall().medium(),
         ),
         Text(
-          'Pixel ${_formatNullableMetricPercent(sample.pixelMatch)}  SSIM ${_formatNullableMetric(sample.ssimulacra2, digits: 1)}',
+          'Pixel ${_formatNullableMetricPercent(sample.pixelMatch)}  SSIM ${_formatNullableMetric(sample.ssimulacra2, digits: 1, trimIfHundred: true)}',
         ).xSmall().muted(),
       ],
     );
@@ -3314,7 +3314,8 @@ class _BottomQualitySection extends ConsumerWidget {
             _metricRowState(
               label: 'MS-SSIM',
               metric: ref.watch(currentPreviewMsSsimProvider),
-              formatter: _formatNullableMetric,
+              formatter: (value) =>
+                  _formatNullableMetric(value, trimIfOne: true),
               scoreMapper: (value) =>
                   value == null ? null : (value * 100).clamp(0, 100).toDouble(),
               previewPendingBeforeMetrics: previewPendingBeforeMetrics,
@@ -3322,7 +3323,8 @@ class _BottomQualitySection extends ConsumerWidget {
             _metricRowState(
               label: 'SSIMULACRA 2',
               metric: ref.watch(currentPreviewSsimulacra2Provider),
-              formatter: (value) => _formatNullableMetric(value, digits: 1),
+              formatter: (value) =>
+                  _formatNullableMetric(value, digits: 1, trimIfHundred: true),
               scoreMapper: (value) => value?.clamp(0, 100).toDouble(),
               previewPendingBeforeMetrics: previewPendingBeforeMetrics,
             ),
@@ -4056,6 +4058,9 @@ String? _formatNullablePercent(double? value) {
   if (value == null) {
     return null;
   }
+  if (value.toStringAsFixed(1) == '100.0') {
+    return '100%';
+  }
   return '${value.toStringAsFixed(1)}%';
 }
 
@@ -4084,12 +4089,30 @@ String _formatNullableBpp(double? value) {
   return value >= 10 ? value.toStringAsFixed(1) : value.toStringAsFixed(2);
 }
 
-String _formatNullableMetric(double? value, {int digits = 3}) {
+String _formatNullableMetric(
+  double? value, {
+  int digits = 3,
+  bool trimIfHundred = false,
+  bool trimIfOne = false,
+}) {
   if (value == null) {
     return 'N/A';
   }
 
-  return value.toStringAsFixed(digits);
+  final formatted = value.toStringAsFixed(digits);
+  if (trimIfOne) {
+    final wholeOne = '1.${'0' * digits}';
+    if (formatted == wholeOne && digits > 0) {
+      return '1.${'0' * (digits - 1)}';
+    }
+  }
+  if (trimIfHundred) {
+    final wholeHundred = '100.${'0' * digits}';
+    if (formatted == wholeHundred) {
+      return '100';
+    }
+  }
+  return formatted;
 }
 
 String _formatNullableMetricPercent(double? value) {
