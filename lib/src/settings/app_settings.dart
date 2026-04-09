@@ -68,6 +68,7 @@ class AppSettings {
     this.similarityMetricColorsEnabled = false,
     this.savingsColorsEnabled = false,
     this.bitsPerPixelColorsEnabled = false,
+    this.fileSizeColorsEnabled = false,
     this.themePreference = AppThemePreference.system,
     required this.developerModeEnabled,
     required this.timingLogsEnabled,
@@ -91,6 +92,7 @@ class AppSettings {
   final bool similarityMetricColorsEnabled;
   final bool savingsColorsEnabled;
   final bool bitsPerPixelColorsEnabled;
+  final bool fileSizeColorsEnabled;
   final AppThemePreference themePreference;
   final bool developerModeEnabled;
   final bool timingLogsEnabled;
@@ -112,6 +114,7 @@ class AppSettings {
     similarityMetricColorsEnabled: false,
     savingsColorsEnabled: false,
     bitsPerPixelColorsEnabled: false,
+    fileSizeColorsEnabled: false,
     themePreference: AppThemePreference.system,
     developerModeEnabled: false,
     timingLogsEnabled: false,
@@ -178,6 +181,7 @@ class AppSettings {
     bool? similarityMetricColorsEnabled,
     bool? savingsColorsEnabled,
     bool? bitsPerPixelColorsEnabled,
+    bool? fileSizeColorsEnabled,
     AppThemePreference? themePreference,
     bool? developerModeEnabled,
     bool? timingLogsEnabled,
@@ -208,6 +212,8 @@ class AppSettings {
       savingsColorsEnabled: savingsColorsEnabled ?? this.savingsColorsEnabled,
       bitsPerPixelColorsEnabled:
           bitsPerPixelColorsEnabled ?? this.bitsPerPixelColorsEnabled,
+      fileSizeColorsEnabled:
+          fileSizeColorsEnabled ?? this.fileSizeColorsEnabled,
       themePreference: themePreference ?? this.themePreference,
       developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,
       timingLogsEnabled: timingLogsEnabled ?? this.timingLogsEnabled,
@@ -234,6 +240,7 @@ class AppSettings {
       'similarityMetricColorsEnabled': similarityMetricColorsEnabled,
       'savingsColorsEnabled': savingsColorsEnabled,
       'bitsPerPixelColorsEnabled': bitsPerPixelColorsEnabled,
+      'fileSizeColorsEnabled': fileSizeColorsEnabled,
       'themePreference': themePreference.name,
       'developerModeEnabled': developerModeEnabled,
       'timingLogsEnabled': timingLogsEnabled,
@@ -296,6 +303,9 @@ class AppSettings {
       bitsPerPixelColorsEnabled:
           json['bitsPerPixelColorsEnabled'] as bool? ??
           defaults.bitsPerPixelColorsEnabled,
+      fileSizeColorsEnabled:
+          json['fileSizeColorsEnabled'] as bool? ??
+          defaults.fileSizeColorsEnabled,
       themePreference: AppThemePreference.values.byName(
         json['themePreference'] as String? ?? defaults.themePreference.name,
       ),
@@ -329,6 +339,7 @@ class AppSettings {
         other.similarityMetricColorsEnabled == similarityMetricColorsEnabled &&
         other.savingsColorsEnabled == savingsColorsEnabled &&
         other.bitsPerPixelColorsEnabled == bitsPerPixelColorsEnabled &&
+        other.fileSizeColorsEnabled == fileSizeColorsEnabled &&
         other.themePreference == themePreference &&
         other.developerModeEnabled == developerModeEnabled &&
         other.timingLogsEnabled == timingLogsEnabled &&
@@ -336,7 +347,7 @@ class AppSettings {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     compressionMethod,
     compressionPriority,
     advancedMode,
@@ -353,9 +364,10 @@ class AppSettings {
     similarityMetricColorsEnabled,
     savingsColorsEnabled,
     bitsPerPixelColorsEnabled,
+    fileSizeColorsEnabled,
     themePreference,
     developerModeEnabled,
     timingLogsEnabled,
     previewPathHeaderEnabled,
-  );
+  ]);
 }

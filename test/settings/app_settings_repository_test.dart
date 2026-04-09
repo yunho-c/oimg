@@ -31,6 +31,7 @@ void main() {
         similarityMetricColorsEnabled: true,
         savingsColorsEnabled: true,
         bitsPerPixelColorsEnabled: true,
+        fileSizeColorsEnabled: true,
         themePreference: AppThemePreference.light,
         developerModeEnabled: true,
         timingLogsEnabled: true,

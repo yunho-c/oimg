@@ -3141,6 +3141,10 @@ class _BottomStatTile extends ConsumerWidget {
     };
     final valueColor = switch (stat.colorMode) {
       _BottomStatColorMode.none => defaultValueColor,
+      _BottomStatColorMode.fileSize
+          when settings?.fileSizeColorsEnabled == true &&
+              stat.colorScore != null =>
+        _qualityMetricColor(_bitsPerPixelColorScore(stat.colorScore!)),
       _BottomStatColorMode.similarity
           when settings?.similarityMetricColorsEnabled == true &&
               stat.colorScore != null =>
@@ -3242,6 +3246,23 @@ class _BottomStatTile extends ConsumerWidget {
           settings?.savingsColorsEnabled == true
               ? 'Disable savings colors'
               : 'Enable savings colors',
+        ),
+      ),
+      _BottomStatColorMode.fileSize => MenuButton(
+        key: const ValueKey('bottom-stat-file-size-colors-toggle'),
+        onPressed: (context) {
+          unawaited(
+            ref
+                .read(appSettingsProvider.notifier)
+                .setFileSizeColorsEnabled(
+                  !(settings?.fileSizeColorsEnabled ?? false),
+                ),
+          );
+        },
+        child: Text(
+          settings?.fileSizeColorsEnabled == true
+              ? 'Disable file size colors'
+              : 'Enable file size colors',
         ),
       ),
       _BottomStatColorMode.none => null,
@@ -3954,11 +3975,15 @@ class _BottomSummaryViewModel {
           label: 'Original',
           value: _formatNullableBytes(originalBytes),
           color: const Color(0xFF6B7280),
+          colorMode: _BottomStatColorMode.fileSize,
+          colorScore: originalBpp,
         ),
         _BottomStatData(
           label: 'Optimized',
           value: _formatNullableBytes(newBytes),
           color: const Color(0xFF2563EB),
+          colorMode: _BottomStatColorMode.fileSize,
+          colorScore: optimizedBpp,
           loading: isOptimizedPreviewPending,
           tooltip: optimizedTimingTooltip,
         ),
@@ -4043,11 +4068,15 @@ class _BottomSummaryViewModel {
           label: 'Original',
           value: _formatNullableBytes(originalBytes),
           color: const Color(0xFF6B7280),
+          colorMode: _BottomStatColorMode.fileSize,
+          colorScore: originalBpp,
         ),
         _BottomStatData(
           label: 'Optimized',
           value: _formatNullableBytes(newBytes),
           color: const Color(0xFF2563EB),
+          colorMode: _BottomStatColorMode.fileSize,
+          colorScore: optimizedBpp,
         ),
         _BottomStatData(
           label: 'Savings',
@@ -4197,7 +4226,7 @@ class _BottomStatData {
   final String? tooltip;
 }
 
-enum _BottomStatColorMode { none, similarity, savings }
+enum _BottomStatColorMode { none, fileSize, similarity, savings }
 
 class _BottomInfoRowData {
   const _BottomInfoRowData({

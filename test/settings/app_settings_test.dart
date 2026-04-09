@@ -244,6 +244,7 @@ void main() {
       expect(settings.similarityMetricColorsEnabled, isFalse);
       expect(settings.savingsColorsEnabled, isFalse);
       expect(settings.bitsPerPixelColorsEnabled, isFalse);
+      expect(settings.fileSizeColorsEnabled, isFalse);
       expect(settings.themePreference, AppThemePreference.system);
     });
   });

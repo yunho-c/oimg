@@ -1080,6 +1080,203 @@ void main() {
     );
   });
 
+  testWidgets(
+    'file size tiles toggle colors from their own context menu in file mode',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final store = _FakeAppSettingsStore();
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      );
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(
+        _buildApp(controller: controller, slimg: slimg, store: store),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      final initialOriginalColor = _bottomStatValueText(
+        tester,
+        label: 'Original',
+        value: '2.3 KB',
+      ).style?.color;
+      final initialOptimizedColor = _bottomStatValueText(
+        tester,
+        label: 'Optimized',
+        value: '1.2 KB',
+      ).style?.color;
+
+      await tester.tap(
+        find.byKey(const ValueKey('bottom-stat-Original')),
+        buttons: kSecondaryButton,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Enable file size colors'), findsOneWidget);
+      await tester.tap(
+        find.byKey(const ValueKey('bottom-stat-file-size-colors-toggle')),
+      );
+      await tester.pumpAndSettle();
+
+      final settings = AppSettings.fromJsonString((await store.read())!);
+      expect(settings.fileSizeColorsEnabled, isTrue);
+      expect(settings.bitsPerPixelColorsEnabled, isFalse);
+
+      expect(
+        _bottomStatValueText(tester, label: 'Original', value: '2.3 KB')
+            .style
+            ?.color,
+        isNot(equals(initialOriginalColor)),
+      );
+      expect(
+        _bottomStatValueText(tester, label: 'Optimized', value: '1.2 KB')
+            .style
+            ?.color,
+        isNot(equals(initialOptimizedColor)),
+      );
+    },
+  );
+
+  testWidgets(
+    'file size tiles toggle colors from their own context menu in folder mode',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final store = _FakeAppSettingsStore();
+      final slimg = _FakeSlimgApi(
+        inspectResults: {
+          '/tmp/animals/cat.png': _metadata('png', 2400),
+          '/tmp/animals/dog.png': _metadata('jpeg', 1800),
+        },
+      );
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/animals/cat.png', '/tmp/animals/dog.png'],
+      );
+      await controller.initialize();
+      controller.showFolder('/tmp/animals');
+
+      await tester.pumpWidget(
+        _buildApp(controller: controller, slimg: slimg, store: store),
+      );
+      await tester.pumpAndSettle();
+
+      final initialOriginalColor = _bottomStatValueText(
+        tester,
+        label: 'Original',
+        value: '4.1 KB',
+      ).style?.color;
+      final initialOptimizedColor = _bottomStatValueText(
+        tester,
+        label: 'Optimized',
+        value: '4.1 KB',
+      ).style?.color;
+
+      await tester.tap(
+        find.byKey(const ValueKey('bottom-stat-Optimized')),
+        buttons: kSecondaryButton,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Enable file size colors'), findsOneWidget);
+      await tester.tap(
+        find.byKey(const ValueKey('bottom-stat-file-size-colors-toggle')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        _bottomStatValueText(tester, label: 'Original', value: '4.1 KB')
+            .style
+            ?.color,
+        isNot(equals(initialOriginalColor)),
+      );
+      expect(
+        _bottomStatValueText(tester, label: 'Optimized', value: '4.1 KB')
+            .style
+            ?.color,
+        isNot(equals(initialOptimizedColor)),
+      );
+    },
+  );
+
+  testWidgets(
+    'bits per pixel and file size color toggles are independent',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final store = _FakeAppSettingsStore();
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      );
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(
+        _buildApp(controller: controller, slimg: slimg, store: store),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      final initialBppColor = _bottomInfoValueText(
+        tester,
+        key: 'original-bpp-value',
+      ).style?.color;
+      final initialFileSizeColor = _bottomStatValueText(
+        tester,
+        label: 'Original',
+        value: '2.3 KB',
+      ).style?.color;
+
+      await tester.tap(
+        find.byKey(const ValueKey('original-bpp-row')),
+        buttons: kSecondaryButton,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('bottom-info-bpp-colors-toggle')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        _bottomInfoValueText(tester, key: 'original-bpp-value').style?.color,
+        isNot(equals(initialBppColor)),
+      );
+      expect(
+        _bottomStatValueText(tester, label: 'Original', value: '2.3 KB')
+            .style
+            ?.color,
+        equals(initialFileSizeColor),
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('bottom-stat-Original')),
+        buttons: kSecondaryButton,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('bottom-stat-file-size-colors-toggle')),
+      );
+      await tester.pumpAndSettle();
+
+      final settings = AppSettings.fromJsonString((await store.read())!);
+      expect(settings.bitsPerPixelColorsEnabled, isTrue);
+      expect(settings.fileSizeColorsEnabled, isTrue);
+    },
+  );
+
   testWidgets('unavailable bits per pixel values stay neutral when enabled', (
     tester,
   ) async {

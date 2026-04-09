@@ -53,6 +53,7 @@ void main() {
       await notifier.setSimilarityMetricColorsEnabled(true);
       await notifier.setSavingsColorsEnabled(true);
       await notifier.setBitsPerPixelColorsEnabled(true);
+      await notifier.setFileSizeColorsEnabled(true);
       await notifier.setThemePreference(AppThemePreference.dark);
       await notifier.setDeveloperModeEnabled(true);
       await notifier.setTimingLogsEnabled(true);
@@ -77,6 +78,7 @@ void main() {
           similarityMetricColorsEnabled: true,
           savingsColorsEnabled: true,
           bitsPerPixelColorsEnabled: true,
+          fileSizeColorsEnabled: true,
           themePreference: AppThemePreference.dark,
           developerModeEnabled: true,
           timingLogsEnabled: true,

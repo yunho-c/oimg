@@ -136,6 +136,13 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     );
   }
 
+  Future<void> setFileSizeColorsEnabled(bool fileSizeColorsEnabled) async {
+    await _update(
+      (settings) =>
+          settings.copyWith(fileSizeColorsEnabled: fileSizeColorsEnabled),
+    );
+  }
+
   Future<void> setThemePreference(AppThemePreference themePreference) async {
     await _update(
       (settings) => settings.copyWith(themePreference: themePreference),
