@@ -2452,6 +2452,13 @@ class _AnalyzePanel extends ConsumerWidget {
                               .requestForArtifact(sample.artifactId);
                         }
                       },
+                      onCommitSampleQuality: (sample) {
+                        unawaited(
+                          ref
+                              .read(appSettingsProvider.notifier)
+                              .setQuality(sample.quality),
+                        );
+                      },
                     ),
             ),
             const SizedBox(height: 8),
@@ -2471,11 +2478,13 @@ class _AnalyzeChart extends StatelessWidget {
     required this.samples,
     required this.selectedArtifactId,
     required this.onSelectSample,
+    required this.onCommitSampleQuality,
   });
 
   final List<AnalyzeSampleResult> samples;
   final String? selectedArtifactId;
   final ValueChanged<AnalyzeSampleResult> onSelectSample;
+  final ValueChanged<AnalyzeSampleResult> onCommitSampleQuality;
 
   @override
   Widget build(BuildContext context) {
@@ -2550,7 +2559,7 @@ class _AnalyzeChart extends StatelessWidget {
             final touchedSpots = response?.lineBarSpots;
             if (touchedSpots == null ||
                 touchedSpots.isEmpty ||
-                !event.isInterestedForInteractions) {
+                !_isAnalyzeSelectionEvent(event)) {
               return;
             }
             final touched = touchedSpots.first;
@@ -2560,6 +2569,9 @@ class _AnalyzeChart extends StatelessWidget {
               _ => ssimulacra2Points[touched.spotIndex],
             };
             onSelectSample(point.sample);
+            if (_isAnalyzeCommitEvent(event)) {
+              onCommitSampleQuality(point.sample);
+            }
           },
         ),
         lineBarsData: [
@@ -4410,6 +4422,14 @@ String _formatMetricTimingTooltip(int elapsedMilliseconds) {
 String _formatMegapixels(int width, int height) {
   final megapixels = (width * height) / 1000000;
   return '${megapixels.toStringAsFixed(1)} MP';
+}
+
+bool _isAnalyzeSelectionEvent(FlTouchEvent event) {
+  return event.isInterestedForInteractions;
+}
+
+bool _isAnalyzeCommitEvent(FlTouchEvent event) {
+  return event is FlTapDownEvent || event is FlTapUpEvent;
 }
 
 bool _isTerminalStatus(OptimizationItemStatus status) {

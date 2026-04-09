@@ -734,6 +734,117 @@ void main() {
     expect(chart.data.lineBarsData, hasLength(3));
   });
 
+  testWidgets(
+    'selecting an analyze chart point updates the quality setting without clearing the chart',
+    (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final store = _FakeAppSettingsStore();
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+    )..analyzeSampleDelay = const Duration(milliseconds: 20);
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(
+      _buildApp(controller: controller, slimg: slimg, store: store),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 260));
+    await tester.pumpAndSettle();
+
+    final chart = tester.widget<LineChart>(find.byType(LineChart));
+    final firstBar = chart.data.lineBarsData.first;
+    final firstSpot = firstBar.spots.first;
+    chart.data.lineTouchData.touchCallback?.call(
+      FlTapDownEvent(TapDownDetails(localPosition: Offset.zero)),
+      LineTouchResponse(
+        touchLocation: Offset.zero,
+        touchChartCoordinate: Offset.zero,
+        lineBarSpots: [
+          TouchLineBarSpot(firstBar, 0, firstSpot, 0),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final settings = AppSettings.fromJsonString((await store.read())!);
+    expect(settings.quality, 100);
+    expect(find.byType(LineChart), findsOneWidget);
+    expect(find.text('11 samples'), findsOneWidget);
+  });
+
+  testWidgets(
+    'hovering an analyze chart point does not update the quality setting',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final store = _FakeAppSettingsStore();
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      )..analyzeSampleDelay = const Duration(milliseconds: 20);
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(
+        _buildApp(controller: controller, slimg: slimg, store: store),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+      await tester.pumpAndSettle();
+
+      expect(
+        _bottomStatValueText(tester, label: 'Optimized', value: '1.2 KB'),
+        isNotNull,
+      );
+
+      final chart = tester.widget<LineChart>(find.byType(LineChart));
+      final firstBar = chart.data.lineBarsData.first;
+      final firstSpot = firstBar.spots.first;
+      chart.data.lineTouchData.touchCallback?.call(
+        FlPointerHoverEvent(
+          const PointerHoverEvent(position: Offset.zero),
+        ),
+        LineTouchResponse(
+          touchLocation: Offset.zero,
+          touchChartCoordinate: Offset.zero,
+          lineBarSpots: [
+            TouchLineBarSpot(firstBar, 0, firstSpot, 0),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(await store.read(), isNull);
+      expect(
+        _bottomStatValueText(tester, label: 'Optimized', value: '700 B'),
+        isNotNull,
+      );
+      expect(find.byType(LineChart), findsOneWidget);
+      expect(find.text('11 samples'), findsOneWidget);
+    },
+  );
+
   testWidgets('later openFiles event replaces the session', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));

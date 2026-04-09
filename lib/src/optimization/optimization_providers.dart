@@ -378,6 +378,11 @@ class AnalyzeConfig {
   final String inputPath;
   final ImageOperation operation;
 
+  AnalyzeConfig get normalizedContext => AnalyzeConfig(
+    inputPath: inputPath,
+    operation: _normalizeAnalyzeOperation(operation),
+  );
+
   AnalyzeFileRequest toRequest() {
     return AnalyzeFileRequest(
       inputPath: inputPath,
@@ -385,6 +390,53 @@ class AnalyzeConfig {
       qualities: Uint8List.fromList(_analyzeSweepQualities),
     );
   }
+
+  @override
+  int get hashCode => Object.hash(inputPath, operation);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AnalyzeConfig &&
+          runtimeType == other.runtimeType &&
+          inputPath == other.inputPath &&
+          operation == other.operation;
+}
+
+ImageOperation _normalizeAnalyzeOperation(ImageOperation operation) {
+  return operation.when(
+    convert: (options) => ImageOperation.convert(
+      ConvertOptions(targetFormat: options.targetFormat, quality: 0),
+    ),
+    optimize: (options) => ImageOperation.optimize(
+      OptimizeOptions(
+        quality: 0,
+        writeOnlyIfSmaller: options.writeOnlyIfSmaller,
+      ),
+    ),
+    resize: (options) => ImageOperation.resize(
+      ResizeOptions(
+        resize: options.resize,
+        targetFormat: options.targetFormat,
+        quality: 0,
+      ),
+    ),
+    crop: (options) => ImageOperation.crop(
+      CropOptions(
+        crop: options.crop,
+        targetFormat: options.targetFormat,
+        quality: 0,
+      ),
+    ),
+    extend: (options) => ImageOperation.extend(
+      ExtendOptions(
+        extend: options.extend,
+        fill: options.fill,
+        targetFormat: options.targetFormat,
+        quality: 0,
+      ),
+    ),
+  );
 }
 
 enum AnalyzeAvailabilityStatus { loading, disabled, enabled }
@@ -453,6 +505,7 @@ class PreviewMetricResult {
 class AnalyzeRunState {
   const AnalyzeRunState({
     required this.availability,
+    this.contextConfig,
     this.jobId,
     this.jobState,
     this.completedCount = 0,
@@ -464,6 +517,7 @@ class AnalyzeRunState {
   });
 
   final AnalyzeAvailability availability;
+  final AnalyzeConfig? contextConfig;
   final String? jobId;
   final BatchJobState? jobState;
   final int completedCount;
@@ -494,6 +548,7 @@ class AnalyzeRunState {
 
   AnalyzeRunState copyWith({
     AnalyzeAvailability? availability,
+    AnalyzeConfig? contextConfig,
     String? jobId,
     BatchJobState? jobState,
     int? completedCount,
@@ -510,6 +565,7 @@ class AnalyzeRunState {
   }) {
     return AnalyzeRunState(
       availability: availability ?? this.availability,
+      contextConfig: contextConfig ?? this.contextConfig,
       jobId: clearJobId ? null : (jobId ?? this.jobId),
       jobState: clearJobState ? null : (jobState ?? this.jobState),
       completedCount: completedCount ?? this.completedCount,
@@ -600,6 +656,7 @@ final analyzeRunControllerProvider =
 
 class AnalyzeRunController extends Notifier<AnalyzeRunState> {
   String? _activeJobId;
+  bool _didBuild = false;
 
   @override
   AnalyzeRunState build() {
@@ -610,7 +667,55 @@ class AnalyzeRunController extends Notifier<AnalyzeRunState> {
         unawaited(_disposeJob(jobId));
       }
     });
-    return AnalyzeRunState(availability: availability);
+    if (!_didBuild) {
+      _didBuild = true;
+      return AnalyzeRunState(
+        availability: availability,
+        contextConfig: availability.config?.normalizedContext,
+      );
+    }
+    return _rebaseAnalyzeState(state, availability);
+  }
+
+  AnalyzeRunState _rebaseAnalyzeState(
+    AnalyzeRunState previous,
+    AnalyzeAvailability availability,
+  ) {
+    final nextContextConfig = availability.config?.normalizedContext;
+
+    if (availability.status == AnalyzeAvailabilityStatus.loading) {
+      return previous.copyWith(availability: availability);
+    }
+
+    if (previous.contextConfig == nextContextConfig) {
+      return previous.copyWith(
+        availability: availability,
+        contextConfig: nextContextConfig,
+      );
+    }
+
+    final isEmptyIdleState =
+        previous.contextConfig == null &&
+        previous.jobId == null &&
+        previous.samples.isEmpty &&
+        previous.selectedArtifactId == null &&
+        previous.globalError == null;
+    if (isEmptyIdleState) {
+      return previous.copyWith(
+        availability: availability,
+        contextConfig: nextContextConfig,
+      );
+    }
+
+    if (previous.jobId case final jobId?) {
+      _activeJobId = null;
+      unawaited(_disposeJob(jobId));
+    }
+
+    return AnalyzeRunState(
+      availability: availability,
+      contextConfig: nextContextConfig,
+    );
   }
 
   Future<void> startAnalyze() async {
@@ -639,6 +744,7 @@ class AnalyzeRunController extends Notifier<AnalyzeRunState> {
           .startAnalyzeFileJob(request: config.toRequest());
       state = AnalyzeRunState(
         availability: state.availability,
+        contextConfig: state.contextConfig,
         jobId: handle.jobId,
         jobState: BatchJobState.running,
         totalCount: _analyzeSweepQualities.length,
@@ -650,6 +756,7 @@ class AnalyzeRunController extends Notifier<AnalyzeRunState> {
       _activeJobId = null;
       state = AnalyzeRunState(
         availability: state.availability,
+        contextConfig: state.contextConfig,
         globalError: error.toString(),
       );
     }
@@ -709,6 +816,7 @@ class AnalyzeRunController extends Notifier<AnalyzeRunState> {
         DeveloperDiagnostics.logTimingError('analyze:$requestId', error, stackTrace);
         state = AnalyzeRunState(
           availability: state.availability,
+          contextConfig: state.contextConfig,
           samples: state.samples,
           selectedArtifactId: state.selectedArtifactId,
           globalError: error.toString(),
