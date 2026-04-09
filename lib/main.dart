@@ -3315,16 +3315,16 @@ class _BottomInfoColumn extends StatelessWidget {
   }
 }
 
-class _BottomInfoRow extends StatefulWidget {
+class _BottomInfoRow extends ConsumerStatefulWidget {
   const _BottomInfoRow({required this.row});
 
   final _BottomInfoRowData row;
 
   @override
-  State<_BottomInfoRow> createState() => _BottomInfoRowState();
+  ConsumerState<_BottomInfoRow> createState() => _BottomInfoRowState();
 }
 
-class _BottomInfoRowState extends State<_BottomInfoRow> {
+class _BottomInfoRowState extends ConsumerState<_BottomInfoRow> {
   Timer? _highlightTimer;
   var _isHighlighted = false;
 
@@ -3359,32 +3359,80 @@ class _BottomInfoRowState extends State<_BottomInfoRow> {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('${widget.row.label} ').xSmall().medium().muted(),
-        Expanded(
-          child: TweenAnimationBuilder<TextStyle?>(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            tween: TextStyleTween(
-              end: Theme.of(context).typography.xSmall.copyWith(
-                fontWeight: _isHighlighted ? FontWeight.w700 : FontWeight.w500,
+    final theme = Theme.of(context);
+    final settings = widget.row.supportsBitsPerPixelColors
+        ? ref.watch(appSettingsProvider).asData?.value
+        : null;
+    final valueColor = widget.row.supportsBitsPerPixelColors
+        ? settings?.bitsPerPixelColorsEnabled == true &&
+                  widget.row.bitsPerPixelValue != null
+              ? _qualityMetricColor(
+                  _bitsPerPixelColorScore(widget.row.bitsPerPixelValue!),
+                )
+              : theme.colorScheme.foreground
+        : null;
+    final rowWidget = SizedBox(
+      key: widget.row.rowKey == null ? null : ValueKey(widget.row.rowKey!),
+      width: double.infinity,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('${widget.row.label} ').xSmall().medium().muted(),
+          Expanded(
+            child: TweenAnimationBuilder<TextStyle?>(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              tween: TextStyleTween(
+                end: Theme.of(context).typography.xSmall.copyWith(
+                  fontWeight: _isHighlighted
+                      ? FontWeight.w700
+                      : FontWeight.w500,
+                  color: valueColor,
+                ),
               ),
+              builder: (context, style, child) {
+                return Text(
+                  widget.row.value,
+                  key: widget.row.key == null
+                      ? null
+                      : ValueKey(widget.row.key!),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: style,
+                );
+              },
             ),
-            builder: (context, style, child) {
-              return Text(
-                widget.row.value,
-                key: widget.row.key == null ? null : ValueKey(widget.row.key!),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.right,
-                style: style,
-              );
-            },
+          ),
+        ],
+      ),
+    );
+
+    if (!widget.row.supportsBitsPerPixelColors) {
+      return rowWidget;
+    }
+
+    return ContextMenu(
+      items: [
+        MenuButton(
+          key: const ValueKey('bottom-info-bpp-colors-toggle'),
+          onPressed: (context) {
+            unawaited(
+              ref
+                  .read(appSettingsProvider.notifier)
+                  .setBitsPerPixelColorsEnabled(
+                    !(settings?.bitsPerPixelColorsEnabled ?? false),
+                  ),
+            );
+          },
+          child: Text(
+            settings?.bitsPerPixelColorsEnabled == true
+                ? 'Disable bits per pixel colors'
+                : 'Enable bits per pixel colors',
           ),
         ),
       ],
+      child: rowWidget,
     );
   }
 }
@@ -3647,6 +3695,40 @@ Color _savingsMetricColor(double score) {
   return _interpolateColorStops(score, _savingsMetricColorStops);
 }
 
+double _bitsPerPixelColorScore(double bitsPerPixel) {
+  if (bitsPerPixel <= 0.25) {
+    return 100;
+  }
+  if (bitsPerPixel <= 0.5) {
+    return _interpolateLinear(bitsPerPixel, 0.25, 0.5, 100, 75);
+  }
+  if (bitsPerPixel <= 1.0) {
+    return _interpolateLinear(bitsPerPixel, 0.5, 1.0, 75, 50);
+  }
+  if (bitsPerPixel <= 1.5) {
+    return _interpolateLinear(bitsPerPixel, 1.0, 1.5, 50, 25);
+  }
+  if (bitsPerPixel <= 2.0) {
+    return _interpolateLinear(bitsPerPixel, 1.5, 2.0, 25, 0);
+  }
+  return 0;
+}
+
+double _interpolateLinear(
+  double value,
+  double lowerBound,
+  double upperBound,
+  double lowerOutput,
+  double upperOutput,
+) {
+  final range = upperBound - lowerBound;
+  if (range <= 0) {
+    return upperOutput;
+  }
+  final t = (value - lowerBound) / range;
+  return lowerOutput + ((upperOutput - lowerOutput) * t);
+}
+
 Color _interpolateColorStops(
   double score,
   List<({double value, Color color})> colorStops,
@@ -3906,6 +3988,10 @@ class _BottomSummaryViewModel {
         _BottomInfoRowData(
           label: 'Bits Per Pixel',
           value: _formatNullableBpp(originalBpp),
+          key: 'original-bpp-value',
+          rowKey: 'original-bpp-row',
+          bitsPerPixelValue: originalBpp,
+          supportsBitsPerPixelColors: true,
         ),
       ],
       outputSectionTitle: 'Optimized',
@@ -3919,6 +4005,10 @@ class _BottomSummaryViewModel {
         _BottomInfoRowData(
           label: 'Bits Per Pixel',
           value: _formatNullableBpp(optimizedBpp),
+          key: 'optimized-bpp-value',
+          rowKey: 'optimized-bpp-row',
+          bitsPerPixelValue: optimizedBpp,
+          supportsBitsPerPixelColors: true,
         ),
       ],
     );
@@ -3988,6 +4078,10 @@ class _BottomSummaryViewModel {
         _BottomInfoRowData(
           label: 'Bits Per Pixel',
           value: _formatNullableBpp(originalBpp),
+          key: 'original-bpp-value',
+          rowKey: 'original-bpp-row',
+          bitsPerPixelValue: originalBpp,
+          supportsBitsPerPixelColors: true,
         ),
       ],
       outputSectionTitle: 'Optimized',
@@ -4003,6 +4097,10 @@ class _BottomSummaryViewModel {
         _BottomInfoRowData(
           label: 'Bits Per Pixel',
           value: _formatNullableBpp(optimizedBpp),
+          key: 'optimized-bpp-value',
+          rowKey: 'optimized-bpp-row',
+          bitsPerPixelValue: optimizedBpp,
+          supportsBitsPerPixelColors: true,
         ),
       ],
     );
@@ -4106,12 +4204,18 @@ class _BottomInfoRowData {
     required this.label,
     required this.value,
     this.key,
+    this.rowKey,
+    this.bitsPerPixelValue,
+    this.supportsBitsPerPixelColors = false,
     this.highlightOnValueChange = false,
   });
 
   final String label;
   final String value;
   final String? key;
+  final String? rowKey;
+  final double? bitsPerPixelValue;
+  final bool supportsBitsPerPixelColors;
   final bool highlightOnValueChange;
 }
 

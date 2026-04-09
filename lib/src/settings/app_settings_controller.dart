@@ -126,6 +126,16 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     );
   }
 
+  Future<void> setBitsPerPixelColorsEnabled(
+    bool bitsPerPixelColorsEnabled,
+  ) async {
+    await _update(
+      (settings) => settings.copyWith(
+        bitsPerPixelColorsEnabled: bitsPerPixelColorsEnabled,
+      ),
+    );
+  }
+
   Future<void> setThemePreference(AppThemePreference themePreference) async {
     await _update(
       (settings) => settings.copyWith(themePreference: themePreference),

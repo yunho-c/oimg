@@ -30,6 +30,7 @@ void main() {
         qualityMetricColorsEnabled: true,
         similarityMetricColorsEnabled: true,
         savingsColorsEnabled: true,
+        bitsPerPixelColorsEnabled: true,
         themePreference: AppThemePreference.light,
         developerModeEnabled: true,
         timingLogsEnabled: true,

@@ -67,6 +67,7 @@ class AppSettings {
     this.qualityMetricColorsEnabled = false,
     this.similarityMetricColorsEnabled = false,
     this.savingsColorsEnabled = false,
+    this.bitsPerPixelColorsEnabled = false,
     this.themePreference = AppThemePreference.system,
     required this.developerModeEnabled,
     required this.timingLogsEnabled,
@@ -89,6 +90,7 @@ class AppSettings {
   final bool qualityMetricColorsEnabled;
   final bool similarityMetricColorsEnabled;
   final bool savingsColorsEnabled;
+  final bool bitsPerPixelColorsEnabled;
   final AppThemePreference themePreference;
   final bool developerModeEnabled;
   final bool timingLogsEnabled;
@@ -109,6 +111,7 @@ class AppSettings {
     qualityMetricColorsEnabled: false,
     similarityMetricColorsEnabled: false,
     savingsColorsEnabled: false,
+    bitsPerPixelColorsEnabled: false,
     themePreference: AppThemePreference.system,
     developerModeEnabled: false,
     timingLogsEnabled: false,
@@ -174,6 +177,7 @@ class AppSettings {
     bool? qualityMetricColorsEnabled,
     bool? similarityMetricColorsEnabled,
     bool? savingsColorsEnabled,
+    bool? bitsPerPixelColorsEnabled,
     AppThemePreference? themePreference,
     bool? developerModeEnabled,
     bool? timingLogsEnabled,
@@ -202,6 +206,8 @@ class AppSettings {
       similarityMetricColorsEnabled:
           similarityMetricColorsEnabled ?? this.similarityMetricColorsEnabled,
       savingsColorsEnabled: savingsColorsEnabled ?? this.savingsColorsEnabled,
+      bitsPerPixelColorsEnabled:
+          bitsPerPixelColorsEnabled ?? this.bitsPerPixelColorsEnabled,
       themePreference: themePreference ?? this.themePreference,
       developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,
       timingLogsEnabled: timingLogsEnabled ?? this.timingLogsEnabled,
@@ -227,6 +233,7 @@ class AppSettings {
       'qualityMetricColorsEnabled': qualityMetricColorsEnabled,
       'similarityMetricColorsEnabled': similarityMetricColorsEnabled,
       'savingsColorsEnabled': savingsColorsEnabled,
+      'bitsPerPixelColorsEnabled': bitsPerPixelColorsEnabled,
       'themePreference': themePreference.name,
       'developerModeEnabled': developerModeEnabled,
       'timingLogsEnabled': timingLogsEnabled,
@@ -286,6 +293,9 @@ class AppSettings {
       savingsColorsEnabled:
           json['savingsColorsEnabled'] as bool? ??
           defaults.savingsColorsEnabled,
+      bitsPerPixelColorsEnabled:
+          json['bitsPerPixelColorsEnabled'] as bool? ??
+          defaults.bitsPerPixelColorsEnabled,
       themePreference: AppThemePreference.values.byName(
         json['themePreference'] as String? ?? defaults.themePreference.name,
       ),
@@ -318,6 +328,7 @@ class AppSettings {
         other.qualityMetricColorsEnabled == qualityMetricColorsEnabled &&
         other.similarityMetricColorsEnabled == similarityMetricColorsEnabled &&
         other.savingsColorsEnabled == savingsColorsEnabled &&
+        other.bitsPerPixelColorsEnabled == bitsPerPixelColorsEnabled &&
         other.themePreference == themePreference &&
         other.developerModeEnabled == developerModeEnabled &&
         other.timingLogsEnabled == timingLogsEnabled &&
@@ -341,6 +352,7 @@ class AppSettings {
     qualityMetricColorsEnabled,
     similarityMetricColorsEnabled,
     savingsColorsEnabled,
+    bitsPerPixelColorsEnabled,
     themePreference,
     developerModeEnabled,
     timingLogsEnabled,

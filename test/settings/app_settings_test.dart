@@ -243,6 +243,7 @@ void main() {
       expect(settings.qualityMetricColorsEnabled, isFalse);
       expect(settings.similarityMetricColorsEnabled, isFalse);
       expect(settings.savingsColorsEnabled, isFalse);
+      expect(settings.bitsPerPixelColorsEnabled, isFalse);
       expect(settings.themePreference, AppThemePreference.system);
     });
   });

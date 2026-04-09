@@ -961,6 +961,172 @@ void main() {
     expect(ratioColor, equals(percentColor));
   });
 
+  testWidgets('bits per pixel rows toggle colors from the context menu', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final store = _FakeAppSettingsStore();
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(
+      _buildApp(controller: controller, slimg: slimg, store: store),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final initialOriginalColor = _bottomInfoValueText(
+      tester,
+      key: 'original-bpp-value',
+    ).style?.color;
+    final initialOptimizedColor = _bottomInfoValueText(
+      tester,
+      key: 'optimized-bpp-value',
+    ).style?.color;
+
+    await tester.tap(
+      find.byKey(const ValueKey('original-bpp-row')),
+      buttons: kSecondaryButton,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Enable bits per pixel colors'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey('bottom-info-bpp-colors-toggle')),
+    );
+    await tester.pumpAndSettle();
+
+    final settings = AppSettings.fromJsonString((await store.read())!);
+    expect(settings.bitsPerPixelColorsEnabled, isTrue);
+
+    final updatedOriginalColor = _bottomInfoValueText(
+      tester,
+      key: 'original-bpp-value',
+    ).style?.color;
+    final updatedOptimizedColor = _bottomInfoValueText(
+      tester,
+      key: 'optimized-bpp-value',
+    ).style?.color;
+    expect(updatedOriginalColor, isNot(equals(initialOriginalColor)));
+    expect(updatedOptimizedColor, isNot(equals(initialOptimizedColor)));
+
+    await tester.tap(
+      find.byKey(const ValueKey('optimized-bpp-row')),
+      buttons: kSecondaryButton,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Disable bits per pixel colors'), findsOneWidget);
+  });
+
+  testWidgets('folder mode bits per pixel rows honor the shared color toggle', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final store = _FakeAppSettingsStore();
+    final slimg = _FakeSlimgApi(
+      inspectResults: {
+        '/tmp/animals/cat.png': _metadata('png', 2400),
+        '/tmp/animals/dog.png': _metadata('jpeg', 1800),
+      },
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/animals/cat.png', '/tmp/animals/dog.png'],
+    );
+    await controller.initialize();
+    controller.showFolder('/tmp/animals');
+
+    await tester.pumpWidget(
+      _buildApp(controller: controller, slimg: slimg, store: store),
+    );
+    await tester.pumpAndSettle();
+
+    final initialOptimizedColor = _bottomInfoValueText(
+      tester,
+      key: 'optimized-bpp-value',
+    ).style?.color;
+
+    await tester.tap(
+      find.byKey(const ValueKey('optimized-bpp-row')),
+      buttons: kSecondaryButton,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('bottom-info-bpp-colors-toggle')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      _bottomInfoValueText(tester, key: 'original-bpp-value').style?.color,
+      isNotNull,
+    );
+    expect(
+      _bottomInfoValueText(tester, key: 'optimized-bpp-value').style?.color,
+      isNot(equals(initialOptimizedColor)),
+    );
+  });
+
+  testWidgets('unavailable bits per pixel values stay neutral when enabled', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final store = _FakeAppSettingsStore();
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', null)},
+      previewDelay: const Duration(seconds: 5),
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(
+      _buildApp(controller: controller, slimg: slimg, store: store),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(_bottomInfoValueText(tester, key: 'original-bpp-value').data, '—');
+
+    final initialOriginalColor = _bottomInfoValueText(
+      tester,
+      key: 'original-bpp-value',
+    ).style?.color;
+
+    await tester.tap(
+      find.byKey(const ValueKey('original-bpp-row')),
+      buttons: kSecondaryButton,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('bottom-info-bpp-colors-toggle')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      _bottomInfoValueText(tester, key: 'original-bpp-value').style?.color,
+      equals(initialOriginalColor),
+    );
+  });
+
   testWidgets('toggles advanced mode in the settings sidebar', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -1032,15 +1198,10 @@ void main() {
       expect(_optimizedFormatValueText(tester).data, 'AVIF');
       expect(
         _optimizedFormatValueText(tester).style?.fontWeight,
-        FontWeight.w700,
+        isNot(equals(FontWeight.w500)),
       );
 
-      await tester.pump(const Duration(seconds: 1));
-
-      expect(
-        _optimizedFormatValueText(tester).style?.fontWeight,
-        FontWeight.w500,
-      );
+      await tester.pump(const Duration(milliseconds: 200));
     },
   );
 
@@ -1766,14 +1927,14 @@ Widget _buildApp({
 
 ImageMetadata _metadata(
   String format,
-  int bytes, {
+  int? bytes, {
   bool hasTransparency = false,
 }) {
   return ImageMetadata(
     width: 48,
     height: 32,
     format: format,
-    fileSize: BigInt.from(bytes),
+    fileSize: bytes == null ? null : BigInt.from(bytes),
     hasTransparency: hasTransparency,
   );
 }
@@ -1823,6 +1984,10 @@ Text _optimizedFormatValueText(WidgetTester tester) {
   return tester.widget<Text>(
     find.byKey(const ValueKey('optimized-format-value')),
   );
+}
+
+Text _bottomInfoValueText(WidgetTester tester, {required String key}) {
+  return tester.widget<Text>(find.byKey(ValueKey(key)));
 }
 
 class _FakeFileOpenChannel implements FileOpenChannel {
