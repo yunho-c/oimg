@@ -3263,21 +3263,12 @@ class _BottomInfoRow extends StatelessWidget {
       children: [
         Text('${row.label} ').xSmall().medium().muted(),
         Expanded(
-          child: row.loading
-              ? const Align(
-                  alignment: Alignment.centerRight,
-                  child: SizedBox(
-                    width: 12,
-                    height: 12,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                )
-              : Text(
-                  row.value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.right,
-                ).xSmall().medium(),
+          child: Text(
+            row.value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
+          ).xSmall().medium(),
         ),
       ],
     );
@@ -3773,7 +3764,6 @@ class _BottomSummaryViewModel {
           label: 'Similarity',
           value: similarityStat.value,
           color: Color(0xFFF59E0B),
-          loading: similarityStat.loading,
         ),
       ],
       originalSectionTitle: 'Original',
@@ -3796,7 +3786,6 @@ class _BottomSummaryViewModel {
         _BottomInfoRowData(
           label: 'Bits Per Pixel',
           value: _formatNullableBpp(optimizedBpp),
-          loading: isOptimizedPreviewPending,
         ),
       ],
     );
@@ -3926,7 +3915,7 @@ _DerivedSimilarityStat _deriveSimilarityStat({
       pixelMatchMetric.isLoading ||
       msSsimMetric.isLoading ||
       ssimulacra2Metric.isLoading;
-  return _DerivedSimilarityStat(value: 'N/A', loading: isLoading);
+  return _DerivedSimilarityStat(value: isLoading ? '—' : 'N/A', loading: false);
 }
 
 Iterable<double> _normalizedSimilarityValues(
@@ -3965,12 +3954,10 @@ class _BottomInfoRowData {
   const _BottomInfoRowData({
     required this.label,
     required this.value,
-    this.loading = false,
   });
 
   final String label;
   final String value;
-  final bool loading;
 }
 
 int? _effectiveFileSizeBytes(OpenedImageFile file) {

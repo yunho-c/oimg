@@ -227,7 +227,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 170));
 
-    expect(find.byType(CircularProgressIndicator), findsNWidgets(4));
+    expect(find.byType(CircularProgressIndicator), findsNWidgets(3));
 
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.text('98.7%'), findsAtLeastNWidgets(1));
@@ -269,7 +269,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 170));
 
-    expect(_similarityLoadingFinder(), findsOneWidget);
+    expect(_similarityLoadingFinder(), findsNothing);
+    expect(_similarityValueFinder('—'), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 50));
     expect(_similarityLoadingFinder(), findsNothing);
