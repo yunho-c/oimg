@@ -1674,13 +1674,6 @@ class _SettingsSidebar extends ConsumerWidget {
                                 controlsLocked: controlsLocked,
                                 notifier: notifier,
                               ),
-                              if (transparencyWarning case final warning?) ...[
-                                const SizedBox(height: 12),
-                                _SettingsWarningBlock(
-                                  icon: LucideIcons.triangleAlert,
-                                  message: warning,
-                                ),
-                              ],
                               const SizedBox(height: 12),
                               if (settings.showsQualityControl) ...[
                                 _SettingsLabel('Quality'),
@@ -1709,6 +1702,13 @@ class _SettingsSidebar extends ConsumerWidget {
                                             value.value.round(),
                                           );
                                         },
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                              if (transparencyWarning case final warning?) ...[
+                                _SettingsWarningBlock(
+                                  icon: LucideIcons.triangleAlert,
+                                  message: warning,
                                 ),
                                 const SizedBox(height: 12),
                               ],
