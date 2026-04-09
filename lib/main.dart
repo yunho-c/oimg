@@ -2413,23 +2413,12 @@ class _AnalyzePanel extends ConsumerWidget {
                   ),
                 ).xSmall(),
               ),
+              if (state.currentQuality case final quality?)
+                Text('Q$quality').xSmall().muted(),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           if (state.isRunning || samples.isNotEmpty) ...[
-            Row(
-              children: [
-                Text(
-                  state.isRunning
-                      ? 'Sampling ${state.completedCount} / ${state.totalCount}'
-                      : '${samples.length} samples',
-                ).xSmall().muted(),
-                const Spacer(),
-                if (state.currentQuality case final quality?)
-                  Text('Q$quality').xSmall().muted(),
-              ],
-            ),
-            const SizedBox(height: 8),
             Expanded(
               child: samples.isEmpty
                   ? const Center(child: CircularProgressIndicator())
@@ -3044,6 +3033,20 @@ class _BottomSidebar extends ConsumerWidget {
                             minHeight: 6,
                             borderRadius: theme.borderRadiusLg,
                           ),
+                          if (analyzeState.isRunning &&
+                              analyzeState.totalCount > 0) ...[
+                            const SizedBox(height: 4),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                '${analyzeState.completedCount}/${analyzeState.totalCount}',
+                                textAlign: TextAlign.right,
+                                style: TextStyle(
+                                  color: theme.colorScheme.mutedForeground,
+                                ),
+                              ).xSmall(),
+                            ),
+                          ],
                         ],
                       ],
                     ),
