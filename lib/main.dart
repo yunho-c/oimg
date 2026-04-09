@@ -3750,13 +3750,16 @@ double _bitsPerPixelColorScore(double bitsPerPixel) {
     return _interpolateLinear(bitsPerPixel, 0.25, 0.5, 100, 75);
   }
   if (bitsPerPixel <= 1.0) {
-    return _interpolateLinear(bitsPerPixel, 0.5, 1.0, 75, 50);
+    return _interpolateLinear(bitsPerPixel, 0.5, 1.0, 75, 60);
   }
-  if (bitsPerPixel <= 1.5) {
-    return _interpolateLinear(bitsPerPixel, 1.0, 1.5, 50, 25);
+  if (bitsPerPixel <= 1.6) {
+    return _interpolateLinear(bitsPerPixel, 1.0, 1.6, 60, 40);
   }
   if (bitsPerPixel <= 2.0) {
-    return _interpolateLinear(bitsPerPixel, 1.5, 2.0, 25, 0);
+    return _interpolateLinear(bitsPerPixel, 1.6, 2.0, 40, 20);
+  }
+  if (bitsPerPixel <= 5.0) {
+    return _interpolateLinear(bitsPerPixel, 2.0, 5.0, 20, 0);
   }
   return 0;
 }
