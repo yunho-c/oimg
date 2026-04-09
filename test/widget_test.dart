@@ -209,10 +209,7 @@ void main() {
       expect(find.text('48 x 32'), findsOneWidget);
       expect(find.text('transparent'), findsNothing);
       expect(
-        find.ancestor(
-          of: find.text('48 x 32'),
-          matching: find.byType(Tooltip),
-        ),
+        find.ancestor(of: find.text('48 x 32'), matching: find.byType(Tooltip)),
         findsOneWidget,
       );
     },
@@ -736,54 +733,51 @@ void main() {
 
   testWidgets(
     'selecting an analyze chart point updates the quality setting without clearing the chart',
-    (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1400, 1000));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final store = _FakeAppSettingsStore();
-    final slimg = _FakeSlimgApi(
-      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
-    )..analyzeSampleDelay = const Duration(milliseconds: 20);
-    final controller = FileOpenController(
-      channel: _FakeFileOpenChannel(),
-      slimg: slimg,
-      initialPaths: const ['/tmp/first.png'],
-    );
-    await controller.initialize();
+      final store = _FakeAppSettingsStore();
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      )..analyzeSampleDelay = const Duration(milliseconds: 20);
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
 
-    await tester.pumpWidget(
-      _buildApp(controller: controller, slimg: slimg, store: store),
-    );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpWidget(
+        _buildApp(controller: controller, slimg: slimg, store: store),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
 
-    await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 260));
-    await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+      await tester.pumpAndSettle();
 
-    final chart = tester.widget<LineChart>(find.byType(LineChart));
-    final firstBar = chart.data.lineBarsData.first;
-    final firstSpot = firstBar.spots.first;
-    chart.data.lineTouchData.touchCallback?.call(
-      FlTapDownEvent(TapDownDetails(localPosition: Offset.zero)),
-      LineTouchResponse(
-        touchLocation: Offset.zero,
-        touchChartCoordinate: Offset.zero,
-        lineBarSpots: [
-          TouchLineBarSpot(firstBar, 0, firstSpot, 0),
-        ],
-      ),
-    );
-    await tester.pumpAndSettle();
+      final chart = tester.widget<LineChart>(find.byType(LineChart));
+      final firstBar = chart.data.lineBarsData.first;
+      final firstSpot = firstBar.spots.first;
+      chart.data.lineTouchData.touchCallback?.call(
+        FlTapDownEvent(TapDownDetails(localPosition: Offset.zero)),
+        LineTouchResponse(
+          touchLocation: Offset.zero,
+          touchChartCoordinate: Offset.zero,
+          lineBarSpots: [TouchLineBarSpot(firstBar, 0, firstSpot, 0)],
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    final settings = AppSettings.fromJsonString((await store.read())!);
-    expect(settings.quality, 100);
-    expect(find.byType(LineChart), findsOneWidget);
-    expect(find.text('11 samples'), findsOneWidget);
-  });
+      final settings = AppSettings.fromJsonString((await store.read())!);
+      expect(settings.quality, 100);
+      expect(find.byType(LineChart), findsOneWidget);
+      expect(find.text('11 samples'), findsOneWidget);
+    },
+  );
 
   testWidgets(
     'hovering an analyze chart point does not update the quality setting',
@@ -822,15 +816,11 @@ void main() {
       final firstBar = chart.data.lineBarsData.first;
       final firstSpot = firstBar.spots.first;
       chart.data.lineTouchData.touchCallback?.call(
-        FlPointerHoverEvent(
-          const PointerHoverEvent(position: Offset.zero),
-        ),
+        FlPointerHoverEvent(const PointerHoverEvent(position: Offset.zero)),
         LineTouchResponse(
           touchLocation: Offset.zero,
           touchChartCoordinate: Offset.zero,
-          lineBarSpots: [
-            TouchLineBarSpot(firstBar, 0, firstSpot, 0),
-          ],
+          lineBarSpots: [TouchLineBarSpot(firstBar, 0, firstSpot, 0)],
         ),
       );
       await tester.pumpAndSettle();
@@ -1303,15 +1293,19 @@ void main() {
       expect(settings.bitsPerPixelColorsEnabled, isFalse);
 
       expect(
-        _bottomStatValueText(tester, label: 'Original', value: '2.3 KB')
-            .style
-            ?.color,
+        _bottomStatValueText(
+          tester,
+          label: 'Original',
+          value: '2.3 KB',
+        ).style?.color,
         isNot(equals(initialOriginalColor)),
       );
       expect(
-        _bottomStatValueText(tester, label: 'Optimized', value: '1.2 KB')
-            .style
-            ?.color,
+        _bottomStatValueText(
+          tester,
+          label: 'Optimized',
+          value: '1.2 KB',
+        ).style?.color,
         isNot(equals(initialOptimizedColor)),
       );
     },
@@ -1366,89 +1360,94 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        _bottomStatValueText(tester, label: 'Original', value: '4.1 KB')
-            .style
-            ?.color,
+        _bottomStatValueText(
+          tester,
+          label: 'Original',
+          value: '4.1 KB',
+        ).style?.color,
         isNot(equals(initialOriginalColor)),
       );
       expect(
-        _bottomStatValueText(tester, label: 'Optimized', value: '4.1 KB')
-            .style
-            ?.color,
+        _bottomStatValueText(
+          tester,
+          label: 'Optimized',
+          value: '4.1 KB',
+        ).style?.color,
         isNot(equals(initialOptimizedColor)),
       );
     },
   );
 
-  testWidgets(
-    'bits per pixel and file size color toggles are independent',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1400, 1000));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets('bits per pixel and file size color toggles are independent', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      final store = _FakeAppSettingsStore();
-      final slimg = _FakeSlimgApi(
-        inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
-      );
-      final controller = FileOpenController(
-        channel: _FakeFileOpenChannel(),
-        slimg: slimg,
-        initialPaths: const ['/tmp/first.png'],
-      );
-      await controller.initialize();
+    final store = _FakeAppSettingsStore();
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
 
-      await tester.pumpWidget(
-        _buildApp(controller: controller, slimg: slimg, store: store),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
+    await tester.pumpWidget(
+      _buildApp(controller: controller, slimg: slimg, store: store),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
 
-      final initialBppColor = _bottomInfoValueText(
-        tester,
-        key: 'original-bpp-value',
-      ).style?.color;
-      final initialFileSizeColor = _bottomStatValueText(
+    final initialBppColor = _bottomInfoValueText(
+      tester,
+      key: 'original-bpp-value',
+    ).style?.color;
+    final initialFileSizeColor = _bottomStatValueText(
+      tester,
+      label: 'Original',
+      value: '2.3 KB',
+    ).style?.color;
+
+    await tester.tap(
+      find.byKey(const ValueKey('original-bpp-row')),
+      buttons: kSecondaryButton,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('bottom-info-bpp-colors-toggle')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      _bottomInfoValueText(tester, key: 'original-bpp-value').style?.color,
+      isNot(equals(initialBppColor)),
+    );
+    expect(
+      _bottomStatValueText(
         tester,
         label: 'Original',
         value: '2.3 KB',
-      ).style?.color;
+      ).style?.color,
+      equals(initialFileSizeColor),
+    );
 
-      await tester.tap(
-        find.byKey(const ValueKey('original-bpp-row')),
-        buttons: kSecondaryButton,
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(
-        find.byKey(const ValueKey('bottom-info-bpp-colors-toggle')),
-      );
-      await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('bottom-stat-Original')),
+      buttons: kSecondaryButton,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('bottom-stat-file-size-colors-toggle')),
+    );
+    await tester.pumpAndSettle();
 
-      expect(
-        _bottomInfoValueText(tester, key: 'original-bpp-value').style?.color,
-        isNot(equals(initialBppColor)),
-      );
-      expect(
-        _bottomStatValueText(tester, label: 'Original', value: '2.3 KB')
-            .style
-            ?.color,
-        equals(initialFileSizeColor),
-      );
-
-      await tester.tap(
-        find.byKey(const ValueKey('bottom-stat-Original')),
-        buttons: kSecondaryButton,
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(
-        find.byKey(const ValueKey('bottom-stat-file-size-colors-toggle')),
-      );
-      await tester.pumpAndSettle();
-
-      final settings = AppSettings.fromJsonString((await store.read())!);
-      expect(settings.bitsPerPixelColorsEnabled, isTrue);
-      expect(settings.fileSizeColorsEnabled, isTrue);
-    },
-  );
+    final settings = AppSettings.fromJsonString((await store.read())!);
+    expect(settings.bitsPerPixelColorsEnabled, isTrue);
+    expect(settings.fileSizeColorsEnabled, isTrue);
+  });
 
   testWidgets('unavailable bits per pixel values stay neutral when enabled', (
     tester,
@@ -1979,6 +1978,137 @@ void main() {
     },
   );
 
+  testWidgets('hovering the quality slider shows and updates the value label', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.jpg': _metadata('jpeg', 2400)},
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.jpg'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpAndSettle();
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: const Offset(1, 1));
+
+    await mouse.moveTo(_qualitySliderOffset(tester, fraction: 0.2));
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('quality-slider-hover-value')),
+      findsOneWidget,
+    );
+    expect(
+      _qualitySliderHoverText(tester),
+      _expectedQualityHoverValue(tester, fraction: 0.2).toString(),
+    );
+
+    await mouse.moveTo(_qualitySliderOffset(tester, fraction: 0.8));
+    await tester.pump();
+
+    expect(
+      _qualitySliderHoverText(tester),
+      _expectedQualityHoverValue(tester, fraction: 0.8).toString(),
+    );
+
+    await mouse.moveTo(const Offset(1, 1));
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('quality-slider-hover-value')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('dragging the quality slider keeps the value label visible', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.jpg': _metadata('jpeg', 2400)},
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.jpg'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpAndSettle();
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: const Offset(1, 1));
+
+    final start = _qualitySliderValueOffset(tester, value: 80);
+    final end = _qualitySliderValueOffset(tester, value: 55);
+    await mouse.moveTo(start);
+    await tester.pump();
+    await mouse.down(start);
+    await tester.pump();
+    await mouse.moveTo(end);
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('quality-slider-hover-value')),
+      findsOneWidget,
+    );
+
+    await mouse.up();
+    await tester.pump();
+  });
+
+  testWidgets('locked quality controls do not show the hover value label', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.jpg': _metadata('jpeg', 2400)},
+      batchDelay: const Duration(milliseconds: 400),
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.jpg'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Optimize'));
+    await tester.pump();
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: const Offset(1, 1));
+    await mouse.moveTo(_qualitySliderOffset(tester, fraction: 0.5));
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('quality-slider-hover-value')),
+      findsNothing,
+    );
+
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('storage section shows picker-driven different-location flow', (
     tester,
   ) async {
@@ -2335,6 +2465,50 @@ Finder _similarityLoadingFinder() {
     of: _similarityTileFinder(),
     matching: find.byType(CircularProgressIndicator),
   );
+}
+
+Finder _qualitySliderFinder() {
+  return find.byKey(const ValueKey('quality-slider'));
+}
+
+Offset _qualitySliderOffset(WidgetTester tester, {required double fraction}) {
+  final rect = tester.getRect(_qualitySliderFinder());
+  return Offset(rect.left + rect.width * fraction, rect.top + 8);
+}
+
+Offset _qualitySliderValueOffset(WidgetTester tester, {required int value}) {
+  final rect = tester.getRect(_qualitySliderFinder());
+  final context = tester.element(_qualitySliderFinder());
+  final theme = Theme.of(context);
+  final trackInset = theme.density.baseGap * theme.scaling * 0.5;
+  final trackWidth = rect.width - trackInset * 2;
+  return Offset(
+    rect.left + trackInset + trackWidth * (value / 100),
+    rect.top + 8,
+  );
+}
+
+int _expectedQualityHoverValue(
+  WidgetTester tester, {
+  required double fraction,
+}) {
+  final context = tester.element(_qualitySliderFinder());
+  final theme = Theme.of(context);
+  final width = tester.getSize(_qualitySliderFinder()).width;
+  final trackInset = theme.density.baseGap * theme.scaling * 0.5;
+  final trackWidth = width - trackInset * 2;
+  final dx = width * fraction;
+  final normalized = ((dx - trackInset) / trackWidth).clamp(0.0, 1.0);
+  return (normalized * 100).round();
+}
+
+String _qualitySliderHoverText(WidgetTester tester) {
+  return tester
+          .widget<Text>(
+            find.byKey(const ValueKey('quality-slider-hover-value')),
+          )
+          .data ??
+      '';
 }
 
 Text _bottomStatValueText(
