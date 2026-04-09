@@ -1000,6 +1000,51 @@ void main() {
   });
 
   testWidgets(
+    'optimized format value bolds briefly when codec choice changes',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      );
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(_optimizedFormatValueText(tester).data, 'JPEG');
+      expect(
+        _optimizedFormatValueText(tester).style?.fontWeight,
+        FontWeight.w500,
+      );
+
+      await tester.tap(find.text('Efficiency').first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(_optimizedFormatValueText(tester).data, 'AVIF');
+      expect(
+        _optimizedFormatValueText(tester).style?.fontWeight,
+        FontWeight.w700,
+      );
+
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(
+        _optimizedFormatValueText(tester).style?.fontWeight,
+        FontWeight.w500,
+      );
+    },
+  );
+
+  testWidgets(
     'optimize all uses mixed slimg requests and updates the session',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1400, 1000));
@@ -1771,6 +1816,12 @@ Text _bottomStatValueText(
       of: find.byKey(ValueKey('bottom-stat-$label')),
       matching: find.text(value),
     ),
+  );
+}
+
+Text _optimizedFormatValueText(WidgetTester tester) {
+  return tester.widget<Text>(
+    find.byKey(const ValueKey('optimized-format-value')),
   );
 }
 

@@ -3315,24 +3315,74 @@ class _BottomInfoColumn extends StatelessWidget {
   }
 }
 
-class _BottomInfoRow extends StatelessWidget {
+class _BottomInfoRow extends StatefulWidget {
   const _BottomInfoRow({required this.row});
 
   final _BottomInfoRowData row;
+
+  @override
+  State<_BottomInfoRow> createState() => _BottomInfoRowState();
+}
+
+class _BottomInfoRowState extends State<_BottomInfoRow> {
+  Timer? _highlightTimer;
+  var _isHighlighted = false;
+
+  @override
+  void didUpdateWidget(covariant _BottomInfoRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.row.highlightOnValueChange) {
+      return;
+    }
+    if (oldWidget.row.value == widget.row.value) {
+      return;
+    }
+    _highlightTimer?.cancel();
+    setState(() {
+      _isHighlighted = true;
+    });
+    _highlightTimer = Timer(const Duration(seconds: 1), () {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isHighlighted = false;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _highlightTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('${row.label} ').xSmall().medium().muted(),
+        Text('${widget.row.label} ').xSmall().medium().muted(),
         Expanded(
-          child: Text(
-            row.value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.right,
-          ).xSmall().medium(),
+          child: TweenAnimationBuilder<TextStyle?>(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            tween: TextStyleTween(
+              end: Theme.of(context).typography.xSmall.copyWith(
+                fontWeight: _isHighlighted ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+            builder: (context, style, child) {
+              return Text(
+                widget.row.value,
+                key: widget.row.key == null ? null : ValueKey(widget.row.key!),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
+                style: style,
+              );
+            },
+          ),
         ),
       ],
     );
@@ -3863,6 +3913,8 @@ class _BottomSummaryViewModel {
         _BottomInfoRowData(
           label: 'Format',
           value: outputFormat == null ? '—' : formatLabel(outputFormat),
+          key: 'optimized-format-value',
+          highlightOnValueChange: true,
         ),
         _BottomInfoRowData(
           label: 'Bits Per Pixel',
@@ -4050,10 +4102,17 @@ class _BottomStatData {
 enum _BottomStatColorMode { none, similarity, savings }
 
 class _BottomInfoRowData {
-  const _BottomInfoRowData({required this.label, required this.value});
+  const _BottomInfoRowData({
+    required this.label,
+    required this.value,
+    this.key,
+    this.highlightOnValueChange = false,
+  });
 
   final String label;
   final String value;
+  final String? key;
+  final bool highlightOnValueChange;
 }
 
 int? _effectiveFileSizeBytes(OpenedImageFile file) {
