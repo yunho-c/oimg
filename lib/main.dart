@@ -36,7 +36,7 @@ const _defaultBottomSidebarHeight = 165.0;
 const _minBottomSidebarHeight = 140.0;
 const _maxBottomSidebarHeight = 320.0;
 const List<({double value, Color color})> _qualityMetricColorStops = [
-  (value: 0, color: Color(0xFF440000)),
+  (value: 0, color: Color(0xFFFF0000)),
   (value: 20, color: Color(0xFFAA0000)),
   (value: 40, color: Color(0xFFDE602E)),
   (value: 60, color: Color(0xFFDBDE25)),
