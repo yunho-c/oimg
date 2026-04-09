@@ -2391,7 +2391,6 @@ class _AnalyzePanel extends ConsumerWidget {
     final currentFilePath = ref.watch(fileOpenControllerProvider).currentPath;
     final samples = [...state.samples]
       ..sort((a, b) => a.sizeBytes.compareTo(b.sizeBytes));
-    final selectedSample = state.selectedSample;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -2456,8 +2455,6 @@ class _AnalyzePanel extends ConsumerWidget {
                     ),
             ),
             const SizedBox(height: 8),
-            if (selectedSample != null)
-              _AnalyzeSelectionSummary(sample: selectedSample),
           ],
           if (state.globalError case final error?) ...[
             const SizedBox(height: 8),
@@ -2634,28 +2631,6 @@ LineChartBarData _buildAnalyzeLine({
       },
     ),
   );
-}
-
-class _AnalyzeSelectionSummary extends StatelessWidget {
-  const _AnalyzeSelectionSummary({required this.sample});
-
-  final AnalyzeSampleResult sample;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            'Q${sample.quality}  ${_formatBytes(sample.sizeBytes.toInt())}',
-          ).xSmall().medium(),
-        ),
-        Text(
-          'Pixel ${_formatNullableMetricPercent(sample.pixelMatch)}  MS-SSIM ${_formatNullableMetric(sample.msSsim, digits: 3, trimIfOne: true)}  SSIMULACRA 2 ${_formatNullableMetric(sample.ssimulacra2, digits: 1, trimIfHundred: true)}',
-        ).xSmall().muted(),
-      ],
-    );
-  }
 }
 
 class _DeveloperButton extends StatelessWidget {
