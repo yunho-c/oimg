@@ -728,6 +728,10 @@ void main() {
     expect(find.byType(LineChart), findsOneWidget);
     expect(find.text('11 samples'), findsOneWidget);
     expect(find.text('80'), findsWidgets);
+
+    final chart = tester.widget<LineChart>(find.byType(LineChart));
+    expect(chart.data.lineTouchData.handleBuiltInTouches, isFalse);
+    expect(chart.data.lineBarsData, hasLength(3));
   });
 
   testWidgets('later openFiles event replaces the session', (tester) async {
@@ -2678,6 +2682,7 @@ class _FakeSlimgApi implements SlimgApi {
             height: 32,
             sizeBytes: BigInt.from(1500 - (quality * 8)),
             pixelMatch: (80 + quality / 5).clamp(0, 100).toDouble(),
+            msSsim: (0.7 + quality / 400).clamp(0, 1).toDouble(),
             ssimulacra2: (65 + quality / 3).clamp(0, 100).toDouble(),
             artifactId: 'analyze-artifact-$quality',
           ),

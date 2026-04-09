@@ -2487,6 +2487,10 @@ class _AnalyzeChart extends StatelessWidget {
       samples,
       (sample) => sample.pixelMatch,
     );
+    final msSsimPoints = _metricPoints(
+      samples,
+      (sample) => sample.msSsim == null ? null : sample.msSsim! * 100,
+    );
     final ssimulacra2Points = _metricPoints(
       samples,
       (sample) => sample.ssimulacra2,
@@ -2544,7 +2548,7 @@ class _AnalyzeChart extends StatelessWidget {
           border: Border.all(color: theme.colorScheme.border),
         ),
         lineTouchData: LineTouchData(
-          handleBuiltInTouches: true,
+          handleBuiltInTouches: false,
           touchCallback: (event, response) {
             final touchedSpots = response?.lineBarSpots;
             if (touchedSpots == null ||
@@ -2555,37 +2559,21 @@ class _AnalyzeChart extends StatelessWidget {
             final touched = touchedSpots.first;
             final point = switch (touched.barIndex) {
               0 => pixelMatchPoints[touched.spotIndex],
+              1 => msSsimPoints[touched.spotIndex],
               _ => ssimulacra2Points[touched.spotIndex],
             };
             onSelectSample(point.sample);
           },
-          touchTooltipData: LineTouchTooltipData(
-            fitInsideHorizontally: true,
-            fitInsideVertically: true,
-            getTooltipItems: (spots) {
-              return spots
-                  .map((spot) {
-                    final point = switch (spot.barIndex) {
-                      0 => pixelMatchPoints[spot.spotIndex],
-                      _ => ssimulacra2Points[spot.spotIndex],
-                    };
-                    final sample = point.sample;
-                    return LineTooltipItem(
-                      'Q${sample.quality}\n${_formatBytes(sample.sizeBytes.toInt())}\nPixel ${_formatNullableMetricPercent(sample.pixelMatch)}\nSSIM ${_formatNullableMetric(sample.ssimulacra2, digits: 1, trimIfHundred: true)}',
-                      TextStyle(
-                        color: theme.colorScheme.foreground,
-                        fontSize: 10,
-                      ),
-                    );
-                  })
-                  .toList(growable: false);
-            },
-          ),
         ),
         lineBarsData: [
           _buildAnalyzeLine(
             points: pixelMatchPoints,
             color: const Color(0xFF2563EB),
+            selectedArtifactId: selectedArtifactId,
+          ),
+          _buildAnalyzeLine(
+            points: msSsimPoints,
+            color: const Color(0xFFD97706),
             selectedArtifactId: selectedArtifactId,
           ),
           _buildAnalyzeLine(
@@ -2663,7 +2651,7 @@ class _AnalyzeSelectionSummary extends StatelessWidget {
           ).xSmall().medium(),
         ),
         Text(
-          'Pixel ${_formatNullableMetricPercent(sample.pixelMatch)}  SSIM ${_formatNullableMetric(sample.ssimulacra2, digits: 1, trimIfHundred: true)}',
+          'Pixel ${_formatNullableMetricPercent(sample.pixelMatch)}  MS-SSIM ${_formatNullableMetric(sample.msSsim, digits: 3, trimIfOne: true)}  SSIMULACRA 2 ${_formatNullableMetric(sample.ssimulacra2, digits: 1, trimIfHundred: true)}',
         ).xSmall().muted(),
       ],
     );

@@ -101,6 +101,7 @@ class AnalyzeSampleResult {
   final int height;
   final BigInt sizeBytes;
   final double? pixelMatch;
+  final double? msSsim;
   final double? ssimulacra2;
   final String artifactId;
 
@@ -112,6 +113,7 @@ class AnalyzeSampleResult {
     required this.height,
     required this.sizeBytes,
     this.pixelMatch,
+    this.msSsim,
     this.ssimulacra2,
     required this.artifactId,
   });
@@ -125,6 +127,7 @@ class AnalyzeSampleResult {
       height.hashCode ^
       sizeBytes.hashCode ^
       pixelMatch.hashCode ^
+      msSsim.hashCode ^
       ssimulacra2.hashCode ^
       artifactId.hashCode;
 
@@ -140,6 +143,7 @@ class AnalyzeSampleResult {
           height == other.height &&
           sizeBytes == other.sizeBytes &&
           pixelMatch == other.pixelMatch &&
+          msSsim == other.msSsim &&
           ssimulacra2 == other.ssimulacra2 &&
           artifactId == other.artifactId;
 }

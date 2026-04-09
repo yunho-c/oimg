@@ -959,8 +959,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   AnalyzeSampleResult dco_decode_analyze_sample_result(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 9)
-      throw Exception('unexpected arr length: expect 9 but see ${arr.length}');
+    if (arr.length != 10)
+      throw Exception('unexpected arr length: expect 10 but see ${arr.length}');
     return AnalyzeSampleResult(
       quality: dco_decode_u_8(arr[0]),
       tempOutputPath: dco_decode_String(arr[1]),
@@ -969,8 +969,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       height: dco_decode_u_32(arr[4]),
       sizeBytes: dco_decode_u_64(arr[5]),
       pixelMatch: dco_decode_opt_box_autoadd_f_64(arr[6]),
-      ssimulacra2: dco_decode_opt_box_autoadd_f_64(arr[7]),
-      artifactId: dco_decode_String(arr[8]),
+      msSsim: dco_decode_opt_box_autoadd_f_64(arr[7]),
+      ssimulacra2: dco_decode_opt_box_autoadd_f_64(arr[8]),
+      artifactId: dco_decode_String(arr[9]),
     );
   }
 
@@ -1728,6 +1729,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_height = sse_decode_u_32(deserializer);
     var var_sizeBytes = sse_decode_u_64(deserializer);
     var var_pixelMatch = sse_decode_opt_box_autoadd_f_64(deserializer);
+    var var_msSsim = sse_decode_opt_box_autoadd_f_64(deserializer);
     var var_ssimulacra2 = sse_decode_opt_box_autoadd_f_64(deserializer);
     var var_artifactId = sse_decode_String(deserializer);
     return AnalyzeSampleResult(
@@ -1738,6 +1740,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       height: var_height,
       sizeBytes: var_sizeBytes,
       pixelMatch: var_pixelMatch,
+      msSsim: var_msSsim,
       ssimulacra2: var_ssimulacra2,
       artifactId: var_artifactId,
     );
@@ -2628,6 +2631,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_u_32(self.height, serializer);
     sse_encode_u_64(self.sizeBytes, serializer);
     sse_encode_opt_box_autoadd_f_64(self.pixelMatch, serializer);
+    sse_encode_opt_box_autoadd_f_64(self.msSsim, serializer);
     sse_encode_opt_box_autoadd_f_64(self.ssimulacra2, serializer);
     sse_encode_String(self.artifactId, serializer);
   }

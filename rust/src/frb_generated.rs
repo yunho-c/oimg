@@ -952,6 +952,7 @@ impl SseDecode for crate::types::AnalyzeSampleResult {
         let mut var_height = <u32>::sse_decode(deserializer);
         let mut var_sizeBytes = <u64>::sse_decode(deserializer);
         let mut var_pixelMatch = <Option<f64>>::sse_decode(deserializer);
+        let mut var_msSsim = <Option<f64>>::sse_decode(deserializer);
         let mut var_ssimulacra2 = <Option<f64>>::sse_decode(deserializer);
         let mut var_artifactId = <String>::sse_decode(deserializer);
         return crate::types::AnalyzeSampleResult {
@@ -962,6 +963,7 @@ impl SseDecode for crate::types::AnalyzeSampleResult {
             height: var_height,
             size_bytes: var_sizeBytes,
             pixel_match: var_pixelMatch,
+            ms_ssim: var_msSsim,
             ssimulacra2: var_ssimulacra2,
             artifact_id: var_artifactId,
         };
@@ -1917,6 +1919,7 @@ impl flutter_rust_bridge::IntoDart for crate::types::AnalyzeSampleResult {
             self.height.into_into_dart().into_dart(),
             self.size_bytes.into_into_dart().into_dart(),
             self.pixel_match.into_into_dart().into_dart(),
+            self.ms_ssim.into_into_dart().into_dart(),
             self.ssimulacra2.into_into_dart().into_dart(),
             self.artifact_id.into_into_dart().into_dart(),
         ]
@@ -2634,6 +2637,7 @@ impl SseEncode for crate::types::AnalyzeSampleResult {
         <u32>::sse_encode(self.height, serializer);
         <u64>::sse_encode(self.size_bytes, serializer);
         <Option<f64>>::sse_encode(self.pixel_match, serializer);
+        <Option<f64>>::sse_encode(self.ms_ssim, serializer);
         <Option<f64>>::sse_encode(self.ssimulacra2, serializer);
         <String>::sse_encode(self.artifact_id, serializer);
     }

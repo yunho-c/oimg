@@ -13,7 +13,9 @@ use slimg_core::decode;
 use crate::codec::format_to_string;
 use crate::convert::run_preview_operation;
 use crate::error::{panic_message, Result, SlimgBridgeError};
-use crate::metrics::{compute_pixel_match_percentage, compute_ssimulacra2_score};
+use crate::metrics::{
+    compute_ms_ssim, compute_pixel_match_percentage, compute_ssimulacra2_score,
+};
 use crate::preview_artifacts::{preview_artifact_store, PreviewArtifact};
 use crate::types::{
     AnalyzeFileJobHandle, AnalyzeFileJobSnapshot, AnalyzeFileRequest, AnalyzeSampleResult,
@@ -163,6 +165,14 @@ fn run_analyze_job(record: &Arc<AnalyzeJobRecord>, request: AnalyzeFileRequest) 
             output.height,
             &output.preview_rgba_bytes,
         );
+        let ms_ssim = compute_ms_ssim(
+            source_image.width,
+            source_image.height,
+            &source_rgba,
+            output.width,
+            output.height,
+            &output.preview_rgba_bytes,
+        );
 
         let artifact = PreviewArtifact::new(
             source_image.width,
@@ -173,6 +183,7 @@ fn run_analyze_job(record: &Arc<AnalyzeJobRecord>, request: AnalyzeFileRequest) 
             Arc::<[u8]>::from(output.preview_rgba_bytes),
         );
         let _ = artifact.pixel_match_percentage.set(pixel_match);
+        let _ = artifact.ms_ssim.set(ms_ssim);
         let _ = artifact.ssimulacra2.set(ssimulacra2);
         let artifact_id = preview_artifact_store().insert(artifact);
         record.artifact_ids_lock()?.push(artifact_id.clone());
@@ -189,6 +200,7 @@ fn run_analyze_job(record: &Arc<AnalyzeJobRecord>, request: AnalyzeFileRequest) 
             height: output.height,
             size_bytes: output.data.len() as u64,
             pixel_match,
+            ms_ssim,
             ssimulacra2,
             artifact_id,
         };

@@ -105,6 +105,7 @@ pub struct AnalyzeSampleResult {
     pub height: u32,
     pub size_bytes: u64,
     pub pixel_match: Option<f64>,
+    pub ms_ssim: Option<f64>,
     pub ssimulacra2: Option<f64>,
     pub artifact_id: String,
 }
