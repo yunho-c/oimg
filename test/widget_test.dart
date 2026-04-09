@@ -2009,8 +2009,28 @@ void main() {
       findsOneWidget,
     );
     expect(
+      tester
+          .widget<AnimatedOpacity>(
+            find.byKey(const ValueKey('quality-slider-hover-opacity')),
+          )
+          .opacity,
+      0,
+    );
+
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+
+    expect(
       _qualitySliderHoverText(tester),
       _expectedQualityHoverValue(tester, fraction: 0.2).toString(),
+    );
+    expect(
+      tester
+          .widget<AnimatedOpacity>(
+            find.byKey(const ValueKey('quality-slider-hover-opacity')),
+          )
+          .opacity,
+      1,
     );
 
     await mouse.moveTo(_qualitySliderOffset(tester, fraction: 0.8));

@@ -1893,9 +1893,13 @@ class _HoverValueSlider extends StatefulWidget {
 
 class _HoverValueSliderState extends State<_HoverValueSlider> {
   static const _labelGap = 6.0;
+  static const _showDelay = Duration(milliseconds: 500);
+  static const _showDuration = Duration(milliseconds: 200);
 
   double? _hoverDx;
   bool _dragging = false;
+  bool _labelVisible = false;
+  Timer? _showLabelTimer;
 
   bool get _supportsHover =>
       widget.hoverEnabled &&
@@ -1958,6 +1962,7 @@ class _HoverValueSliderState extends State<_HoverValueSlider> {
                   trackWidth: trackWidth,
                 )
               : _hoverDx;
+          final showLabel = activeValue != null && (_dragging || _labelVisible);
           final labelText = activeValue?.round().toString();
           final labelSize = labelText == null
               ? null
@@ -2022,10 +2027,23 @@ class _HoverValueSliderState extends State<_HoverValueSlider> {
                   left: labelLeft,
                   top: sliderHeight + _labelGap,
                   child: IgnorePointer(
-                    child: TooltipContainer(
-                      child: Text(
-                        labelText,
-                        key: const ValueKey('quality-slider-hover-value'),
+                    child: AnimatedSlide(
+                      duration: _showDuration,
+                      curve: Curves.easeOutCubic,
+                      offset: showLabel
+                          ? Offset.zero
+                          : const Offset(0, -0.12),
+                      child: AnimatedOpacity(
+                        key: const ValueKey('quality-slider-hover-opacity'),
+                        duration: _showDuration,
+                        curve: Curves.easeOutCubic,
+                        opacity: showLabel ? 1 : 0,
+                        child: TooltipContainer(
+                          child: Text(
+                            labelText,
+                            key: const ValueKey('quality-slider-hover-value'),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -2035,6 +2053,12 @@ class _HoverValueSliderState extends State<_HoverValueSlider> {
         },
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _showLabelTimer?.cancel();
+    super.dispose();
   }
 
   double _dxForValue(
@@ -2054,33 +2078,72 @@ class _HoverValueSliderState extends State<_HoverValueSlider> {
     setState(() {
       _hoverDx = dx;
     });
+    if (_dragging) {
+      _setLabelVisible(true);
+      return;
+    }
+    _scheduleLabelShow();
   }
 
   void _clearHoverDx() {
+    _showLabelTimer?.cancel();
     if (_hoverDx == null) {
+      _setLabelVisible(false);
       return;
     }
     setState(() {
       _hoverDx = null;
+      _labelVisible = false;
     });
   }
 
   void _setDragging(bool dragging) {
+    _showLabelTimer?.cancel();
     if (_dragging == dragging) {
+      if (dragging) {
+        _setLabelVisible(true);
+      }
       return;
     }
     setState(() {
       _dragging = dragging;
+      if (dragging) {
+        _labelVisible = true;
+      }
     });
   }
 
   void _resetHoverState() {
+    _showLabelTimer?.cancel();
     if (!_dragging && _hoverDx == null) {
       return;
     }
     setState(() {
       _dragging = false;
       _hoverDx = null;
+      _labelVisible = false;
+    });
+  }
+
+  void _scheduleLabelShow() {
+    if (_labelVisible) {
+      return;
+    }
+    _showLabelTimer?.cancel();
+    _showLabelTimer = Timer(_showDelay, () {
+      if (!mounted || _dragging || _hoverDx == null) {
+        return;
+      }
+      _setLabelVisible(true);
+    });
+  }
+
+  void _setLabelVisible(bool visible) {
+    if (_labelVisible == visible) {
+      return;
+    }
+    setState(() {
+      _labelVisible = visible;
     });
   }
 
