@@ -1341,7 +1341,7 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
               ? Button.destructive(
                   alignment: Alignment.center,
                   onPressed: analyzeController.cancelAnalyze,
-                  child: const Text('Cancel Analyze'),
+                  child: const Text('Cancel'),
                 )
               : OutlineButton(
                   alignment: Alignment.center,
