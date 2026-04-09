@@ -274,10 +274,10 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 50));
     expect(_similarityLoadingFinder(), findsNothing);
-    expect(_similarityValueFinder('90.0%'), findsOneWidget);
+    expect(_similarityValueFinder('~90.0%'), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 80));
-    expect(_similarityValueFinder('70.0%'), findsOneWidget);
+    expect(_similarityValueFinder('~70.0%'), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 100));
     expect(_similarityValueFinder('56.7%'), findsOneWidget);
@@ -833,6 +833,132 @@ void main() {
     await tester.pump();
 
     expect(find.text('50.0%'), findsOneWidget);
+  });
+
+  testWidgets('similarity tile toggles colors from the context menu', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final store = _FakeAppSettingsStore();
+    final slimg =
+        _FakeSlimgApi(
+            inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+          )
+          ..pixelMatchValue = 90.0
+          ..msSsimValue = 0.5
+          ..ssimulacra2Value = 30.0;
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(
+      _buildApp(controller: controller, slimg: slimg, store: store),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final initialColor = _bottomStatValueText(
+      tester,
+      label: 'Similarity',
+      value: '56.7%',
+    ).style?.color;
+
+    await tester.tap(
+      find.byKey(const ValueKey('bottom-stat-Similarity')),
+      buttons: kSecondaryButton,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Enable similarity colors'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey('bottom-stat-similarity-colors-toggle')),
+    );
+    await tester.pumpAndSettle();
+
+    final settings = AppSettings.fromJsonString((await store.read())!);
+    expect(settings.similarityMetricColorsEnabled, isTrue);
+
+    final updatedColor = _bottomStatValueText(
+      tester,
+      label: 'Similarity',
+      value: '56.7%',
+    ).style?.color;
+    expect(updatedColor, isNotNull);
+    expect(updatedColor, isNot(equals(initialColor)));
+  });
+
+  testWidgets('savings tile toggles colors from the context menu', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final store = _FakeAppSettingsStore();
+    final slimg =
+        _FakeSlimgApi(
+            inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+          )
+          ..pixelMatchValue = 90.0
+          ..msSsimValue = 0.5
+          ..ssimulacra2Value = 30.0;
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(
+      _buildApp(controller: controller, slimg: slimg, store: store),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final initialColor = _bottomStatValueText(
+      tester,
+      label: 'Savings',
+      value: '50.0%',
+    ).style?.color;
+
+    await tester.tap(
+      find.byKey(const ValueKey('bottom-stat-Savings')),
+      buttons: kSecondaryButton,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Enable savings colors'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey('bottom-stat-savings-colors-toggle')),
+    );
+    await tester.pumpAndSettle();
+
+    final settings = AppSettings.fromJsonString((await store.read())!);
+    expect(settings.savingsColorsEnabled, isTrue);
+
+    final percentColor = _bottomStatValueText(
+      tester,
+      label: 'Savings',
+      value: '50.0%',
+    ).style?.color;
+    expect(percentColor, isNotNull);
+    expect(percentColor, isNot(equals(initialColor)));
+
+    await tester.tap(find.byKey(const ValueKey('bottom-stat-Savings')));
+    await tester.pump();
+
+    final ratioColor = _bottomStatValueText(
+      tester,
+      label: 'Savings',
+      value: '2.0x',
+    ).style?.color;
+    expect(ratioColor, equals(percentColor));
   });
 
   testWidgets('toggles advanced mode in the settings sidebar', (tester) async {
@@ -1632,6 +1758,19 @@ Finder _similarityLoadingFinder() {
   return find.descendant(
     of: _similarityTileFinder(),
     matching: find.byType(CircularProgressIndicator),
+  );
+}
+
+Text _bottomStatValueText(
+  WidgetTester tester, {
+  required String label,
+  required String value,
+}) {
+  return tester.widget<Text>(
+    find.descendant(
+      of: find.byKey(ValueKey('bottom-stat-$label')),
+      matching: find.text(value),
+    ),
   );
 }
 

@@ -50,6 +50,8 @@ void main() {
       await notifier.setPreserveExif(true);
       await notifier.setPreserveColorProfile(true);
       await notifier.setQualityMetricColorsEnabled(true);
+      await notifier.setSimilarityMetricColorsEnabled(true);
+      await notifier.setSavingsColorsEnabled(true);
       await notifier.setThemePreference(AppThemePreference.dark);
       await notifier.setDeveloperModeEnabled(true);
       await notifier.setTimingLogsEnabled(true);
@@ -71,6 +73,8 @@ void main() {
           preserveExif: true,
           preserveColorProfile: true,
           qualityMetricColorsEnabled: true,
+          similarityMetricColorsEnabled: true,
+          savingsColorsEnabled: true,
           themePreference: AppThemePreference.dark,
           developerModeEnabled: true,
           timingLogsEnabled: true,

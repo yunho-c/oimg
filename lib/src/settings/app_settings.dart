@@ -65,6 +65,8 @@ class AppSettings {
     required this.preserveExif,
     required this.preserveColorProfile,
     this.qualityMetricColorsEnabled = false,
+    this.similarityMetricColorsEnabled = false,
+    this.savingsColorsEnabled = false,
     this.themePreference = AppThemePreference.system,
     required this.developerModeEnabled,
     required this.timingLogsEnabled,
@@ -85,6 +87,8 @@ class AppSettings {
   final bool preserveExif;
   final bool preserveColorProfile;
   final bool qualityMetricColorsEnabled;
+  final bool similarityMetricColorsEnabled;
+  final bool savingsColorsEnabled;
   final AppThemePreference themePreference;
   final bool developerModeEnabled;
   final bool timingLogsEnabled;
@@ -103,6 +107,8 @@ class AppSettings {
     preserveExif: false,
     preserveColorProfile: false,
     qualityMetricColorsEnabled: false,
+    similarityMetricColorsEnabled: false,
+    savingsColorsEnabled: false,
     themePreference: AppThemePreference.system,
     developerModeEnabled: false,
     timingLogsEnabled: false,
@@ -166,6 +172,8 @@ class AppSettings {
     bool? preserveExif,
     bool? preserveColorProfile,
     bool? qualityMetricColorsEnabled,
+    bool? similarityMetricColorsEnabled,
+    bool? savingsColorsEnabled,
     AppThemePreference? themePreference,
     bool? developerModeEnabled,
     bool? timingLogsEnabled,
@@ -180,20 +188,20 @@ class AppSettings {
       storageDestinationMode:
           storageDestinationMode ?? this.storageDestinationMode,
       sameFolderAction: sameFolderAction ?? this.sameFolderAction,
-      differentLocationPath: identical(
-        differentLocationPath,
-        _noAppSettingsValue,
-      )
+      differentLocationPath:
+          identical(differentLocationPath, _noAppSettingsValue)
           ? this.differentLocationPath
           : differentLocationPath as String?,
       preserveFolderStructure:
           preserveFolderStructure ?? this.preserveFolderStructure,
       preserveOriginalDate: preserveOriginalDate ?? this.preserveOriginalDate,
       preserveExif: preserveExif ?? this.preserveExif,
-      preserveColorProfile:
-          preserveColorProfile ?? this.preserveColorProfile,
+      preserveColorProfile: preserveColorProfile ?? this.preserveColorProfile,
       qualityMetricColorsEnabled:
           qualityMetricColorsEnabled ?? this.qualityMetricColorsEnabled,
+      similarityMetricColorsEnabled:
+          similarityMetricColorsEnabled ?? this.similarityMetricColorsEnabled,
+      savingsColorsEnabled: savingsColorsEnabled ?? this.savingsColorsEnabled,
       themePreference: themePreference ?? this.themePreference,
       developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,
       timingLogsEnabled: timingLogsEnabled ?? this.timingLogsEnabled,
@@ -217,6 +225,8 @@ class AppSettings {
       'preserveExif': preserveExif,
       'preserveColorProfile': preserveColorProfile,
       'qualityMetricColorsEnabled': qualityMetricColorsEnabled,
+      'similarityMetricColorsEnabled': similarityMetricColorsEnabled,
+      'savingsColorsEnabled': savingsColorsEnabled,
       'themePreference': themePreference.name,
       'developerModeEnabled': developerModeEnabled,
       'timingLogsEnabled': timingLogsEnabled,
@@ -261,7 +271,8 @@ class AppSettings {
           json['preserveFolderStructure'] as bool? ??
           defaults.preserveFolderStructure,
       preserveOriginalDate:
-          json['preserveOriginalDate'] as bool? ?? defaults.preserveOriginalDate,
+          json['preserveOriginalDate'] as bool? ??
+          defaults.preserveOriginalDate,
       preserveExif: json['preserveExif'] as bool? ?? defaults.preserveExif,
       preserveColorProfile:
           json['preserveColorProfile'] as bool? ??
@@ -269,6 +280,12 @@ class AppSettings {
       qualityMetricColorsEnabled:
           json['qualityMetricColorsEnabled'] as bool? ??
           defaults.qualityMetricColorsEnabled,
+      similarityMetricColorsEnabled:
+          json['similarityMetricColorsEnabled'] as bool? ??
+          defaults.similarityMetricColorsEnabled,
+      savingsColorsEnabled:
+          json['savingsColorsEnabled'] as bool? ??
+          defaults.savingsColorsEnabled,
       themePreference: AppThemePreference.values.byName(
         json['themePreference'] as String? ?? defaults.themePreference.name,
       ),
@@ -299,6 +316,8 @@ class AppSettings {
         other.preserveExif == preserveExif &&
         other.preserveColorProfile == preserveColorProfile &&
         other.qualityMetricColorsEnabled == qualityMetricColorsEnabled &&
+        other.similarityMetricColorsEnabled == similarityMetricColorsEnabled &&
+        other.savingsColorsEnabled == savingsColorsEnabled &&
         other.themePreference == themePreference &&
         other.developerModeEnabled == developerModeEnabled &&
         other.timingLogsEnabled == timingLogsEnabled &&
@@ -320,6 +339,8 @@ class AppSettings {
     preserveExif,
     preserveColorProfile,
     qualityMetricColorsEnabled,
+    similarityMetricColorsEnabled,
+    savingsColorsEnabled,
     themePreference,
     developerModeEnabled,
     timingLogsEnabled,

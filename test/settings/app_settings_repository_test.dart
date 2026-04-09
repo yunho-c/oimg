@@ -28,6 +28,8 @@ void main() {
         preserveExif: true,
         preserveColorProfile: true,
         qualityMetricColorsEnabled: true,
+        similarityMetricColorsEnabled: true,
+        savingsColorsEnabled: true,
         themePreference: AppThemePreference.light,
         developerModeEnabled: true,
         timingLogsEnabled: true,

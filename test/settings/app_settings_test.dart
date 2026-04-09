@@ -230,7 +230,10 @@ void main() {
       expect(settings.developerModeEnabled, isFalse);
       expect(settings.timingLogsEnabled, isFalse);
       expect(settings.previewPathHeaderEnabled, isFalse);
-      expect(settings.storageDestinationMode, StorageDestinationMode.sameFolder);
+      expect(
+        settings.storageDestinationMode,
+        StorageDestinationMode.sameFolder,
+      );
       expect(settings.sameFolderAction, SameFolderAction.replaceSource);
       expect(settings.differentLocationPath, isNull);
       expect(settings.preserveFolderStructure, isTrue);
@@ -238,6 +241,8 @@ void main() {
       expect(settings.preserveExif, isFalse);
       expect(settings.preserveColorProfile, isFalse);
       expect(settings.qualityMetricColorsEnabled, isFalse);
+      expect(settings.similarityMetricColorsEnabled, isFalse);
+      expect(settings.savingsColorsEnabled, isFalse);
       expect(settings.themePreference, AppThemePreference.system);
     });
   });

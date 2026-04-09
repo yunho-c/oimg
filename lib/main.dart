@@ -43,6 +43,11 @@ const List<({double value, Color color})> _qualityMetricColorStops = [
   (value: 80, color: Color(0xFF34C759)),
   (value: 100, color: Color(0xFF0094D9)),
 ];
+const List<({double value, Color color})> _savingsMetricColorStops = [
+  ..._qualityMetricColorStops,
+  (value: 200, color: Color(0xFFA21BB7)),
+  (value: 400, color: Color(0xFFE31C76)),
+];
 
 enum _SavingsDisplayMode { percent, ratio }
 
@@ -3123,12 +3128,25 @@ class _BottomStatTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final settings = ref.watch(appSettingsProvider).asData?.value;
     final savingsDisplayMode = ref.watch(_savingsDisplayModeProvider);
     final isToggleable = stat.toggleable && !stat.loading;
     final displayedValue =
         stat.toggleable && savingsDisplayMode == _SavingsDisplayMode.ratio
         ? (stat.alternateValue ?? stat.value)
         : stat.value;
+    final valueColor = switch (stat.colorMode) {
+      _BottomStatColorMode.none => stat.color,
+      _BottomStatColorMode.similarity
+          when settings?.similarityMetricColorsEnabled == true &&
+              stat.colorScore != null =>
+        _qualityMetricColor(stat.colorScore!),
+      _BottomStatColorMode.savings
+          when settings?.savingsColorsEnabled == true &&
+              stat.colorScore != null =>
+        _savingsMetricColor(stat.colorScore!),
+      _ => stat.color,
+    };
 
     final tile = Container(
       key: ValueKey('bottom-stat-${stat.label}'),
@@ -3159,7 +3177,7 @@ class _BottomStatTile extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
-                color: stat.color,
+                color: valueColor,
               ),
             ),
         ],
@@ -3175,20 +3193,61 @@ class _BottomStatTile extends ConsumerWidget {
             child: tile,
           );
 
-    if (!isToggleable) {
-      return decoratedTile;
+    final tappableTile = !isToggleable
+        ? decoratedTile
+        : MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                ref.read(_savingsDisplayModeProvider.notifier).toggle();
+              },
+              child: decoratedTile,
+            ),
+          );
+    final contextMenuItem = switch (stat.colorMode) {
+      _BottomStatColorMode.similarity => MenuButton(
+        key: const ValueKey('bottom-stat-similarity-colors-toggle'),
+        onPressed: (context) {
+          unawaited(
+            ref
+                .read(appSettingsProvider.notifier)
+                .setSimilarityMetricColorsEnabled(
+                  !(settings?.similarityMetricColorsEnabled ?? false),
+                ),
+          );
+        },
+        child: Text(
+          settings?.similarityMetricColorsEnabled == true
+              ? 'Disable similarity colors'
+              : 'Enable similarity colors',
+        ),
+      ),
+      _BottomStatColorMode.savings => MenuButton(
+        key: const ValueKey('bottom-stat-savings-colors-toggle'),
+        onPressed: (context) {
+          unawaited(
+            ref
+                .read(appSettingsProvider.notifier)
+                .setSavingsColorsEnabled(
+                  !(settings?.savingsColorsEnabled ?? false),
+                ),
+          );
+        },
+        child: Text(
+          settings?.savingsColorsEnabled == true
+              ? 'Disable savings colors'
+              : 'Enable savings colors',
+        ),
+      ),
+      _BottomStatColorMode.none => null,
+    };
+
+    if (contextMenuItem == null) {
+      return tappableTile;
     }
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          ref.read(_savingsDisplayModeProvider.notifier).toggle();
-        },
-        child: decoratedTile,
-      ),
-    );
+    return ContextMenu(items: [contextMenuItem], child: tappableTile);
   }
 }
 
@@ -3527,11 +3586,24 @@ class _BottomMetricRow extends StatelessWidget {
 }
 
 Color _qualityMetricColor(double score) {
-  final clampedScore = score.clamp(0, 100).toDouble();
+  return _interpolateColorStops(score, _qualityMetricColorStops);
+}
 
-  for (var index = 1; index < _qualityMetricColorStops.length; index++) {
-    final lower = _qualityMetricColorStops[index - 1];
-    final upper = _qualityMetricColorStops[index];
+Color _savingsMetricColor(double score) {
+  return _interpolateColorStops(score, _savingsMetricColorStops);
+}
+
+Color _interpolateColorStops(
+  double score,
+  List<({double value, Color color})> colorStops,
+) {
+  final clampedScore = score
+      .clamp(colorStops.first.value, colorStops.last.value)
+      .toDouble();
+
+  for (var index = 1; index < colorStops.length; index++) {
+    final lower = colorStops[index - 1];
+    final upper = colorStops[index];
     if (clampedScore > upper.value) {
       continue;
     }
@@ -3545,7 +3617,7 @@ Color _qualityMetricColor(double score) {
     return Color.lerp(lower.color, upper.color, t) ?? upper.color;
   }
 
-  return _qualityMetricColorStops.last.color;
+  return colorStops.last.color;
 }
 
 class _MetricHelpData {
@@ -3759,12 +3831,16 @@ class _BottomSummaryViewModel {
           value: _formatNullablePercentValue(savingsPercent),
           alternateValue: _formatSavingsRatio(originalBytes, newBytes),
           color: const Color(0xFF16A34A),
+          colorMode: _BottomStatColorMode.savings,
+          colorScore: savingsPercent?.clamp(0, 400).toDouble(),
           toggleable: true,
         ),
         _BottomStatData(
           label: 'Similarity',
           value: similarityStat.value,
           color: Color(0xFFF59E0B),
+          colorMode: _BottomStatColorMode.similarity,
+          colorScore: similarityStat.score,
         ),
       ],
       originalSectionTitle: 'Original',
@@ -3832,6 +3908,8 @@ class _BottomSummaryViewModel {
           value: _formatNullablePercentValue(savingsPercent),
           alternateValue: _formatSavingsRatio(originalBytes, newBytes),
           color: const Color(0xFF16A34A),
+          colorMode: _BottomStatColorMode.savings,
+          colorScore: savingsPercent?.clamp(0, 400).toDouble(),
           toggleable: true,
         ),
         const _BottomStatData(
@@ -3876,10 +3954,15 @@ class _BottomSummaryViewModel {
 }
 
 class _DerivedSimilarityStat {
-  const _DerivedSimilarityStat({required this.value, required this.loading});
+  const _DerivedSimilarityStat({
+    required this.value,
+    required this.loading,
+    this.score,
+  });
 
   final String value;
   final bool loading;
+  final double? score;
 }
 
 _DerivedSimilarityStat _deriveSimilarityStat({
@@ -3906,9 +3989,14 @@ _DerivedSimilarityStat _deriveSimilarityStat({
     final average =
         normalizedValues.reduce((sum, value) => sum + value) /
         normalizedValues.length;
+    final isLoading =
+        pixelMatchMetric.isLoading ||
+        msSsimMetric.isLoading ||
+        ssimulacra2Metric.isLoading;
     return _DerivedSimilarityStat(
-      value: _formatSimilarityPercentValue(average),
+      value: '${isLoading ? '~' : ''}${_formatSimilarityPercentValue(average)}',
       loading: false,
+      score: average,
     );
   }
 
@@ -3937,6 +4025,8 @@ class _BottomStatData {
     required this.value,
     required this.color,
     this.alternateValue,
+    this.colorScore,
+    this.colorMode = _BottomStatColorMode.none,
     this.loading = false,
     this.toggleable = false,
     this.tooltip,
@@ -3946,10 +4036,14 @@ class _BottomStatData {
   final String value;
   final Color color;
   final String? alternateValue;
+  final double? colorScore;
+  final _BottomStatColorMode colorMode;
   final bool loading;
   final bool toggleable;
   final String? tooltip;
 }
+
+enum _BottomStatColorMode { none, similarity, savings }
 
 class _BottomInfoRowData {
   const _BottomInfoRowData({required this.label, required this.value});

@@ -56,9 +56,8 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     StorageDestinationMode storageDestinationMode,
   ) async {
     await _update(
-      (settings) => settings.copyWith(
-        storageDestinationMode: storageDestinationMode,
-      ),
+      (settings) =>
+          settings.copyWith(storageDestinationMode: storageDestinationMode),
     );
   }
 
@@ -70,39 +69,33 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
 
   Future<void> setDifferentLocationPath(String? differentLocationPath) async {
     await _update(
-      (settings) => settings.copyWith(
-        differentLocationPath: differentLocationPath,
-      ),
+      (settings) =>
+          settings.copyWith(differentLocationPath: differentLocationPath),
     );
   }
 
   Future<void> setPreserveFolderStructure(bool preserveFolderStructure) async {
     await _update(
-      (settings) => settings.copyWith(
-        preserveFolderStructure: preserveFolderStructure,
-      ),
+      (settings) =>
+          settings.copyWith(preserveFolderStructure: preserveFolderStructure),
     );
   }
 
   Future<void> setPreserveOriginalDate(bool preserveOriginalDate) async {
     await _update(
-      (settings) => settings.copyWith(
-        preserveOriginalDate: preserveOriginalDate,
-      ),
+      (settings) =>
+          settings.copyWith(preserveOriginalDate: preserveOriginalDate),
     );
   }
 
   Future<void> setPreserveExif(bool preserveExif) async {
-    await _update(
-      (settings) => settings.copyWith(preserveExif: preserveExif),
-    );
+    await _update((settings) => settings.copyWith(preserveExif: preserveExif));
   }
 
   Future<void> setPreserveColorProfile(bool preserveColorProfile) async {
     await _update(
-      (settings) => settings.copyWith(
-        preserveColorProfile: preserveColorProfile,
-      ),
+      (settings) =>
+          settings.copyWith(preserveColorProfile: preserveColorProfile),
     );
   }
 
@@ -113,6 +106,23 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
       (settings) => settings.copyWith(
         qualityMetricColorsEnabled: qualityMetricColorsEnabled,
       ),
+    );
+  }
+
+  Future<void> setSimilarityMetricColorsEnabled(
+    bool similarityMetricColorsEnabled,
+  ) async {
+    await _update(
+      (settings) => settings.copyWith(
+        similarityMetricColorsEnabled: similarityMetricColorsEnabled,
+      ),
+    );
+  }
+
+  Future<void> setSavingsColorsEnabled(bool savingsColorsEnabled) async {
+    await _update(
+      (settings) =>
+          settings.copyWith(savingsColorsEnabled: savingsColorsEnabled),
     );
   }
 
@@ -146,11 +156,12 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     );
   }
 
-  Future<void> setPreviewPathHeaderEnabled(bool previewPathHeaderEnabled) async {
+  Future<void> setPreviewPathHeaderEnabled(
+    bool previewPathHeaderEnabled,
+  ) async {
     await _update(
-      (settings) => settings.copyWith(
-        previewPathHeaderEnabled: previewPathHeaderEnabled,
-      ),
+      (settings) =>
+          settings.copyWith(previewPathHeaderEnabled: previewPathHeaderEnabled),
     );
   }
 
