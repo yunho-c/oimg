@@ -770,13 +770,25 @@ class _ImageStage extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Text(
-                          '${currentFile.metadata.width} x ${currentFile.metadata.height}',
-                          textAlign: TextAlign.right,
-                          style: TextStyle(
-                            color: theme.colorScheme.mutedForeground,
+                        Tooltip(
+                          waitDuration: const Duration(milliseconds: 250),
+                          showDuration: const Duration(milliseconds: 120),
+                          tooltip: (context) => TooltipContainer(
+                            child: Text(
+                              _formatMegapixels(
+                                currentFile.metadata.width,
+                                currentFile.metadata.height,
+                              ),
+                            ),
                           ),
-                        ).xSmall(),
+                          child: Text(
+                            '${currentFile.metadata.width} x ${currentFile.metadata.height}',
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              color: theme.colorScheme.mutedForeground,
+                            ),
+                          ).xSmall(),
+                        ),
                       ],
                     ),
                     if (preview.hasError) ...[
@@ -4413,6 +4425,11 @@ String _formatMetricTimingTooltip(int elapsedMilliseconds) {
   }
 
   return '$elapsedMilliseconds ms';
+}
+
+String _formatMegapixels(int width, int height) {
+  final megapixels = (width * height) / 1000000;
+  return '${megapixels.toStringAsFixed(1)} MP';
 }
 
 bool _isTerminalStatus(OptimizationItemStatus status) {
