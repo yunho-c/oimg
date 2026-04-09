@@ -1500,6 +1500,7 @@ class _ExplorerSidebar extends StatelessWidget {
     FileOpenController controller,
   ) {
     final selection = controller.explorerSelection;
+    final showFolderSize = controller.sessionFiles.length > 1;
     final groups = <String, List<OpenedImageFile>>{};
     for (final file in controller.sessionFiles) {
       final directory = FileOpenController.directoryOf(file.path);
@@ -1508,7 +1509,9 @@ class _ExplorerSidebar extends StatelessWidget {
 
     return groups.entries
         .map((entry) {
-          final folderSizeLabel = _folderSizeLabel(entry.value);
+          final folderSizeLabel = showFolderSize
+              ? _folderSizeLabel(entry.value)
+              : null;
           return TreeItem<_ExplorerEntry>(
             data: _ExplorerEntry.directory(
               label: FileOpenController.directoryLabelOf(entry.key),
