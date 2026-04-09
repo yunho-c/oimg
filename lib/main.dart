@@ -3135,8 +3135,12 @@ class _BottomStatTile extends ConsumerWidget {
         stat.toggleable && savingsDisplayMode == _SavingsDisplayMode.ratio
         ? (stat.alternateValue ?? stat.value)
         : stat.value;
-    final valueColor = switch (stat.colorMode) {
+    final defaultValueColor = switch (stat.colorMode) {
       _BottomStatColorMode.none => stat.color,
+      _ => theme.colorScheme.foreground,
+    };
+    final valueColor = switch (stat.colorMode) {
+      _BottomStatColorMode.none => defaultValueColor,
       _BottomStatColorMode.similarity
           when settings?.similarityMetricColorsEnabled == true &&
               stat.colorScore != null =>
@@ -3145,7 +3149,7 @@ class _BottomStatTile extends ConsumerWidget {
           when settings?.savingsColorsEnabled == true &&
               stat.colorScore != null =>
         _savingsMetricColor(stat.colorScore!),
-      _ => stat.color,
+      _ => defaultValueColor,
     };
 
     final tile = Container(
