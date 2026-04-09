@@ -1892,7 +1892,7 @@ class _MetadataCollapsibleState extends ConsumerState<_MetadataCollapsible> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.only(left: 10, right: 4),
             child: Row(
               children: [
                 Expanded(child: const Text('Metadata').small().medium()),
@@ -2055,7 +2055,7 @@ class _StorageCollapsibleState extends ConsumerState<_StorageCollapsible> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.only(left: 10, right: 4),
             child: Row(
               children: [
                 Expanded(child: const Text('Storage').small().medium()),
