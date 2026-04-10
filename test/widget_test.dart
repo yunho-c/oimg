@@ -161,6 +161,121 @@ void main() {
   );
 
   testWidgets(
+    'shows an optimized preview size warning when the preview is larger than the source',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 1000)},
+      )..previewSizeBytes = 1200;
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(
+        find.text('Original image is smaller.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'does not show the optimized preview size warning when the preview is smaller or equal',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 1200)},
+      )..previewSizeBytes = 1200;
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(
+        find.text('Original image is smaller.'),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
+    'does not show the optimized preview size warning while the preview is still loading',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 1000)},
+        previewDelay: const Duration(seconds: 5),
+      )..previewSizeBytes = 1600;
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(
+        find.text('Original image is smaller.'),
+        findsNothing,
+      );
+
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'does not show the optimized preview size warning in folder mode',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final slimg = _FakeSlimgApi(
+        inspectResults: {
+          '/tmp/animals/cat.png': _metadata('png', 1000),
+          '/tmp/animals/dog.png': _metadata('png', 900),
+        },
+      )..previewSizeBytes = 1400;
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/animals/cat.png', '/tmp/animals/dog.png'],
+      );
+      await controller.initialize();
+      controller.showFolder('/tmp/animals');
+
+      await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Original image is smaller.'),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
     'preview header shows transparent as a separate label before the resolution',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1400, 1000));
@@ -832,6 +947,64 @@ void main() {
       );
       expect(find.byType(LineChart), findsOneWidget);
       expect(find.text('11 samples'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'optimized preview size warning updates when an analyze sample is hovered',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 900)},
+        previewDelay: const Duration(seconds: 5),
+      )..analyzeSampleDelay = const Duration(milliseconds: 20);
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(
+        find.text('Original image is smaller.'),
+        findsNothing,
+      );
+
+      await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+      await tester.pumpAndSettle();
+
+      final chart = tester.widget<LineChart>(find.byType(LineChart));
+      final firstBar = chart.data.lineBarsData.first;
+      final lastSpot = firstBar.spots.last;
+      chart.data.lineTouchData.touchCallback?.call(
+        FlPointerHoverEvent(const PointerHoverEvent(position: Offset.zero)),
+        LineTouchResponse(
+          touchLocation: Offset.zero,
+          touchChartCoordinate: Offset.zero,
+          lineBarSpots: [
+            TouchLineBarSpot(
+              firstBar,
+              firstBar.spots.length - 1,
+              lastSpot,
+              0,
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Original image is smaller.'),
+        findsOneWidget,
+      );
     },
   );
 
@@ -2660,7 +2833,7 @@ class _FakeSlimgApi implements SlimgApi {
       format: 'jpeg',
       width: 48,
       height: 32,
-      sizeBytes: BigInt.from(1200),
+      sizeBytes: BigInt.from(previewSizeBytes),
     );
   }
 
@@ -2672,6 +2845,7 @@ class _FakeSlimgApi implements SlimgApi {
   double? pixelMatchValue = 98.7;
   double? msSsimValue = 0.9874;
   double? ssimulacra2Value = 92.4;
+  int previewSizeBytes = 1200;
 
   @override
   Future<double?> computePreviewPixelMatchPercentage({

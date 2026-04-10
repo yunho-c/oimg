@@ -3216,9 +3216,15 @@ class _BottomSidebar extends ConsumerWidget {
     final analyzeState = ref.watch(analyzeRunControllerProvider);
     final runController = ref.read(optimizationRunControllerProvider.notifier);
     final selectedAnalyzeSample = ref.watch(selectedAnalyzeSampleProvider);
+    final optimizedDisplay = ref.watch(currentOptimizedDisplayProvider);
     final pixelMatchMetric = ref.watch(currentPreviewPixelMatchProvider);
     final msSsimMetric = ref.watch(currentPreviewMsSsimProvider);
     final ssimulacra2Metric = ref.watch(currentPreviewSsimulacra2Provider);
+    final optimizedPreviewSizeWarning = _optimizedPreviewSizeWarningText(
+      controller: controller,
+      file: currentFile,
+      optimizedDisplay: optimizedDisplay,
+    );
     final progressValue = runState.totalCount > 0
         ? (runState.completedCount / runState.totalCount).clamp(0.0, 1.0)
         : 0.0;
@@ -3294,6 +3300,13 @@ class _BottomSidebar extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        if (optimizedPreviewSizeWarning case final warning?) ...[
+                          _SettingsWarningBlock(
+                            icon: LucideIcons.triangleAlert,
+                            message: warning,
+                          ),
+                          const SizedBox(height: 8),
+                        ],
                         SizedBox(
                           height: 36,
                           child: runState.isCancelRequested
@@ -5239,6 +5252,25 @@ String? _transparencyWarningText({
   }
 
   return '${codecLabel(codec)} does not support transparency. Transparent areas will be flattened.';
+}
+
+String? _optimizedPreviewSizeWarningText({
+  required FileOpenController controller,
+  required OpenedImageFile? file,
+  required OptimizedPreviewDisplay? optimizedDisplay,
+}) {
+  if (controller.isFolderSelected || file == null || optimizedDisplay == null) {
+    return null;
+  }
+
+  final originalBytes = _originalFileSizeBytes(file);
+  if (originalBytes == null) {
+    return null;
+  }
+
+  return optimizedDisplay.sizeBytes.toInt() > originalBytes
+      ? 'Original image is smaller.'
+      : null;
 }
 
 class _SettingsWarningBlock extends StatelessWidget {
