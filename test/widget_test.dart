@@ -1139,7 +1139,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1));
 
       expect(
-        find.text('x 2, y 2\nR 12 G 34 B 56'),
+        find.text('x 2, y 2\nR  12 G  34 B  56'),
         findsOneWidget,
       );
 
@@ -1209,7 +1209,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
-      expect(find.text('x 2, y 2\nR 12 G 34 B 56'), findsOneWidget);
+      expect(find.text('x 2, y 2\nR  12 G  34 B  56'), findsOneWidget);
 
       await tester.tap(region, buttons: kSecondaryButton);
       await tester.pumpAndSettle();
@@ -1230,7 +1230,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
-      expect(find.text('R 12 G 34 B 56'), findsOneWidget);
+      expect(find.text('R  12 G  34 B  56'), findsOneWidget);
       expect(find.textContaining('x 2, y 2'), findsNothing);
     },
   );
@@ -1291,7 +1291,7 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
 
       expect(
-        find.text('x 2, y 1\nR 80 G 90 B 100'),
+        find.text('x 2, y 1\nR  80 G  90 B 100'),
         findsOneWidget,
       );
 
@@ -1369,7 +1369,7 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
 
       expect(
-        find.text('x 2, y 2\nR 10 G 20 B 30'),
+        find.text('x 2, y 2\nR  10 G  20 B  30'),
         findsOneWidget,
       );
 
@@ -1391,7 +1391,7 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
 
       expect(
-        find.text('x 2, y 2\nR 40 G 50 B 60'),
+        find.text('x 2, y 2\nR  40 G  50 B  60'),
         findsOneWidget,
       );
     },

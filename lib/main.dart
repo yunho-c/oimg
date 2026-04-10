@@ -1078,12 +1078,16 @@ class _DifferenceTooltipSample {
   final int green;
   final int blue;
 
+  String get _rgbLabel =>
+      'R ${red.toString().padLeft(3)} '
+      'G ${green.toString().padLeft(3)} '
+      'B ${blue.toString().padLeft(3)}';
+
   String label({required bool showCoordinates}) {
-    final rgbLabel = 'R $red G $green B $blue';
     if (!showCoordinates) {
-      return rgbLabel;
+      return _rgbLabel;
     }
-    return 'x $pixelX, y $pixelY\n$rgbLabel';
+    return 'x $pixelX, y $pixelY\n$_rgbLabel';
   }
 }
 
@@ -1409,6 +1413,9 @@ class _DifferencePreviewState extends State<DifferencePreview> {
                     child: Text(
                       tooltipText,
                       key: const ValueKey('difference-preview-tooltip'),
+                      style: TextStyle(
+                        fontFeatures: const [ui.FontFeature.tabularFigures()],
+                      ),
                     ),
                   ),
                 ),
