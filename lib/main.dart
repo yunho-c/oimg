@@ -1022,6 +1022,7 @@ class _PreviewCanvas extends StatelessWidget {
             ? Image.file(
                 File(path!),
                 fit: BoxFit.contain,
+                gaplessPlayback: true,
                 errorBuilder: (context, error, stackTrace) {
                   return _ImageLoadError(fileName: fileName);
                 },
@@ -1031,6 +1032,7 @@ class _PreviewCanvas extends StatelessWidget {
             : Image.memory(
                 encodedBytes!,
                 fit: BoxFit.contain,
+                gaplessPlayback: true,
                 errorBuilder: (context, error, stackTrace) {
                   return _PreviewUnavailable(
                     message: unavailableMessage ?? 'Unable to render preview.',
