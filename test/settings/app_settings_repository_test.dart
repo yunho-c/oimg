@@ -33,6 +33,7 @@ void main() {
         bitsPerPixelColorsEnabled: true,
         fileSizeColorsEnabled: true,
         differenceTooltipShowsCoordinates: false,
+        differenceTooltipUsesSwatches: true,
         themePreference: AppThemePreference.light,
         developerModeEnabled: true,
         timingLogsEnabled: true,

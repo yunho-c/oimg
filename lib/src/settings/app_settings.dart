@@ -70,6 +70,7 @@ class AppSettings {
     this.bitsPerPixelColorsEnabled = false,
     this.fileSizeColorsEnabled = false,
     this.differenceTooltipShowsCoordinates = true,
+    this.differenceTooltipUsesSwatches = false,
     this.themePreference = AppThemePreference.system,
     required this.developerModeEnabled,
     required this.timingLogsEnabled,
@@ -95,6 +96,7 @@ class AppSettings {
   final bool bitsPerPixelColorsEnabled;
   final bool fileSizeColorsEnabled;
   final bool differenceTooltipShowsCoordinates;
+  final bool differenceTooltipUsesSwatches;
   final AppThemePreference themePreference;
   final bool developerModeEnabled;
   final bool timingLogsEnabled;
@@ -118,6 +120,7 @@ class AppSettings {
     bitsPerPixelColorsEnabled: false,
     fileSizeColorsEnabled: false,
     differenceTooltipShowsCoordinates: true,
+    differenceTooltipUsesSwatches: false,
     themePreference: AppThemePreference.system,
     developerModeEnabled: false,
     timingLogsEnabled: false,
@@ -186,6 +189,7 @@ class AppSettings {
     bool? bitsPerPixelColorsEnabled,
     bool? fileSizeColorsEnabled,
     bool? differenceTooltipShowsCoordinates,
+    bool? differenceTooltipUsesSwatches,
     AppThemePreference? themePreference,
     bool? developerModeEnabled,
     bool? timingLogsEnabled,
@@ -221,6 +225,9 @@ class AppSettings {
       differenceTooltipShowsCoordinates:
           differenceTooltipShowsCoordinates ??
           this.differenceTooltipShowsCoordinates,
+      differenceTooltipUsesSwatches:
+          differenceTooltipUsesSwatches ??
+          this.differenceTooltipUsesSwatches,
       themePreference: themePreference ?? this.themePreference,
       developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,
       timingLogsEnabled: timingLogsEnabled ?? this.timingLogsEnabled,
@@ -249,6 +256,7 @@ class AppSettings {
       'bitsPerPixelColorsEnabled': bitsPerPixelColorsEnabled,
       'fileSizeColorsEnabled': fileSizeColorsEnabled,
       'differenceTooltipShowsCoordinates': differenceTooltipShowsCoordinates,
+      'differenceTooltipUsesSwatches': differenceTooltipUsesSwatches,
       'themePreference': themePreference.name,
       'developerModeEnabled': developerModeEnabled,
       'timingLogsEnabled': timingLogsEnabled,
@@ -317,6 +325,9 @@ class AppSettings {
       differenceTooltipShowsCoordinates:
           json['differenceTooltipShowsCoordinates'] as bool? ??
           defaults.differenceTooltipShowsCoordinates,
+      differenceTooltipUsesSwatches:
+          json['differenceTooltipUsesSwatches'] as bool? ??
+          defaults.differenceTooltipUsesSwatches,
       themePreference: AppThemePreference.values.byName(
         json['themePreference'] as String? ?? defaults.themePreference.name,
       ),
@@ -353,6 +364,8 @@ class AppSettings {
         other.fileSizeColorsEnabled == fileSizeColorsEnabled &&
         other.differenceTooltipShowsCoordinates ==
             differenceTooltipShowsCoordinates &&
+        other.differenceTooltipUsesSwatches ==
+            differenceTooltipUsesSwatches &&
         other.themePreference == themePreference &&
         other.developerModeEnabled == developerModeEnabled &&
         other.timingLogsEnabled == timingLogsEnabled &&
@@ -379,6 +392,7 @@ class AppSettings {
     bitsPerPixelColorsEnabled,
     fileSizeColorsEnabled,
     differenceTooltipShowsCoordinates,
+    differenceTooltipUsesSwatches,
     themePreference,
     developerModeEnabled,
     timingLogsEnabled,

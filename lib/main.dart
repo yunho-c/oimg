@@ -870,6 +870,9 @@ class _ImageStage extends ConsumerWidget {
                             showCoordinates:
                                 appSettings?.differenceTooltipShowsCoordinates ??
                                 true,
+                            useRgbSwatches:
+                                appSettings?.differenceTooltipUsesSwatches ??
+                                false,
                             onShowCoordinatesChanged: (value) {
                               unawaited(
                                 ref
@@ -877,6 +880,13 @@ class _ImageStage extends ConsumerWidget {
                                     .setDifferenceTooltipShowsCoordinates(
                                       value,
                                     ),
+                              );
+                            },
+                            onUseRgbSwatchesChanged: (value) {
+                              unawaited(
+                                ref
+                                    .read(appSettingsProvider.notifier)
+                                    .setDifferenceTooltipUsesSwatches(value),
                               );
                             },
                             unavailableMessage:
@@ -1046,7 +1056,9 @@ class DifferencePreview extends StatefulWidget {
     required this.frame,
     required this.fileName,
     required this.showCoordinates,
+    required this.useRgbSwatches,
     this.onShowCoordinatesChanged,
+    this.onUseRgbSwatchesChanged,
     this.unavailableMessage = 'Unable to render preview.',
   });
 
@@ -1054,7 +1066,9 @@ class DifferencePreview extends StatefulWidget {
   final AsyncValue<PreviewDifferenceFrame?> frame;
   final String fileName;
   final bool showCoordinates;
+  final bool useRgbSwatches;
   final ValueChanged<bool>? onShowCoordinatesChanged;
+  final ValueChanged<bool>? onUseRgbSwatchesChanged;
   final String unavailableMessage;
 
   @override
@@ -1078,10 +1092,12 @@ class _DifferenceTooltipSample {
   final int green;
   final int blue;
 
+  String get redLabel => red.toString().padLeft(3);
+  String get greenLabel => green.toString().padLeft(3);
+  String get blueLabel => blue.toString().padLeft(3);
+
   String get _rgbLabel =>
-      'R ${red.toString().padLeft(3)} '
-      'G ${green.toString().padLeft(3)} '
-      'B ${blue.toString().padLeft(3)}';
+      'R $redLabel G $greenLabel B $blueLabel';
 
   String label({required bool showCoordinates}) {
     if (!showCoordinates) {
@@ -1296,13 +1312,13 @@ class _DifferencePreviewState extends State<DifferencePreview> {
     return Rect.fromLTWH(left, top, fittedSize.width, fittedSize.height);
   }
 
-  Size _tooltipSize(BuildContext context, String text) {
+  Size _tooltipSize(BuildContext context, String measurementText) {
     final theme = Theme.of(context);
     final scaling = theme.scaling;
     final densityGap = theme.density.baseGap * scaling;
     final densityContentPadding = theme.density.baseContentPadding * scaling;
     final textPainter = TextPainter(
-      text: TextSpan(text: text, style: theme.typography.xSmall),
+      text: TextSpan(text: measurementText, style: theme.typography.xSmall),
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),
     )..layout();
@@ -1311,6 +1327,89 @@ class _DifferencePreviewState extends State<DifferencePreview> {
     return Size(
       textPainter.width + horizontalPadding,
       textPainter.height + verticalPadding,
+    );
+  }
+
+  Widget _buildTooltipContent(
+    BuildContext context,
+    _DifferenceTooltipSample tooltip,
+  ) {
+    final numberStyle = TextStyle(
+      fontFeatures: const [ui.FontFeature.tabularFigures()],
+    );
+    final rgbContent = widget.useRgbSwatches
+        ? Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              _buildRgbSwatchValue(
+                key: const ValueKey('difference-preview-tooltip-r-swatch'),
+                color: const Color(0xFFFF3B30),
+                value: tooltip.redLabel,
+                textStyle: numberStyle,
+              ),
+              _buildRgbSwatchValue(
+                key: const ValueKey('difference-preview-tooltip-g-swatch'),
+                color: const Color(0xFF34C759),
+                value: tooltip.greenLabel,
+                textStyle: numberStyle,
+              ),
+              _buildRgbSwatchValue(
+                key: const ValueKey('difference-preview-tooltip-b-swatch'),
+                color: const Color(0xFF0A84FF),
+                value: tooltip.blueLabel,
+                textStyle: numberStyle,
+              ),
+            ],
+          )
+        : Text(
+            tooltip._rgbLabel,
+            style: numberStyle,
+          );
+
+    if (!widget.showCoordinates) {
+      return KeyedSubtree(
+        key: const ValueKey('difference-preview-tooltip'),
+        child: rgbContent,
+      );
+    }
+
+    return KeyedSubtree(
+      key: const ValueKey('difference-preview-tooltip'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('x ${tooltip.pixelX}, y ${tooltip.pixelY}'),
+          const SizedBox(height: 2),
+          rgbContent,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRgbSwatchValue({
+    required Key key,
+    required Color color,
+    required String value,
+    required TextStyle textStyle,
+  }) {
+    return Row(
+      key: key,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(value, style: textStyle),
+      ],
     );
   }
 
@@ -1332,9 +1431,16 @@ class _DifferencePreviewState extends State<DifferencePreview> {
         final tooltipText = tooltip?.label(
           showCoordinates: widget.showCoordinates,
         );
-        final tooltipSize = tooltipText == null
+        final tooltipMeasurementText = tooltip == null
             ? null
-            : _tooltipSize(context, tooltipText);
+            : widget.useRgbSwatches
+            ? widget.showCoordinates
+                  ? 'x ${tooltip.pixelX}, y ${tooltip.pixelY}\n000 000 000'
+                  : '000 000 000'
+            : tooltipText;
+        final tooltipSize = tooltipMeasurementText == null
+            ? null
+            : _tooltipSize(context, tooltipMeasurementText);
         final tooltipLeft = tooltip == null || tooltipSize == null
             ? null
             : ((tooltip.anchor.dx + _tooltipOffset.dx).clamp(
@@ -1364,6 +1470,17 @@ class _DifferencePreviewState extends State<DifferencePreview> {
                             widget.onShowCoordinatesChanged!(value);
                           },
                     child: const Text('Show coordinates'),
+                  ),
+                  MenuCheckbox(
+                    key: const ValueKey('difference-tooltip-swatches-toggle'),
+                    value: widget.useRgbSwatches,
+                    autoClose: false,
+                    onChanged: widget.onUseRgbSwatchesChanged == null
+                        ? null
+                        : (context, value) {
+                            widget.onUseRgbSwatchesChanged!(value);
+                          },
+                    child: const Text('Use color swatches for RGB labels'),
                   ),
                 ],
                 child: Listener(
@@ -1410,13 +1527,7 @@ class _DifferencePreviewState extends State<DifferencePreview> {
                 top: tooltipTop,
                 child: IgnorePointer(
                   child: TooltipContainer(
-                    child: Text(
-                      tooltipText,
-                      key: const ValueKey('difference-preview-tooltip'),
-                      style: TextStyle(
-                        fontFeatures: const [ui.FontFeature.tabularFigures()],
-                      ),
-                    ),
+                    child: _buildTooltipContent(context, tooltip!),
                   ),
                 ),
               ),

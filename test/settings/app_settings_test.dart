@@ -4,6 +4,7 @@ import 'package:oimg/src/settings/app_settings.dart';
 void main() {
   test('defaults show coordinates in the difference tooltip', () {
     expect(AppSettings.defaults.differenceTooltipShowsCoordinates, isTrue);
+    expect(AppSettings.defaults.differenceTooltipUsesSwatches, isFalse);
   });
 
   group('AppSettings.effectiveCodec', () {

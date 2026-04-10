@@ -153,6 +153,16 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     );
   }
 
+  Future<void> setDifferenceTooltipUsesSwatches(
+    bool differenceTooltipUsesSwatches,
+  ) async {
+    await _update(
+      (settings) => settings.copyWith(
+        differenceTooltipUsesSwatches: differenceTooltipUsesSwatches,
+      ),
+    );
+  }
+
   Future<void> setThemePreference(AppThemePreference themePreference) async {
     await _update(
       (settings) => settings.copyWith(themePreference: themePreference),

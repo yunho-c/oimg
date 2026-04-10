@@ -1041,6 +1041,7 @@ void main() {
               frame: const AsyncData<PreviewDifferenceFrame?>(null),
               fileName: 'first.png',
               showCoordinates: true,
+              useRgbSwatches: false,
               unavailableMessage: 'Difference preview unavailable.',
             ),
           ),
@@ -1056,6 +1057,7 @@ void main() {
               frame: AsyncData<PreviewDifferenceFrame?>(firstFrame),
               fileName: 'first.png',
               showCoordinates: true,
+              useRgbSwatches: false,
               unavailableMessage: 'Difference preview unavailable.',
             ),
           ),
@@ -1074,6 +1076,7 @@ void main() {
               frame: AsyncLoading<PreviewDifferenceFrame?>(),
               fileName: 'first.png',
               showCoordinates: true,
+              useRgbSwatches: false,
               unavailableMessage: 'Difference preview unavailable.',
             ),
           ),
@@ -1116,6 +1119,7 @@ void main() {
                   frame: AsyncData<PreviewDifferenceFrame?>(frame),
                   fileName: 'first.png',
                   showCoordinates: true,
+                  useRgbSwatches: false,
                   unavailableMessage: 'Difference preview unavailable.',
                 ),
               ),
@@ -1138,10 +1142,8 @@ void main() {
 
       await tester.pump(const Duration(milliseconds: 1));
 
-      expect(
-        find.text('x 2, y 2\nR  12 G  34 B  56'),
-        findsOneWidget,
-      );
+      expect(find.text('x 2, y 2'), findsOneWidget);
+      expect(find.text('R  12 G  34 B  56'), findsOneWidget);
 
       await mouse.moveTo(center + const Offset(10, 0));
       await tester.pump();
@@ -1169,6 +1171,7 @@ void main() {
       addTearDown(frame.image.dispose);
 
       var showCoordinates = true;
+      var useRgbSwatches = false;
 
       await tester.pumpWidget(
         StatefulBuilder(
@@ -1184,9 +1187,15 @@ void main() {
                       frame: AsyncData<PreviewDifferenceFrame?>(frame),
                       fileName: 'first.png',
                       showCoordinates: showCoordinates,
+                      useRgbSwatches: useRgbSwatches,
                       onShowCoordinatesChanged: (value) {
                         setState(() {
                           showCoordinates = value;
+                        });
+                      },
+                      onUseRgbSwatchesChanged: (value) {
+                        setState(() {
+                          useRgbSwatches = value;
                         });
                       },
                       unavailableMessage: 'Difference preview unavailable.',
@@ -1209,7 +1218,8 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
-      expect(find.text('x 2, y 2\nR  12 G  34 B  56'), findsOneWidget);
+      expect(find.text('x 2, y 2'), findsOneWidget);
+      expect(find.text('R  12 G  34 B  56'), findsOneWidget);
 
       await tester.tap(region, buttons: kSecondaryButton);
       await tester.pumpAndSettle();
@@ -1232,6 +1242,114 @@ void main() {
 
       expect(find.text('R  12 G  34 B  56'), findsOneWidget);
       expect(find.textContaining('x 2, y 2'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'difference preview context menu can use swatches for RGB labels',
+    (tester) async {
+      final frame = await _differenceFrame(
+        width: 4,
+        height: 4,
+        rgbaBytes: _rgbaBytesForSinglePixel(
+          width: 4,
+          height: 4,
+          pixelX: 2,
+          pixelY: 2,
+          red: 12,
+          green: 34,
+          blue: 56,
+        ),
+      );
+      addTearDown(frame.image.dispose);
+
+      var showCoordinates = true;
+      var useRgbSwatches = false;
+
+      await tester.pumpWidget(
+        StatefulBuilder(
+          builder: (context, setState) {
+            return ShadcnApp(
+              home: Scaffold(
+                child: Center(
+                  child: SizedBox(
+                    width: 200,
+                    height: 200,
+                    child: DifferencePreview(
+                      retentionScopeKey: 'first',
+                      frame: AsyncData<PreviewDifferenceFrame?>(frame),
+                      fileName: 'first.png',
+                      showCoordinates: showCoordinates,
+                      useRgbSwatches: useRgbSwatches,
+                      onShowCoordinatesChanged: (value) {
+                        setState(() {
+                          showCoordinates = value;
+                        });
+                      },
+                      onUseRgbSwatchesChanged: (value) {
+                        setState(() {
+                          useRgbSwatches = value;
+                        });
+                      },
+                      unavailableMessage: 'Difference preview unavailable.',
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+      await tester.pump();
+
+      final region = find.byKey(const ValueKey('difference-preview-region'));
+      final center = tester.getCenter(region);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: center);
+      await mouse.moveTo(center);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.text('x 2, y 2'), findsOneWidget);
+      expect(find.text('R  12 G  34 B  56'), findsOneWidget);
+
+      await tester.tap(region, buttons: kSecondaryButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Use color swatches for RGB labels'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const ValueKey('difference-tooltip-swatches-toggle')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(useRgbSwatches, isTrue);
+
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
+
+      await mouse.moveTo(center + const Offset(1, 0));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.text('x 2, y 2'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('difference-preview-tooltip-r-swatch')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('difference-preview-tooltip-g-swatch')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('difference-preview-tooltip-b-swatch')),
+        findsOneWidget,
+      );
+      expect(find.text(' 12'), findsOneWidget);
+      expect(find.text(' 34'), findsOneWidget);
+      expect(find.text(' 56'), findsOneWidget);
+      expect(find.textContaining('R  12'), findsNothing);
     },
   );
 
@@ -1265,6 +1383,7 @@ void main() {
                   frame: AsyncData<PreviewDifferenceFrame?>(frame),
                   fileName: 'first.png',
                   showCoordinates: true,
+                  useRgbSwatches: false,
                   unavailableMessage: 'Difference preview unavailable.',
                 ),
               ),
@@ -1290,10 +1409,8 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
-      expect(
-        find.text('x 2, y 1\nR  80 G  90 B 100'),
-        findsOneWidget,
-      );
+      expect(find.text('x 2, y 1'), findsOneWidget);
+      expect(find.text('R  80 G  90 B 100'), findsOneWidget);
 
       await tester.drag(region, const Offset(20, 20));
       await tester.pump();
@@ -1346,6 +1463,7 @@ void main() {
                   frame: frameValue,
                   fileName: 'first.png',
                   showCoordinates: true,
+                  useRgbSwatches: false,
                   unavailableMessage: 'Difference preview unavailable.',
                 ),
               ),
@@ -1368,10 +1486,8 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
-      expect(
-        find.text('x 2, y 2\nR  10 G  20 B  30'),
-        findsOneWidget,
-      );
+      expect(find.text('x 2, y 2'), findsOneWidget);
+      expect(find.text('R  10 G  20 B  30'), findsOneWidget);
 
       await tester.pumpWidget(
         buildPreview(const AsyncLoading<PreviewDifferenceFrame?>()),
@@ -1390,10 +1506,8 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
-      expect(
-        find.text('x 2, y 2\nR  40 G  50 B  60'),
-        findsOneWidget,
-      );
+      expect(find.text('x 2, y 2'), findsOneWidget);
+      expect(find.text('R  40 G  50 B  60'), findsOneWidget);
     },
   );
 
