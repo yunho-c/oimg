@@ -2806,21 +2806,23 @@ class _AnalyzeChart extends StatelessWidget {
       samples,
       (sample) => sample.ssimulacra2,
     );
-    final maxX = samples.fold<double>(
+    final dataMaxX = samples.fold<double>(
       0,
       (current, sample) => math.max(current, sample.sizeBytes.toDouble()),
     );
+    final chartMaxX = dataMaxX <= 0 ? 1.0 : dataMaxX * 1.05;
+    final xAxisInterval = dataMaxX <= 0 ? 1.0 : dataMaxX / 4;
 
     return LineChart(
       LineChartData(
         minY: 0,
         maxY: 100,
         minX: 0,
-        maxX: maxX <= 0 ? 1 : maxX * 1.05,
+        maxX: chartMaxX,
         gridData: FlGridData(
           drawVerticalLine: true,
           horizontalInterval: 20,
-          verticalInterval: maxX <= 0 ? 1 : maxX / 4,
+          verticalInterval: xAxisInterval,
           getDrawingHorizontalLine: (value) =>
               FlLine(color: theme.colorScheme.border, strokeWidth: 1),
           getDrawingVerticalLine: (value) => FlLine(
@@ -2848,9 +2850,13 @@ class _AnalyzeChart extends StatelessWidget {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 26,
-              interval: maxX <= 0 ? 1 : maxX / 4,
-              getTitlesWidget: (value, meta) =>
-                  Text(_formatBytes(value.round())).xSmall().muted(),
+              interval: xAxisInterval,
+              getTitlesWidget: (value, meta) {
+                if (dataMaxX > 0 && value > dataMaxX + 0.5) {
+                  return const SizedBox.shrink();
+                }
+                return Text(_formatBytes(value.round())).xSmall().muted();
+              },
             ),
           ),
         ),

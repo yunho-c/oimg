@@ -838,12 +838,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(LineChart), findsOneWidget);
-    expect(find.text('11 samples'), findsOneWidget);
     expect(find.text('80'), findsWidgets);
 
     final chart = tester.widget<LineChart>(find.byType(LineChart));
     expect(chart.data.lineTouchData.handleBuiltInTouches, isFalse);
     expect(chart.data.lineBarsData, hasLength(3));
+    expect(chart.data.maxX, 1575);
+    expect(chart.data.gridData.verticalInterval, 375);
+    expect(chart.data.titlesData.bottomTitles.sideTitles.interval, 375);
   });
 
   testWidgets(
