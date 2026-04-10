@@ -800,10 +800,17 @@ class AnalyzeRunController extends Notifier<AnalyzeRunState> {
         }
 
         final priorSelection = state.selectedArtifactId;
-        final selectedArtifactId = priorSelection != null &&
-                snapshot.results.any((sample) => sample.artifactId == priorSelection)
-            ? priorSelection
+        final autoSelectedArtifactId =
+            !_isTerminalAnalyzeState(snapshot.state) && snapshot.results.isNotEmpty
+            ? snapshot.results.last.artifactId
             : null;
+        final selectedArtifactId = autoSelectedArtifactId ??
+            (priorSelection != null &&
+                    snapshot.results.any(
+                      (sample) => sample.artifactId == priorSelection,
+                    )
+                ? priorSelection
+                : null);
 
         state = state.copyWith(
           jobState: snapshot.state,

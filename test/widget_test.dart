@@ -1016,6 +1016,51 @@ void main() {
   );
 
   testWidgets(
+    'running analyze auto-selects the newest completed sample for preview data',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      )..analyzeSampleDelay = const Duration(milliseconds: 120);
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 180));
+
+      final container = ProviderScope.containerOf(tester.element(find.byType(MyApp)));
+      final analyzeState = container.read(analyzeRunControllerProvider);
+      final selectedSample = container.read(selectedAnalyzeSampleProvider);
+      final optimizedDisplay = container.read(currentOptimizedDisplayProvider);
+
+      expect(analyzeState.isRunning, isTrue);
+      expect(selectedSample, isNotNull);
+      expect(selectedSample!.quality, 0);
+      expect(optimizedDisplay, isNotNull);
+      expect(optimizedDisplay!.artifactId, 'analyze-artifact-0');
+      expect(
+        _bottomStatValueText(tester, label: 'Optimized', value: '1.5 KB'),
+        isNotNull,
+      );
+
+      await container.read(analyzeRunControllerProvider.notifier).cancelAnalyze();
+      await tester.pump();
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
     'hovering an analyze chart point preserves difference mode',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1400, 1000));
