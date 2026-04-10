@@ -680,7 +680,7 @@ class _ImageStage extends ConsumerWidget {
     final preview = ref.watch(currentPreviewProvider);
     final optimizedDisplay = ref.watch(currentOptimizedDisplayProvider);
     final displayMode = ref.watch(currentPreviewDisplayModeProvider);
-    final difference = ref.watch(currentPreviewDifferenceProvider);
+    final differenceFrame = ref.watch(currentPreviewDifferenceFrameProvider);
     final hasOptimizedPreview = optimizedDisplay != null;
     final planData = plan.maybeWhen(data: (value) => value, orElse: () => null);
     final differenceUnavailableTooltip =
@@ -863,9 +863,9 @@ class _ImageStage extends ConsumerWidget {
                             ),
                           );
                         case PreviewDisplayMode.difference:
-                          return RetainedAsyncImagePreview(
+                          return DifferencePreview(
                             retentionScopeKey: currentFile.path,
-                            image: difference,
+                            frame: differenceFrame,
                             fileName: fileName,
                             unavailableMessage:
                                 'Difference preview unavailable.',
@@ -982,14 +982,12 @@ class _PreviewCanvas extends StatelessWidget {
     required this.fileName,
     this.path,
     this.encodedBytes,
-    this.rawImage,
     this.unavailableMessage,
   });
 
   final String fileName;
   final String? path;
   final Uint8List? encodedBytes;
-  final ui.Image? rawImage;
   final String? unavailableMessage;
 
   @override
@@ -997,7 +995,6 @@ class _PreviewCanvas extends StatelessWidget {
     final populated = [
       path != null,
       encodedBytes != null,
-      rawImage != null,
     ].where((value) => value).length;
     assert(populated == 1);
 
@@ -1015,8 +1012,6 @@ class _PreviewCanvas extends StatelessWidget {
                   return _ImageLoadError(fileName: fileName);
                 },
               )
-            : rawImage != null
-            ? RawImage(image: rawImage, fit: BoxFit.contain)
             : Image.memory(
                 encodedBytes!,
                 fit: BoxFit.contain,
@@ -1032,97 +1027,384 @@ class _PreviewCanvas extends StatelessWidget {
   }
 }
 
-class RetainedAsyncImagePreview extends StatefulWidget {
-  const RetainedAsyncImagePreview({
+class DifferencePreview extends StatefulWidget {
+  const DifferencePreview({
     super.key,
     required this.retentionScopeKey,
-    required this.image,
+    required this.frame,
     required this.fileName,
     this.unavailableMessage = 'Unable to render preview.',
   });
 
   final String retentionScopeKey;
-  final AsyncValue<ui.Image?> image;
+  final AsyncValue<PreviewDifferenceFrame?> frame;
   final String fileName;
   final String unavailableMessage;
 
   @override
-  State<RetainedAsyncImagePreview> createState() =>
-      _RetainedAsyncImagePreviewState();
+  State<DifferencePreview> createState() => _DifferencePreviewState();
 }
 
-class _RetainedAsyncImagePreviewState extends State<RetainedAsyncImagePreview> {
+class _DifferenceTooltipSample {
+  const _DifferenceTooltipSample({
+    required this.anchor,
+    required this.pixelX,
+    required this.pixelY,
+    required this.red,
+    required this.green,
+    required this.blue,
+  });
+
+  final Offset anchor;
+  final int pixelX;
+  final int pixelY;
+  final int red;
+  final int green;
+  final int blue;
+
+  String get label => 'x $pixelX, y $pixelY\nR $red G $green B $blue';
+}
+
+class _DifferencePreviewState extends State<DifferencePreview> {
+  static const _tooltipDelay = Duration(seconds: 1);
+  static const _tooltipOffset = Offset(12, 12);
+
   ui.Image? _retainedSourceImage;
   ui.Image? _retainedImage;
+  RawImageResult? _retainedRawImage;
+  Offset? _hoverViewportOffset;
+  _DifferenceTooltipSample? _tooltipSample;
+  Timer? _tooltipTimer;
+  late final TransformationController _transformationController;
+
+  bool get _supportsHover =>
+      Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
   @override
   void initState() {
     super.initState();
-    _syncRetainedImage();
+    _transformationController = TransformationController();
+    _syncRetainedFrame();
   }
 
   @override
-  void didUpdateWidget(covariant RetainedAsyncImagePreview oldWidget) {
+  void didUpdateWidget(covariant DifferencePreview oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.retentionScopeKey != widget.retentionScopeKey) {
-      _clearRetainedImage();
+      _clearRetainedFrame();
+      _transformationController.value = Matrix4.identity();
     }
-    _syncRetainedImage();
+    if (oldWidget.frame != widget.frame) {
+      _resetTooltip(clearHover: false);
+    }
+    _syncRetainedFrame();
   }
 
   @override
   void dispose() {
-    _clearRetainedImage();
+    _tooltipTimer?.cancel();
+    _transformationController.dispose();
+    _clearRetainedFrame();
     super.dispose();
   }
 
-  void _syncRetainedImage() {
-    final image = widget.image;
-    if (image case AsyncData(:final value)) {
+  void _syncRetainedFrame() {
+    final frame = widget.frame;
+    if (frame case AsyncData(:final value)) {
       if (value == null) {
-        _clearRetainedImage();
+        _clearRetainedFrame();
         return;
       }
-      if (!identical(value, _retainedSourceImage)) {
+      if (!identical(value.image, _retainedSourceImage)) {
         _retainedImage?.dispose();
-        _retainedSourceImage = value;
-        _retainedImage = value.clone();
+        _retainedSourceImage = value.image;
+        _retainedImage = value.image.clone();
       }
+      _retainedRawImage = value.rawImage;
     }
   }
 
-  void _clearRetainedImage() {
+  void _clearRetainedFrame() {
     _retainedSourceImage = null;
     _retainedImage?.dispose();
     _retainedImage = null;
+    _retainedRawImage = null;
+  }
+
+  void _resetTooltip({bool clearHover = true}) {
+    _tooltipTimer?.cancel();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      if (clearHover) {
+        _hoverViewportOffset = null;
+      }
+      _tooltipSample = null;
+    });
+  }
+
+  void _setHoverPosition(Offset position) {
+    if (_hoverViewportOffset == position) {
+      return;
+    }
+    _tooltipTimer?.cancel();
+    setState(() {
+      _hoverViewportOffset = position;
+    });
+  }
+
+  void _scheduleTooltip({
+    required Offset viewportOffset,
+    required Size viewportSize,
+    required RawImageResult rawImage,
+  }) {
+    _tooltipTimer?.cancel();
+    _tooltipTimer = Timer(_tooltipDelay, () {
+      if (!mounted || _hoverViewportOffset != viewportOffset) {
+        return;
+      }
+      final sample = _sampleAtViewportOffset(
+        viewportOffset: viewportOffset,
+        viewportSize: viewportSize,
+        rawImage: rawImage,
+      );
+      if (!mounted || sample == null) {
+        return;
+      }
+      setState(() {
+        _tooltipSample = sample;
+      });
+    });
+  }
+
+  void _handleHover({
+    required Offset viewportOffset,
+    required Size viewportSize,
+    required RawImageResult rawImage,
+  }) {
+    if (!_supportsHover) {
+      return;
+    }
+    final sample = _sampleAtViewportOffset(
+      viewportOffset: viewportOffset,
+      viewportSize: viewportSize,
+      rawImage: rawImage,
+    );
+    if (sample == null) {
+      _resetTooltip();
+      return;
+    }
+    if (_hoverViewportOffset == viewportOffset) {
+      return;
+    }
+    if (_tooltipSample != null) {
+      _tooltipTimer?.cancel();
+      setState(() {
+        _hoverViewportOffset = viewportOffset;
+        _tooltipSample = sample;
+      });
+      return;
+    }
+    _setHoverPosition(viewportOffset);
+    _scheduleTooltip(
+      viewportOffset: viewportOffset,
+      viewportSize: viewportSize,
+      rawImage: rawImage,
+    );
+  }
+
+  _DifferenceTooltipSample? _sampleAtViewportOffset({
+    required Offset viewportOffset,
+    required Size viewportSize,
+    required RawImageResult rawImage,
+  }) {
+    final sceneOffset = _transformationController.toScene(viewportOffset);
+    final imageRect = _containedImageRect(
+      viewportSize,
+      Size(rawImage.width.toDouble(), rawImage.height.toDouble()),
+    );
+    if (!imageRect.contains(sceneOffset)) {
+      return null;
+    }
+
+    final normalizedX = (sceneOffset.dx - imageRect.left) / imageRect.width;
+    final normalizedY = (sceneOffset.dy - imageRect.top) / imageRect.height;
+    final pixelX = math.min(
+      math.max((normalizedX * rawImage.width).floor(), 0),
+      rawImage.width - 1,
+    );
+    final pixelY = math.min(
+      math.max((normalizedY * rawImage.height).floor(), 0),
+      rawImage.height - 1,
+    );
+    final byteIndex = (pixelY * rawImage.width + pixelX) * 4;
+    if (byteIndex + 2 >= rawImage.rgbaBytes.length) {
+      return null;
+    }
+
+    return _DifferenceTooltipSample(
+      anchor: viewportOffset,
+      pixelX: pixelX,
+      pixelY: pixelY,
+      red: rawImage.rgbaBytes[byteIndex],
+      green: rawImage.rgbaBytes[byteIndex + 1],
+      blue: rawImage.rgbaBytes[byteIndex + 2],
+    );
+  }
+
+  Rect _containedImageRect(Size viewportSize, Size imageSize) {
+    if (viewportSize.isEmpty || imageSize.isEmpty) {
+      return Rect.zero;
+    }
+    final scale = math.min(
+      viewportSize.width / imageSize.width,
+      viewportSize.height / imageSize.height,
+    );
+    final fittedSize = Size(
+      imageSize.width * scale,
+      imageSize.height * scale,
+    );
+    final left = (viewportSize.width - fittedSize.width) / 2;
+    final top = (viewportSize.height - fittedSize.height) / 2;
+    return Rect.fromLTWH(left, top, fittedSize.width, fittedSize.height);
+  }
+
+  Size _tooltipSize(BuildContext context, String text) {
+    final theme = Theme.of(context);
+    final scaling = theme.scaling;
+    final densityGap = theme.density.baseGap * scaling;
+    final densityContentPadding = theme.density.baseContentPadding * scaling;
+    final textPainter = TextPainter(
+      text: TextSpan(text: text, style: theme.typography.xSmall),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout();
+    final horizontalPadding = (densityContentPadding + densityGap) * 1.5;
+    final verticalPadding = densityGap * 1.5;
+    return Size(
+      textPainter.width + horizontalPadding,
+      textPainter.height + verticalPadding,
+    );
+  }
+
+  Widget _buildImageViewport({
+    required ui.Image image,
+    required RawImageResult rawImage,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final viewportSize = Size(
+          constraints.maxWidth,
+          constraints.maxHeight,
+        );
+        final imageRect = _containedImageRect(
+          viewportSize,
+          Size(rawImage.width.toDouble(), rawImage.height.toDouble()),
+        );
+        final tooltip = _tooltipSample;
+        final tooltipText = tooltip?.label;
+        final tooltipSize = tooltipText == null
+            ? null
+            : _tooltipSize(context, tooltipText);
+        final tooltipLeft = tooltip == null || tooltipSize == null
+            ? null
+            : ((tooltip.anchor.dx + _tooltipOffset.dx).clamp(
+                0.0,
+                math.max(viewportSize.width - tooltipSize.width, 0.0),
+              )).toDouble();
+        final tooltipTop = tooltip == null || tooltipSize == null
+            ? null
+            : ((tooltip.anchor.dy + _tooltipOffset.dy).clamp(
+                0.0,
+                math.max(viewportSize.height - tooltipSize.height, 0.0),
+              )).toDouble();
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: Listener(
+                onPointerDown: (_) => _resetTooltip(),
+                onPointerSignal: (_) => _resetTooltip(),
+                child: MouseRegion(
+                  key: const ValueKey('difference-preview-region'),
+                  onHover: (event) => _handleHover(
+                    viewportOffset: event.localPosition,
+                    viewportSize: viewportSize,
+                    rawImage: rawImage,
+                  ),
+                  onExit: (_) => _resetTooltip(),
+                  child: InteractiveViewer(
+                    transformationController: _transformationController,
+                    minScale: 0.5,
+                    maxScale: 6,
+                    onInteractionStart: (_) => _resetTooltip(),
+                    onInteractionUpdate: (_) => _resetTooltip(),
+                    child: SizedBox(
+                      width: viewportSize.width,
+                      height: viewportSize.height,
+                      child: Center(
+                        child: SizedBox(
+                          width: imageRect.width,
+                          height: imageRect.height,
+                          child: RawImage(
+                            image: image,
+                            fit: BoxFit.fill,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (tooltipText != null &&
+                tooltipLeft != null &&
+                tooltipTop != null)
+              Positioned(
+                left: tooltipLeft,
+                top: tooltipTop,
+                child: IgnorePointer(
+                  child: TooltipContainer(
+                    child: Text(
+                      tooltipText,
+                      key: const ValueKey('difference-preview-tooltip'),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final image = widget.image;
-
-    return image.when(
-      data: (resolvedImage) {
-        if (resolvedImage == null) {
+    final frame = widget.frame;
+    return frame.when(
+      data: (resolvedFrame) {
+        if (resolvedFrame == null) {
           return _PreviewUnavailable(
             message: widget.unavailableMessage,
           );
         }
         return KeyedSubtree(
           key: const ValueKey('difference-preview-ready'),
-          child: _PreviewCanvas(
-            fileName: widget.fileName,
-            rawImage: _retainedImage ?? resolvedImage,
+          child: _buildImageViewport(
+            image: _retainedImage ?? resolvedFrame.image,
+            rawImage: resolvedFrame.rawImage,
           ),
         );
       },
       loading: () {
-        if (_retainedImage != null) {
+        if (_retainedImage != null && _retainedRawImage != null) {
           return KeyedSubtree(
             key: const ValueKey('difference-preview-ready'),
-            child: _PreviewCanvas(
-              fileName: widget.fileName,
-              rawImage: _retainedImage,
+            child: _buildImageViewport(
+              image: _retainedImage!,
+              rawImage: _retainedRawImage!,
             ),
           );
         }
@@ -1378,14 +1660,14 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final preview = ref.watch(currentPreviewProvider);
-    final difference = ref.watch(currentPreviewDifferenceProvider);
+    final differenceFrame = ref.watch(currentPreviewDifferenceFrameProvider);
     final analyzeState = ref.watch(analyzeRunControllerProvider);
     final analyzeAvailability = ref.watch(analyzeAvailabilityProvider);
     final analyzeController = ref.read(analyzeRunControllerProvider.notifier);
     final settings = ref.watch(appSettingsProvider).asData?.value;
     final optimizedLoading = preview.isLoading && !hasOptimizedPreview;
     final differenceLoading =
-        displayMode == PreviewDisplayMode.difference && difference.isLoading;
+        displayMode == PreviewDisplayMode.difference && differenceFrame.isLoading;
     final analyzeTooltip =
         !analyzeAvailability.isEnabled &&
             settings != null &&

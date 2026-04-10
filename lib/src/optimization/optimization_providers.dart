@@ -592,6 +592,16 @@ class _PreviewArtifactContext {
   final _PreviewCacheKey? cacheKey;
 }
 
+class PreviewDifferenceFrame {
+  const PreviewDifferenceFrame({
+    required this.image,
+    required this.rawImage,
+  });
+
+  final ui.Image image;
+  final RawImageResult rawImage;
+}
+
 final _previewCacheControllerProvider = Provider<_PreviewCacheController>((ref) {
   final controller = _PreviewCacheController(ref.read(slimgApiProvider));
   ref.onDispose(controller.dispose);
@@ -1073,8 +1083,8 @@ final _currentPreviewArtifactContextProvider =
       );
     });
 
-final currentPreviewDifferenceProvider =
-    FutureProvider.autoDispose<ui.Image?>((ref) async {
+final currentPreviewDifferenceFrameProvider =
+    FutureProvider.autoDispose<PreviewDifferenceFrame?>((ref) async {
       final requestId = ++_previewDifferenceRequestSequence;
       final totalStopwatch = Stopwatch()..start();
       final cache = ref.read(_previewCacheControllerProvider);
@@ -1097,13 +1107,17 @@ final currentPreviewDifferenceProvider =
         final cacheKey = context.cacheKey;
         if (cacheKey != null) {
           final cachedImage = cache.getDifferenceImage(cacheKey);
-          if (cachedImage != null) {
+          final cachedRawImage = cache.getDifferenceRawImage(cacheKey);
+          if (cachedImage != null && cachedRawImage != null) {
             totalStopwatch.stop();
             DeveloperDiagnostics.logTiming(
               'preview-diff:$requestId',
               'cache-hit total=${totalStopwatch.elapsedMilliseconds}ms artifact=${context.request.artifactId}',
             );
-            return cachedImage;
+            return PreviewDifferenceFrame(
+              image: cachedImage,
+              rawImage: cachedRawImage,
+            );
           }
           if (cache.isDifferenceUnavailable(cacheKey)) {
             totalStopwatch.stop();
@@ -1113,7 +1127,6 @@ final currentPreviewDifferenceProvider =
             );
             return null;
           }
-          final cachedRawImage = cache.getDifferenceRawImage(cacheKey);
           if (cachedRawImage != null) {
             final image = await _decodeRawImage(cachedRawImage);
             cache.cacheDifferenceImage(cacheKey, image);
@@ -1122,7 +1135,18 @@ final currentPreviewDifferenceProvider =
               'preview-diff:$requestId',
               'cache-hit total=${totalStopwatch.elapsedMilliseconds}ms artifact=${context.request.artifactId} source=raw',
             );
-            return image;
+            return PreviewDifferenceFrame(
+              image: image,
+              rawImage: cachedRawImage,
+            );
+          }
+          if (cachedImage != null) {
+            totalStopwatch.stop();
+            DeveloperDiagnostics.logTiming(
+              'preview-diff:$requestId',
+              'cache-hit total=${totalStopwatch.elapsedMilliseconds}ms artifact=${context.request.artifactId} image-only',
+            );
+            return null;
           }
         }
 
@@ -1155,7 +1179,10 @@ final currentPreviewDifferenceProvider =
         } else {
           ref.onDispose(image.dispose);
         }
-        return image;
+        return PreviewDifferenceFrame(
+          image: image,
+          rawImage: result,
+        );
       } on Object catch (error, stackTrace) {
         DeveloperDiagnostics.logTimingError(
           'preview-diff:$requestId',

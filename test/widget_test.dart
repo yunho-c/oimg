@@ -1008,29 +1008,50 @@ void main() {
   testWidgets(
     'retained async image preview keeps the previous frame while loading',
     (tester) async {
-      final firstImage = await _decodeTestUiImage();
-      addTearDown(firstImage.dispose);
+      final firstFrame = await _differenceFrame(
+        width: 4,
+        height: 4,
+        rgbaBytes: Uint8List(4 * 4 * 4),
+      );
+      addTearDown(firstFrame.image.dispose);
+
+      await tester.pumpWidget(
+        ShadcnApp(
+          home: Scaffold(
+            child: DifferencePreview(
+              retentionScopeKey: 'first',
+              frame: const AsyncData<PreviewDifferenceFrame?>(null),
+              fileName: 'first.png',
+              unavailableMessage: 'Difference preview unavailable.',
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.pumpWidget(
+        ShadcnApp(
+          home: Scaffold(
+            child: DifferencePreview(
+              retentionScopeKey: 'first',
+              frame: AsyncData<PreviewDifferenceFrame?>(firstFrame),
+              fileName: 'first.png',
+              unavailableMessage: 'Difference preview unavailable.',
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('difference-preview-ready')), findsOneWidget);
+      expect(find.byKey(const ValueKey('difference-preview-loading')), findsNothing);
 
       await tester.pumpWidget(
         const ShadcnApp(
           home: Scaffold(
-            child: RetainedAsyncImagePreview(
+            child: DifferencePreview(
               retentionScopeKey: 'first',
-              image: AsyncData<ui.Image?>(null),
-              fileName: 'first.png',
-              unavailableMessage: 'Difference preview unavailable.',
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-
-      await tester.pumpWidget(
-        ShadcnApp(
-          home: Scaffold(
-            child: RetainedAsyncImagePreview(
-              retentionScopeKey: 'first',
-              image: AsyncData<ui.Image?>(firstImage),
+              frame: AsyncLoading<PreviewDifferenceFrame?>(),
               fileName: 'first.png',
               unavailableMessage: 'Difference preview unavailable.',
             ),
@@ -1041,23 +1062,229 @@ void main() {
 
       expect(find.byKey(const ValueKey('difference-preview-ready')), findsOneWidget);
       expect(find.byKey(const ValueKey('difference-preview-loading')), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'difference preview shows RGB tooltip after one second of hover stillness',
+    (tester) async {
+      final frame = await _differenceFrame(
+        width: 4,
+        height: 4,
+        rgbaBytes: _rgbaBytesForSinglePixel(
+          width: 4,
+          height: 4,
+          pixelX: 2,
+          pixelY: 2,
+          red: 12,
+          green: 34,
+          blue: 56,
+        ),
+      );
+      addTearDown(frame.image.dispose);
 
       await tester.pumpWidget(
         ShadcnApp(
           home: Scaffold(
-            child: RetainedAsyncImagePreview(
-              retentionScopeKey: 'first',
-              image: const AsyncLoading<ui.Image?>(),
-              fileName: 'first.png',
-              unavailableMessage: 'Difference preview unavailable.',
+            child: Center(
+              child: SizedBox(
+                width: 200,
+                height: 200,
+                child: DifferencePreview(
+                  retentionScopeKey: 'first',
+                  frame: AsyncData<PreviewDifferenceFrame?>(frame),
+                  fileName: 'first.png',
+                  unavailableMessage: 'Difference preview unavailable.',
+                ),
+              ),
             ),
           ),
         ),
       );
       await tester.pump();
 
+      final region = find.byKey(const ValueKey('difference-preview-region'));
+      final center = tester.getCenter(region);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: center);
+      await mouse.moveTo(center);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 999));
+
+      expect(find.byKey(const ValueKey('difference-preview-tooltip')), findsNothing);
+
+      await tester.pump(const Duration(milliseconds: 1));
+
+      expect(
+        find.text('x 2, y 2\nR 12 G 34 B 56'),
+        findsOneWidget,
+      );
+
+      await mouse.moveTo(center + const Offset(10, 0));
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('difference-preview-tooltip')), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'difference preview tooltip stays hidden over viewport background and hides on pan',
+    (tester) async {
+      final frame = await _differenceFrame(
+        width: 4,
+        height: 2,
+        rgbaBytes: _rgbaBytesForSinglePixel(
+          width: 4,
+          height: 2,
+          pixelX: 2,
+          pixelY: 1,
+          red: 80,
+          green: 90,
+          blue: 100,
+        ),
+      );
+      addTearDown(frame.image.dispose);
+
+      await tester.pumpWidget(
+        ShadcnApp(
+          home: Scaffold(
+            child: Center(
+              child: SizedBox(
+                width: 200,
+                height: 200,
+                child: DifferencePreview(
+                  retentionScopeKey: 'first',
+                  frame: AsyncData<PreviewDifferenceFrame?>(frame),
+                  fileName: 'first.png',
+                  unavailableMessage: 'Difference preview unavailable.',
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final region = find.byKey(const ValueKey('difference-preview-region'));
+      final topLeft = tester.getTopLeft(region);
+      final center = tester.getCenter(region);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: topLeft);
+      await mouse.moveTo(topLeft + const Offset(100, 20));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.byKey(const ValueKey('difference-preview-tooltip')), findsNothing);
+
+      await mouse.moveTo(center);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(
+        find.text('x 2, y 1\nR 80 G 90 B 100'),
+        findsOneWidget,
+      );
+
+      await tester.drag(region, const Offset(20, 20));
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('difference-preview-tooltip')), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'difference preview tooltip updates after a retained frame swap',
+    (tester) async {
+      final firstFrame = await _differenceFrame(
+        width: 4,
+        height: 4,
+        rgbaBytes: _rgbaBytesForSinglePixel(
+          width: 4,
+          height: 4,
+          pixelX: 2,
+          pixelY: 2,
+          red: 10,
+          green: 20,
+          blue: 30,
+        ),
+      );
+      final secondFrame = await _differenceFrame(
+        width: 4,
+        height: 4,
+        rgbaBytes: _rgbaBytesForSinglePixel(
+          width: 4,
+          height: 4,
+          pixelX: 2,
+          pixelY: 2,
+          red: 40,
+          green: 50,
+          blue: 60,
+        ),
+      );
+      addTearDown(firstFrame.image.dispose);
+      addTearDown(secondFrame.image.dispose);
+
+      Widget buildPreview(AsyncValue<PreviewDifferenceFrame?> frameValue) {
+        return ShadcnApp(
+          home: Scaffold(
+            child: Center(
+              child: SizedBox(
+                width: 200,
+                height: 200,
+                child: DifferencePreview(
+                  retentionScopeKey: 'first',
+                  frame: frameValue,
+                  fileName: 'first.png',
+                  unavailableMessage: 'Difference preview unavailable.',
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(
+        buildPreview(AsyncData<PreviewDifferenceFrame?>(firstFrame)),
+      );
+      await tester.pump();
+
+      final region = find.byKey(const ValueKey('difference-preview-region'));
+      final center = tester.getCenter(region);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: center);
+      await mouse.moveTo(center);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(
+        find.text('x 2, y 2\nR 10 G 20 B 30'),
+        findsOneWidget,
+      );
+
+      await tester.pumpWidget(
+        buildPreview(const AsyncLoading<PreviewDifferenceFrame?>()),
+      );
+      await tester.pump();
+
       expect(find.byKey(const ValueKey('difference-preview-ready')), findsOneWidget);
-      expect(find.byKey(const ValueKey('difference-preview-loading')), findsNothing);
+      expect(find.byKey(const ValueKey('difference-preview-tooltip')), findsNothing);
+
+      await tester.pumpWidget(
+        buildPreview(AsyncData<PreviewDifferenceFrame?>(secondFrame)),
+      );
+      await tester.pump();
+
+      await mouse.moveTo(center + const Offset(1, 0));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(
+        find.text('x 2, y 2\nR 40 G 50 B 60'),
+        findsOneWidget,
+      );
     },
   );
 
@@ -2815,15 +3042,45 @@ Widget _buildApp({
   );
 }
 
-Future<ui.Image> _decodeTestUiImage() async {
+Future<PreviewDifferenceFrame> _differenceFrame({
+  required int width,
+  required int height,
+  required Uint8List rgbaBytes,
+}) async {
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
   canvas.drawRect(
-    const Rect.fromLTWH(0, 0, 1, 1),
+    Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
     Paint()..color = const Color(0xFFFFFFFF),
   );
   final picture = recorder.endRecording();
-  return picture.toImage(1, 1);
+  final image = await picture.toImage(width, height);
+  return PreviewDifferenceFrame(
+    image: image,
+    rawImage: RawImageResult(
+      rgbaBytes: rgbaBytes,
+      width: width,
+      height: height,
+    ),
+  );
+}
+
+Uint8List _rgbaBytesForSinglePixel({
+  required int width,
+  required int height,
+  required int pixelX,
+  required int pixelY,
+  required int red,
+  required int green,
+  required int blue,
+}) {
+  final bytes = Uint8List(width * height * 4);
+  final index = (pixelY * width + pixelX) * 4;
+  bytes[index] = red;
+  bytes[index + 1] = green;
+  bytes[index + 2] = blue;
+  bytes[index + 3] = 255;
+  return bytes;
 }
 
 ImageMetadata _metadata(
