@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/gestures.dart';
@@ -1001,6 +1002,62 @@ void main() {
         container.read(currentPreviewDisplayModeProvider),
         PreviewDisplayMode.difference,
       );
+    },
+  );
+
+  testWidgets(
+    'retained async image preview keeps the previous frame while loading',
+    (tester) async {
+      final firstImage = await _decodeTestUiImage();
+      addTearDown(firstImage.dispose);
+
+      await tester.pumpWidget(
+        const ShadcnApp(
+          home: Scaffold(
+            child: RetainedAsyncImagePreview(
+              retentionScopeKey: 'first',
+              image: AsyncData<ui.Image?>(null),
+              fileName: 'first.png',
+              unavailableMessage: 'Difference preview unavailable.',
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.pumpWidget(
+        ShadcnApp(
+          home: Scaffold(
+            child: RetainedAsyncImagePreview(
+              retentionScopeKey: 'first',
+              image: AsyncData<ui.Image?>(firstImage),
+              fileName: 'first.png',
+              unavailableMessage: 'Difference preview unavailable.',
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('difference-preview-ready')), findsOneWidget);
+      expect(find.byKey(const ValueKey('difference-preview-loading')), findsNothing);
+
+      await tester.pumpWidget(
+        ShadcnApp(
+          home: Scaffold(
+            child: RetainedAsyncImagePreview(
+              retentionScopeKey: 'first',
+              image: const AsyncLoading<ui.Image?>(),
+              fileName: 'first.png',
+              unavailableMessage: 'Difference preview unavailable.',
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('difference-preview-ready')), findsOneWidget);
+      expect(find.byKey(const ValueKey('difference-preview-loading')), findsNothing);
     },
   );
 
@@ -2756,6 +2813,17 @@ Widget _buildApp({
     ],
     child: const MyApp(),
   );
+}
+
+Future<ui.Image> _decodeTestUiImage() async {
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder);
+  canvas.drawRect(
+    const Rect.fromLTWH(0, 0, 1, 1),
+    Paint()..color = const Color(0xFFFFFFFF),
+  );
+  final picture = recorder.endRecording();
+  return picture.toImage(1, 1);
 }
 
 ImageMetadata _metadata(

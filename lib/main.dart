@@ -863,24 +863,12 @@ class _ImageStage extends ConsumerWidget {
                             ),
                           );
                         case PreviewDisplayMode.difference:
-                          return difference.when(
-                            data: (diff) {
-                              if (diff == null) {
-                                return const _PreviewUnavailable(
-                                  message: 'Difference preview unavailable.',
-                                );
-                              }
-                              return _PreviewCanvas(
-                                fileName: fileName,
-                                rawImage: diff,
-                              );
-                            },
-                            loading: () => const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                            error: (_, _) => const _PreviewUnavailable(
-                              message: 'Difference preview unavailable.',
-                            ),
+                          return RetainedAsyncImagePreview(
+                            retentionScopeKey: currentFile.path,
+                            image: difference,
+                            fileName: fileName,
+                            unavailableMessage:
+                                'Difference preview unavailable.',
                           );
                       }
                     },
@@ -1039,6 +1027,112 @@ class _PreviewCanvas extends StatelessWidget {
                   );
                 },
               ),
+      ),
+    );
+  }
+}
+
+class RetainedAsyncImagePreview extends StatefulWidget {
+  const RetainedAsyncImagePreview({
+    super.key,
+    required this.retentionScopeKey,
+    required this.image,
+    required this.fileName,
+    this.unavailableMessage = 'Unable to render preview.',
+  });
+
+  final String retentionScopeKey;
+  final AsyncValue<ui.Image?> image;
+  final String fileName;
+  final String unavailableMessage;
+
+  @override
+  State<RetainedAsyncImagePreview> createState() =>
+      _RetainedAsyncImagePreviewState();
+}
+
+class _RetainedAsyncImagePreviewState extends State<RetainedAsyncImagePreview> {
+  ui.Image? _retainedSourceImage;
+  ui.Image? _retainedImage;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncRetainedImage();
+  }
+
+  @override
+  void didUpdateWidget(covariant RetainedAsyncImagePreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.retentionScopeKey != widget.retentionScopeKey) {
+      _clearRetainedImage();
+    }
+    _syncRetainedImage();
+  }
+
+  @override
+  void dispose() {
+    _clearRetainedImage();
+    super.dispose();
+  }
+
+  void _syncRetainedImage() {
+    final image = widget.image;
+    if (image case AsyncData(:final value)) {
+      if (value == null) {
+        _clearRetainedImage();
+        return;
+      }
+      if (!identical(value, _retainedSourceImage)) {
+        _retainedImage?.dispose();
+        _retainedSourceImage = value;
+        _retainedImage = value.clone();
+      }
+    }
+  }
+
+  void _clearRetainedImage() {
+    _retainedSourceImage = null;
+    _retainedImage?.dispose();
+    _retainedImage = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final image = widget.image;
+
+    return image.when(
+      data: (resolvedImage) {
+        if (resolvedImage == null) {
+          return _PreviewUnavailable(
+            message: widget.unavailableMessage,
+          );
+        }
+        return KeyedSubtree(
+          key: const ValueKey('difference-preview-ready'),
+          child: _PreviewCanvas(
+            fileName: widget.fileName,
+            rawImage: _retainedImage ?? resolvedImage,
+          ),
+        );
+      },
+      loading: () {
+        if (_retainedImage != null) {
+          return KeyedSubtree(
+            key: const ValueKey('difference-preview-ready'),
+            child: _PreviewCanvas(
+              fileName: widget.fileName,
+              rawImage: _retainedImage,
+            ),
+          );
+        }
+        return const Center(
+          key: ValueKey('difference-preview-loading'),
+          child: CircularProgressIndicator(),
+        );
+      },
+      error: (_, _) => _PreviewUnavailable(
+        message: widget.unavailableMessage,
       ),
     );
   }
