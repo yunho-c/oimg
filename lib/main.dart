@@ -3080,7 +3080,9 @@ class _AnalyzePanel extends ConsumerWidget {
     final theme = Theme.of(context);
     final controller = ref.read(analyzeRunControllerProvider.notifier);
     final displayMode = ref.watch(currentPreviewDisplayModeProvider);
-    final currentFilePath = ref.watch(fileOpenControllerProvider).currentPath;
+    final fileController = ref.watch(fileOpenControllerProvider);
+    final currentFilePath = fileController.currentPath;
+    final currentFile = fileController.currentFile;
     final samples = [...state.samples]
       ..sort((a, b) => a.sizeBytes.compareTo(b.sizeBytes));
 
@@ -3116,6 +3118,9 @@ class _AnalyzePanel extends ConsumerWidget {
                   ? const Center(child: CircularProgressIndicator())
                   : _AnalyzeChart(
                       samples: samples,
+                      originalSizeBytes: state.isRunning
+                          ? null
+                          : currentFile?.metadata.fileSize?.toDouble(),
                       selectedArtifactId: state.selectedArtifactId,
                       onSelectSample: (sample) {
                         controller.selectSample(sample);
@@ -3157,12 +3162,14 @@ class _AnalyzePanel extends ConsumerWidget {
 class _AnalyzeChart extends StatelessWidget {
   const _AnalyzeChart({
     required this.samples,
+    required this.originalSizeBytes,
     required this.selectedArtifactId,
     required this.onSelectSample,
     required this.onCommitSampleQuality,
   });
 
   final List<AnalyzeSampleResult> samples;
+  final double? originalSizeBytes;
   final String? selectedArtifactId;
   final ValueChanged<AnalyzeSampleResult> onSelectSample;
   final ValueChanged<AnalyzeSampleResult> onCommitSampleQuality;
@@ -3186,8 +3193,14 @@ class _AnalyzeChart extends StatelessWidget {
       0,
       (current, sample) => math.max(current, sample.sizeBytes.toDouble()),
     );
-    final chartMaxX = dataMaxX <= 0 ? 1.0 : dataMaxX * 1.05;
-    final xAxisInterval = dataMaxX <= 0 ? 1.0 : dataMaxX / 4;
+    final originalMarkerX = originalSizeBytes;
+    final visibleMaxX = math.max(dataMaxX, originalMarkerX ?? 0);
+    final chartMaxX = visibleMaxX <= 0 ? 1.0 : visibleMaxX * 1.05;
+    final xAxisInterval = visibleMaxX <= 0 ? 1.0 : visibleMaxX / 4;
+    final originalSizeLineColor = const Color(0xFFD11A2A);
+    final originalSizeOverlayColor = originalSizeLineColor.withValues(
+      alpha: 0.08,
+    );
 
     return LineChart(
       LineChartData(
@@ -3239,6 +3252,28 @@ class _AnalyzeChart extends StatelessWidget {
         borderData: FlBorderData(
           show: true,
           border: Border.all(color: theme.colorScheme.border),
+        ),
+        rangeAnnotations: RangeAnnotations(
+          verticalRangeAnnotations: [
+            if (originalMarkerX != null && originalMarkerX < chartMaxX)
+              VerticalRangeAnnotation(
+                x1: originalMarkerX,
+                x2: chartMaxX,
+                color: originalSizeOverlayColor,
+              ),
+          ],
+        ),
+        extraLinesData: ExtraLinesData(
+          extraLinesOnTop: true,
+          verticalLines: [
+            if (originalMarkerX != null)
+              VerticalLine(
+                x: originalMarkerX,
+                color: originalSizeLineColor,
+                strokeWidth: 1.5,
+                dashArray: [3, 4],
+              ),
+          ],
         ),
         lineTouchData: LineTouchData(
           handleBuiltInTouches: false,

@@ -836,6 +836,10 @@ void main() {
     await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 260));
+
+    final runningChart = tester.widget<LineChart>(find.byType(LineChart));
+    expect(runningChart.data.extraLinesData.verticalLines, isEmpty);
+
     await tester.pumpAndSettle();
 
     expect(find.byType(LineChart), findsOneWidget);
@@ -844,9 +848,23 @@ void main() {
     final chart = tester.widget<LineChart>(find.byType(LineChart));
     expect(chart.data.lineTouchData.handleBuiltInTouches, isFalse);
     expect(chart.data.lineBarsData, hasLength(3));
-    expect(chart.data.maxX, 1575);
-    expect(chart.data.gridData.verticalInterval, 375);
-    expect(chart.data.titlesData.bottomTitles.sideTitles.interval, 375);
+    expect(chart.data.maxX, 2520);
+    expect(chart.data.gridData.verticalInterval, 600);
+    expect(chart.data.titlesData.bottomTitles.sideTitles.interval, 600);
+    expect(chart.data.extraLinesData.verticalLines, hasLength(1));
+    expect(chart.data.extraLinesData.verticalLines.first.x, 2400);
+    expect(
+      chart.data.rangeAnnotations.verticalRangeAnnotations,
+      hasLength(1),
+    );
+    expect(
+      chart.data.rangeAnnotations.verticalRangeAnnotations.first.x1,
+      2400,
+    );
+    expect(
+      chart.data.rangeAnnotations.verticalRangeAnnotations.first.x2,
+      2520,
+    );
   });
 
   testWidgets(
