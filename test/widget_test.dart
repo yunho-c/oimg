@@ -2999,6 +2999,53 @@ void main() {
   });
 
   testWidgets(
+    'storage and metadata fold into the settings scroll view when analyze constrains height',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 680));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/source.png': _metadata('png', 2400)},
+      )..analyzeSampleDelay = const Duration(milliseconds: 20);
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/source.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+      await tester.pumpAndSettle();
+
+      final scrollFinder = find.byKey(const ValueKey('settings-scroll-view'));
+      final storageFinder = find.text('Storage');
+      final metadataFinder = find.text('Metadata');
+
+      final storageTopBefore = tester.getTopLeft(storageFinder).dy;
+      final metadataTopBefore = tester.getTopLeft(metadataFinder).dy;
+
+      await tester.drag(scrollFinder, const Offset(0, -180));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getTopLeft(storageFinder).dy,
+        lessThan(storageTopBefore - 20),
+      );
+      expect(
+        tester.getTopLeft(metadataFinder).dy,
+        lessThan(metadataTopBefore - 20),
+      );
+    },
+  );
+
+  testWidgets(
     'storage same-folder label shows overwrite for same-format files',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1400, 1000));

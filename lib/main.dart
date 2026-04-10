@@ -35,6 +35,7 @@ const _maxSettingsSidebarWidth = 420.0;
 const _defaultBottomSidebarHeight = 165.0;
 const _minBottomSidebarHeight = 140.0;
 const _maxBottomSidebarHeight = 320.0;
+const _settingsBottomSectionsFoldThreshold = 650.0;
 const List<({double value, Color color})> _qualityMetricColorStops = [
   (value: 0, color: Color(0xFFFF0000)),
   (value: 20, color: Color(0xFFAA0000)),
@@ -1110,6 +1111,7 @@ class _DifferenceTooltipSample {
 class _DifferencePreviewState extends State<DifferencePreview> {
   static const _tooltipDelay = Duration(seconds: 1);
   static const _tooltipOffset = Offset(12, 12);
+  static const _rgbSwatchSlotWidth = 34.0;
 
   ui.Image? _retainedSourceImage;
   ui.Image? _retainedImage;
@@ -1338,10 +1340,8 @@ class _DifferencePreviewState extends State<DifferencePreview> {
       fontFeatures: const [ui.FontFeature.tabularFigures()],
     );
     final rgbContent = widget.useRgbSwatches
-        ? Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               _buildRgbSwatchValue(
                 key: const ValueKey('difference-preview-tooltip-r-swatch'),
@@ -1349,12 +1349,14 @@ class _DifferencePreviewState extends State<DifferencePreview> {
                 value: tooltip.redLabel,
                 textStyle: numberStyle,
               ),
+              const SizedBox(width: 8),
               _buildRgbSwatchValue(
                 key: const ValueKey('difference-preview-tooltip-g-swatch'),
                 color: const Color(0xFF34C759),
                 value: tooltip.greenLabel,
                 textStyle: numberStyle,
               ),
+              const SizedBox(width: 8),
               _buildRgbSwatchValue(
                 key: const ValueKey('difference-preview-tooltip-b-swatch'),
                 color: const Color(0xFF0A84FF),
@@ -1395,21 +1397,23 @@ class _DifferencePreviewState extends State<DifferencePreview> {
     required String value,
     required TextStyle textStyle,
   }) {
-    return Row(
+    return SizedBox(
       key: key,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2),
+      width: _rgbSwatchSlotWidth,
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
-        ),
-        const SizedBox(width: 4),
-        Text(value, style: textStyle),
-      ],
+          const SizedBox(width: 4),
+          Text(value, style: textStyle),
+        ],
+      ),
     );
   }
 
@@ -2166,6 +2170,75 @@ class _SettingsSidebar extends ConsumerWidget {
         analyzeState.samples.isNotEmpty ||
         analyzeState.globalError != null;
 
+    Widget buildSettingsContent(
+      AppSettings settings, {
+      required bool includeBottomSectionsInScroll,
+    }) {
+      final transparencyWarning = _transparencyWarningText(
+        settings: settings,
+        file: fileController.isFolderSelected ? null : fileController.currentFile,
+      );
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _SettingsModeSwitcher(
+            settings: settings,
+            controlsLocked: controlsLocked,
+            notifier: notifier,
+          ),
+          const SizedBox(height: 12),
+          if (settings.showsQualityControl) ...[
+            _SettingsLabel('Quality'),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Text('0').xSmall().muted(),
+                const Spacer(),
+                Text(_qualityValueLabel(settings)).xSmall().medium().muted(),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _HoverValueSlider(
+              key: const ValueKey('quality-slider'),
+              value: settings.quality.toDouble(),
+              min: 0,
+              max: 100,
+              divisions: 100,
+              hoverEnabled: !controlsLocked,
+              onChanged: controlsLocked
+                  ? null
+                  : (value) {
+                      notifier.setQuality(value.round());
+                    },
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (transparencyWarning case final warning?) ...[
+            _SettingsWarningBlock(
+              icon: LucideIcons.triangleAlert,
+              message: warning,
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (runState.globalError case final error?)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(error).xSmall().muted(),
+            ),
+          if (includeBottomSectionsInScroll) ...[
+            const SizedBox(height: 12),
+            _StorageCollapsible(
+              settings: settings,
+              controlsLocked: controlsLocked,
+            ),
+            const SizedBox(height: 12),
+            const _MetadataCollapsible(),
+          ],
+        ],
+      );
+    }
+
     return Card(
       padding: EdgeInsets.zero,
       borderRadius: theme.borderRadiusXl,
@@ -2216,113 +2289,69 @@ class _SettingsSidebar extends ConsumerWidget {
           ),
           const Divider(),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: settings.when(
-                        data: (settings) {
-                          final transparencyWarning = _transparencyWarningText(
-                            settings: settings,
-                            file: fileController.isFolderSelected
-                                ? null
-                                : fileController.currentFile,
-                          );
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _SettingsModeSwitcher(
-                                settings: settings,
-                                controlsLocked: controlsLocked,
-                                notifier: notifier,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final foldBottomSectionsIntoScroll =
+                    showAnalyzePanel &&
+                    constraints.maxHeight < _settingsBottomSectionsFoldThreshold;
+
+                return Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                          key: const ValueKey('settings-scroll-view'),
+                          child: settings.when(
+                            data: (settings) => buildSettingsContent(
+                              settings,
+                              includeBottomSectionsInScroll:
+                                  foldBottomSectionsIntoScroll,
+                            ),
+                            loading: () => Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: const Text('Loading settings').small(),
                               ),
-                              const SizedBox(height: 12),
-                              if (settings.showsQualityControl) ...[
-                                _SettingsLabel('Quality'),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Text('0').xSmall().muted(),
-                                    const Spacer(),
-                                    Text(
-                                      _qualityValueLabel(settings),
-                                    ).xSmall().medium().muted(),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                _HoverValueSlider(
-                                  key: const ValueKey('quality-slider'),
-                                  value: settings.quality.toDouble(),
-                                  min: 0,
-                                  max: 100,
-                                  divisions: 100,
-                                  hoverEnabled: !controlsLocked,
-                                  onChanged: controlsLocked
-                                      ? null
-                                      : (value) {
-                                          notifier.setQuality(value.round());
-                                        },
-                                ),
-                                const SizedBox(height: 12),
-                              ],
-                              if (transparencyWarning case final warning?) ...[
-                                _SettingsWarningBlock(
-                                  icon: LucideIcons.triangleAlert,
-                                  message: warning,
-                                ),
-                                const SizedBox(height: 12),
-                              ],
-                              if (runState.globalError case final error?)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Text(error).xSmall().muted(),
-                                ),
-                            ],
-                          );
-                        },
-                        loading: () => Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: const Text('Loading settings').small(),
+                            ),
+                            error: (_, _) {
+                              return Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: const Text(
+                                  'Unable to load settings',
+                                ).small().muted(),
+                              );
+                            },
                           ),
                         ),
-                        error: (_, _) {
-                          return Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: const Text(
-                              'Unable to load settings',
-                            ).small().muted(),
-                          );
-                        },
                       ),
-                    ),
-                  ),
-                  settings.when(
-                    data: (settings) => Column(
-                      children: [
-                        const SizedBox(height: 12),
-                        _StorageCollapsible(
-                          settings: settings,
-                          controlsLocked: controlsLocked,
+                      if (!foldBottomSectionsIntoScroll) ...[
+                        settings.when(
+                          data: (settings) => Column(
+                            children: [
+                              const SizedBox(height: 12),
+                              _StorageCollapsible(
+                                settings: settings,
+                                controlsLocked: controlsLocked,
+                              ),
+                            ],
+                          ),
+                          loading: () => const SizedBox.shrink(),
+                          error: (_, _) => const SizedBox.shrink(),
                         ),
+                        const SizedBox(height: 12),
+                        const _MetadataCollapsible(),
                       ],
-                    ),
-                    loading: () => const SizedBox.shrink(),
-                    error: (_, _) => const SizedBox.shrink(),
+                      if (showAnalyzePanel) ...[
+                        const SizedBox(height: 12),
+                        Container(height: 1, color: theme.colorScheme.border),
+                        const SizedBox(height: 12),
+                        Expanded(child: _AnalyzePanel(state: analyzeState)),
+                      ],
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  const _MetadataCollapsible(),
-                  if (showAnalyzePanel) ...[
-                    const SizedBox(height: 12),
-                    Container(height: 1, color: theme.colorScheme.border),
-                    const SizedBox(height: 12),
-                    Expanded(child: _AnalyzePanel(state: analyzeState)),
-                  ],
-                ],
-              ),
+                );
+              },
             ),
           ),
         ],
