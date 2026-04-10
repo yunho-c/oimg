@@ -142,6 +142,18 @@ class FileOpenController extends ChangeNotifier {
     await _channel.showInFileManager(path);
   }
 
+  void clearSession() {
+    if (_sessionFiles.isEmpty && _selectedFolderPath == null) {
+      return;
+    }
+
+    _sessionFiles = const [];
+    _currentIndex = 0;
+    _selectedFolderPath = null;
+    _pendingNotice = null;
+    notifyListeners();
+  }
+
   Future<void> openPaths(List<String> paths) async {
     final candidatePaths = await _expandCandidatePaths(paths);
     final inspectedFiles = <OpenedImageFile>[];

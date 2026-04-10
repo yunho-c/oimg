@@ -1892,7 +1892,7 @@ void main() {
     expect(store.value, contains('"timingLogsEnabled":true'));
   });
 
-  testWidgets('title bar keeps developer left of settings', (tester) async {
+  testWidgets('title bar keeps developer left of home and settings', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -1912,11 +1912,33 @@ void main() {
     final developerPosition = tester.getTopLeft(
       find.byKey(const ValueKey('title-bar-developer-button')),
     );
+    final homePosition = tester.getTopLeft(
+      find.byKey(const ValueKey('title-bar-home-button')),
+    );
     final settingsPosition = tester.getTopLeft(
       find.byKey(const ValueKey('title-bar-settings-button')),
     );
 
-    expect(developerPosition.dx, lessThan(settingsPosition.dx));
+    expect(developerPosition.dx, lessThan(homePosition.dx));
+    expect(homePosition.dx, lessThan(settingsPosition.dx));
+  });
+
+  testWidgets('title bar hides the home button on the empty state', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi();
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('title-bar-home-button')), findsNothing);
+    expect(find.byKey(const ValueKey('title-bar-settings-button')), findsOneWidget);
   });
 
   testWidgets('title bar developer button still opens the developer dialog', (
@@ -1942,6 +1964,32 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Developer'), findsOneWidget);
+  });
+
+  testWidgets('title bar home button returns to the empty state', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpAndSettle();
+
+    expect(find.text('first.png'), findsWidgets);
+
+    await tester.tap(find.byKey(const ValueKey('title-bar-home-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Optimize your images easily'), findsOneWidget);
+    expect(find.text('first.png'), findsNothing);
   });
 
   testWidgets('title bar settings menu cycles persisted theme preference', (

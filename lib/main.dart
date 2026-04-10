@@ -277,6 +277,10 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
                         unawaited(_openDeveloperDialog());
                       },
                     ),
+                    if (controller.hasSession) ...[
+                      const SizedBox(width: 6),
+                      _TitleBarHomeButton(onPressed: controller.clearSession),
+                    ],
                     const SizedBox(width: 6),
                     const _TitleBarSettingsButton(),
                   ],
@@ -3029,6 +3033,35 @@ class _TitleBarSettingsButton extends ConsumerWidget {
                 },
           child: Icon(
             Icons.settings,
+            size: 11,
+            color: theme.colorScheme.mutedForeground.withValues(alpha: 0.35),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TitleBarHomeButton extends StatelessWidget {
+  const _TitleBarHomeButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return SizedBox(
+      width: 16,
+      height: 16,
+      child: Center(
+        child: GhostButton(
+          key: const ValueKey('title-bar-home-button'),
+          size: ButtonSize.xSmall,
+          density: ButtonDensity.iconDense,
+          onPressed: onPressed,
+          child: Icon(
+            Icons.home,
             size: 11,
             color: theme.colorScheme.mutedForeground.withValues(alpha: 0.35),
           ),
