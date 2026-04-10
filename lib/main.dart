@@ -3221,13 +3221,145 @@ class _DeveloperSection extends StatelessWidget {
   }
 }
 
-class _BottomSidebar extends ConsumerWidget {
+class _BottomSidebar extends ConsumerStatefulWidget {
   const _BottomSidebar({required this.controller});
 
   final FileOpenController controller;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_BottomSidebar> createState() => _BottomSidebarState();
+}
+
+class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
+  Timer? _optimizeSuccessTimer;
+  bool _showOptimizeSuccess = false;
+
+  @override
+  void initState() {
+    super.initState();
+    ref.listenManual<OptimizationRunState>(
+      optimizationRunControllerProvider,
+      _handleOptimizationRunStateChanged,
+    );
+  }
+
+  @override
+  void dispose() {
+    _optimizeSuccessTimer?.cancel();
+    super.dispose();
+  }
+
+  void _handleOptimizationRunStateChanged(
+    OptimizationRunState? previous,
+    OptimizationRunState next,
+  ) {
+    if (next.isRunning || next.jobState == BatchJobState.cancelRequested) {
+      _clearOptimizeSuccess();
+      return;
+    }
+
+    if (next.jobState == BatchJobState.completed &&
+        previous?.jobState != BatchJobState.completed) {
+      _showOptimizeSuccessState();
+      return;
+    }
+
+    if (next.jobState == BatchJobState.failed ||
+        next.jobState == BatchJobState.canceled) {
+      _clearOptimizeSuccess();
+    }
+  }
+
+  void _showOptimizeSuccessState() {
+    _optimizeSuccessTimer?.cancel();
+    if (!_showOptimizeSuccess) {
+      setState(() {
+        _showOptimizeSuccess = true;
+      });
+    }
+    _optimizeSuccessTimer = Timer(const Duration(seconds: 1), () {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _showOptimizeSuccess = false;
+      });
+    });
+  }
+
+  void _clearOptimizeSuccess() {
+    _optimizeSuccessTimer?.cancel();
+    _optimizeSuccessTimer = null;
+    if (!_showOptimizeSuccess) {
+      return;
+    }
+    setState(() {
+      _showOptimizeSuccess = false;
+    });
+  }
+
+  Widget _buildOptimizeActionButton({
+    required ThemeData theme,
+    required OptimizationRunState runState,
+    required AnalyzeRunState analyzeState,
+    required OptimizationRunController runController,
+  }) {
+    if (_showOptimizeSuccess && !runState.isRunning) {
+      return _OptimizeActionButtonFrame(
+        key: const ValueKey('optimize-action-success'),
+        child: _OptimizeSuccessButton(theme: theme),
+      );
+    }
+
+    if (runState.isCancelRequested) {
+      return _OptimizeActionButtonFrame(
+        key: const ValueKey('optimize-action-canceling'),
+        child: Button.destructive(
+          alignment: Alignment.center,
+          onPressed: null,
+          child: const Text(
+            'Canceling...',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 15),
+          ),
+        ),
+      );
+    }
+
+    if (runState.isRunning) {
+      return _OptimizeActionButtonFrame(
+        key: const ValueKey('optimize-action-cancel'),
+        child: Button.destructive(
+          alignment: Alignment.center,
+          onPressed: runController.cancelCurrentRun,
+          child: const Text(
+            'Cancel',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 15),
+          ),
+        ),
+      );
+    }
+
+    return _OptimizeActionButtonFrame(
+      key: const ValueKey('optimize-action-idle'),
+      child: PrimaryButton(
+        alignment: Alignment.center,
+        onPressed: analyzeState.isRunning || analyzeState.isCancelRequested
+            ? null
+            : runController.optimizeAll,
+        child: const Text(
+          'Optimize',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 15),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = widget.controller;
     final theme = Theme.of(context);
     final currentFile = controller.currentFile;
     if (currentFile == null) {
@@ -3342,39 +3474,34 @@ class _BottomSidebar extends ConsumerWidget {
                         ],
                         SizedBox(
                           height: 36,
-                          child: runState.isCancelRequested
-                              ? Button.destructive(
-                                  alignment: Alignment.center,
-                                  onPressed: null,
-                                  child: const Text(
-                                    'Canceling...',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(fontSize: 15),
-                                  ),
-                                )
-                              : runState.isRunning
-                              ? Button.destructive(
-                                  alignment: Alignment.center,
-                                  onPressed: runController.cancelCurrentRun,
-                                  child: const Text(
-                                    'Cancel',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(fontSize: 15),
-                                  ),
-                                )
-                              : PrimaryButton(
-                                  alignment: Alignment.center,
-                                  onPressed:
-                                      analyzeState.isRunning ||
-                                          analyzeState.isCancelRequested
-                                      ? null
-                                      : runController.optimizeAll,
-                                  child: const Text(
-                                    'Optimize',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(fontSize: 15),
-                                  ),
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 220),
+                            switchInCurve: Curves.easeInOut,
+                            switchOutCurve: Curves.easeInOut,
+                            transitionBuilder: (child, animation) {
+                              final curved = CurvedAnimation(
+                                parent: animation,
+                                curve: Curves.easeInOut,
+                              );
+                              return FadeTransition(
+                                opacity: curved,
+                                child: SlideTransition(
+                                  position:
+                                      Tween<Offset>(
+                                        begin: const Offset(0, 0.03),
+                                        end: Offset.zero,
+                                      ).animate(curved),
+                                  child: child,
                                 ),
+                              );
+                            },
+                            child: _buildOptimizeActionButton(
+                              theme: theme,
+                              runState: runState,
+                              analyzeState: analyzeState,
+                              runController: runController,
+                            ),
+                          ),
                         ),
                         if (runState.isRunning || analyzeState.isRunning) ...[
                           const SizedBox(height: 8),
@@ -3438,6 +3565,45 @@ class _BottomDetail extends StatelessWidget {
         const SizedBox(height: 6),
         Text(value).small().medium(),
       ],
+    );
+  }
+}
+
+class _OptimizeActionButtonFrame extends StatelessWidget {
+  const _OptimizeActionButtonFrame({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.expand(child: child);
+  }
+}
+
+class _OptimizeSuccessButton extends StatelessWidget {
+  const _OptimizeSuccessButton({required this.theme});
+
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    const successColor = Color(0xFF34C759);
+
+    return Container(
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: successColor,
+        borderRadius: theme.borderRadiusMd,
+      ),
+      child: const Text(
+        'Success!',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+        ),
+      ),
     );
   }
 }

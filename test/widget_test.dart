@@ -1854,6 +1854,44 @@ void main() {
     expect(find.text('third.optimized.jpeg'), findsNothing);
   });
 
+  testWidgets(
+    'optimize button briefly shows success state after completion',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final slimg = _FakeSlimgApi(
+        inspectResults: {
+          '/tmp/first.png': _metadata('png', 2400),
+          '/tmp/second.jpg': _metadata('jpeg', 1800),
+        },
+      );
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png', '/tmp/second.jpg'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.tap(find.text('Optimize'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(find.text('Success!'), findsOneWidget);
+      expect(find.text('Optimize'), findsNothing);
+
+      await tester.pump(const Duration(milliseconds: 1000));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Success!'), findsNothing);
+      expect(find.text('Optimize'), findsOneWidget);
+    },
+  );
+
   testWidgets('developer dialog toggles persisted timing logs', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
