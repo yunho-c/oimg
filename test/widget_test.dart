@@ -970,6 +970,52 @@ void main() {
   );
 
   testWidgets(
+    'analyze header shows live quality while running and hovered quality after completion',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      )..analyzeSampleDelay = const Duration(milliseconds: 80);
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 30));
+
+      expect(find.text('Q0'), findsOneWidget);
+
+      await tester.pumpAndSettle();
+
+      final chart = tester.widget<LineChart>(find.byType(LineChart));
+      final firstBar = chart.data.lineBarsData.first;
+      final firstSpot = firstBar.spots.first;
+      chart.data.lineTouchData.touchCallback?.call(
+        FlPointerHoverEvent(const PointerHoverEvent(position: Offset.zero)),
+        LineTouchResponse(
+          touchLocation: Offset.zero,
+          touchChartCoordinate: Offset.zero,
+          lineBarSpots: [TouchLineBarSpot(firstBar, 0, firstSpot, 0)],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Q100'), findsOneWidget);
+      expect(find.text('Q0'), findsNothing);
+    },
+  );
+
+  testWidgets(
     'hovering an analyze chart point preserves difference mode',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1400, 1000));

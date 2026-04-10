@@ -3266,11 +3266,15 @@ class _AnalyzePanel extends ConsumerWidget {
     final theme = Theme.of(context);
     final controller = ref.read(analyzeRunControllerProvider.notifier);
     final displayMode = ref.watch(currentPreviewDisplayModeProvider);
+    final selectedAnalyzeSample = ref.watch(selectedAnalyzeSampleProvider);
     final fileController = ref.watch(fileOpenControllerProvider);
     final currentFilePath = fileController.currentPath;
     final currentFile = fileController.currentFile;
     final samples = [...state.samples]
       ..sort((a, b) => a.sizeBytes.compareTo(b.sizeBytes));
+    final qualityIndicator = state.isRunning
+        ? state.currentQuality
+        : selectedAnalyzeSample?.quality;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -3293,7 +3297,7 @@ class _AnalyzePanel extends ConsumerWidget {
                   ),
                 ).xSmall(),
               ),
-              if (state.currentQuality case final quality?)
+              if (qualityIndicator case final quality?)
                 Text('Q$quality').xSmall().muted(),
             ],
           ),
