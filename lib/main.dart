@@ -2748,7 +2748,7 @@ class _AnalyzePanel extends ConsumerWidget {
                               .read(previewDisplaySelectionProvider.notifier)
                               .select(
                                 filePath: currentFilePath,
-                                mode: PreviewDisplayMode.optimized,
+                                mode: displayMode,
                               );
                         }
                         if (displayMode == PreviewDisplayMode.difference) {

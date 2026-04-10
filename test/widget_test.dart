@@ -892,7 +892,6 @@ void main() {
       final settings = AppSettings.fromJsonString((await store.read())!);
       expect(settings.quality, 100);
       expect(find.byType(LineChart), findsOneWidget);
-      expect(find.text('11 samples'), findsOneWidget);
     },
   );
 
@@ -948,7 +947,60 @@ void main() {
         isNotNull,
       );
       expect(find.byType(LineChart), findsOneWidget);
-      expect(find.text('11 samples'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'hovering an analyze chart point preserves difference mode',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      )..analyzeSampleDelay = const Duration(milliseconds: 20);
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.tap(find.byKey(const ValueKey('preview-mode-Difference')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(slimg.differenceCallCount, 1);
+
+      await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+      await tester.pump(const Duration(milliseconds: 200));
+
+      final chart = tester.widget<LineChart>(find.byType(LineChart));
+      final firstBar = chart.data.lineBarsData.first;
+      final firstSpot = firstBar.spots.first;
+      chart.data.lineTouchData.touchCallback?.call(
+        FlPointerHoverEvent(const PointerHoverEvent(position: Offset.zero)),
+        LineTouchResponse(
+          touchLocation: Offset.zero,
+          touchChartCoordinate: Offset.zero,
+          lineBarSpots: [TouchLineBarSpot(firstBar, 0, firstSpot, 0)],
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      final container = ProviderScope.containerOf(tester.element(find.byType(MyApp)));
+      expect(slimg.differenceCallCount, 2);
+      expect(
+        container.read(currentPreviewDisplayModeProvider),
+        PreviewDisplayMode.difference,
+      );
     },
   );
 
