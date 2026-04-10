@@ -2,6 +2,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:oimg/src/settings/app_settings.dart';
 
 void main() {
+  test('defaults show coordinates in the difference tooltip', () {
+    expect(AppSettings.defaults.differenceTooltipShowsCoordinates, isTrue);
+  });
+
   group('AppSettings.effectiveCodec', () {
     test('uses intuitive mapping when advanced mode is off', () {
       expect(

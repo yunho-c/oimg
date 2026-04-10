@@ -867,6 +867,18 @@ class _ImageStage extends ConsumerWidget {
                             retentionScopeKey: currentFile.path,
                             frame: differenceFrame,
                             fileName: fileName,
+                            showCoordinates:
+                                appSettings?.differenceTooltipShowsCoordinates ??
+                                true,
+                            onShowCoordinatesChanged: (value) {
+                              unawaited(
+                                ref
+                                    .read(appSettingsProvider.notifier)
+                                    .setDifferenceTooltipShowsCoordinates(
+                                      value,
+                                    ),
+                              );
+                            },
                             unavailableMessage:
                                 'Difference preview unavailable.',
                           );
@@ -1033,12 +1045,16 @@ class DifferencePreview extends StatefulWidget {
     required this.retentionScopeKey,
     required this.frame,
     required this.fileName,
+    required this.showCoordinates,
+    this.onShowCoordinatesChanged,
     this.unavailableMessage = 'Unable to render preview.',
   });
 
   final String retentionScopeKey;
   final AsyncValue<PreviewDifferenceFrame?> frame;
   final String fileName;
+  final bool showCoordinates;
+  final ValueChanged<bool>? onShowCoordinatesChanged;
   final String unavailableMessage;
 
   @override
@@ -1062,7 +1078,13 @@ class _DifferenceTooltipSample {
   final int green;
   final int blue;
 
-  String get label => 'x $pixelX, y $pixelY\nR $red G $green B $blue';
+  String label({required bool showCoordinates}) {
+    final rgbLabel = 'R $red G $green B $blue';
+    if (!showCoordinates) {
+      return rgbLabel;
+    }
+    return 'x $pixelX, y $pixelY\n$rgbLabel';
+  }
 }
 
 class _DifferencePreviewState extends State<DifferencePreview> {
@@ -1303,7 +1325,9 @@ class _DifferencePreviewState extends State<DifferencePreview> {
           Size(rawImage.width.toDouble(), rawImage.height.toDouble()),
         );
         final tooltip = _tooltipSample;
-        final tooltipText = tooltip?.label;
+        final tooltipText = tooltip?.label(
+          showCoordinates: widget.showCoordinates,
+        );
         final tooltipSize = tooltipText == null
             ? null
             : _tooltipSize(context, tooltipText);
@@ -1324,33 +1348,48 @@ class _DifferencePreviewState extends State<DifferencePreview> {
           clipBehavior: Clip.none,
           children: [
             Positioned.fill(
-              child: Listener(
-                onPointerDown: (_) => _resetTooltip(),
-                onPointerSignal: (_) => _resetTooltip(),
-                child: MouseRegion(
-                  key: const ValueKey('difference-preview-region'),
-                  onHover: (event) => _handleHover(
-                    viewportOffset: event.localPosition,
-                    viewportSize: viewportSize,
-                    rawImage: rawImage,
+              child: ContextMenu(
+                items: [
+                  MenuCheckbox(
+                    key: const ValueKey('difference-tooltip-coordinates-toggle'),
+                    value: widget.showCoordinates,
+                    autoClose: false,
+                    onChanged: widget.onShowCoordinatesChanged == null
+                        ? null
+                        : (context, value) {
+                            widget.onShowCoordinatesChanged!(value);
+                          },
+                    child: const Text('Show coordinates'),
                   ),
-                  onExit: (_) => _resetTooltip(),
-                  child: InteractiveViewer(
-                    transformationController: _transformationController,
-                    minScale: 0.5,
-                    maxScale: 6,
-                    onInteractionStart: (_) => _resetTooltip(),
-                    onInteractionUpdate: (_) => _resetTooltip(),
-                    child: SizedBox(
-                      width: viewportSize.width,
-                      height: viewportSize.height,
-                      child: Center(
-                        child: SizedBox(
-                          width: imageRect.width,
-                          height: imageRect.height,
-                          child: RawImage(
-                            image: image,
-                            fit: BoxFit.fill,
+                ],
+                child: Listener(
+                  onPointerDown: (_) => _resetTooltip(),
+                  onPointerSignal: (_) => _resetTooltip(),
+                  child: MouseRegion(
+                    key: const ValueKey('difference-preview-region'),
+                    onHover: (event) => _handleHover(
+                      viewportOffset: event.localPosition,
+                      viewportSize: viewportSize,
+                      rawImage: rawImage,
+                    ),
+                    onExit: (_) => _resetTooltip(),
+                    child: InteractiveViewer(
+                      transformationController: _transformationController,
+                      minScale: 0.5,
+                      maxScale: 6,
+                      onInteractionStart: (_) => _resetTooltip(),
+                      onInteractionUpdate: (_) => _resetTooltip(),
+                      child: SizedBox(
+                        width: viewportSize.width,
+                        height: viewportSize.height,
+                        child: Center(
+                          child: SizedBox(
+                            width: imageRect.width,
+                            height: imageRect.height,
+                            child: RawImage(
+                              image: image,
+                              fit: BoxFit.fill,
+                            ),
                           ),
                         ),
                       ),

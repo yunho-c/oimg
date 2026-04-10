@@ -143,6 +143,16 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     );
   }
 
+  Future<void> setDifferenceTooltipShowsCoordinates(
+    bool differenceTooltipShowsCoordinates,
+  ) async {
+    await _update(
+      (settings) => settings.copyWith(
+        differenceTooltipShowsCoordinates: differenceTooltipShowsCoordinates,
+      ),
+    );
+  }
+
   Future<void> setThemePreference(AppThemePreference themePreference) async {
     await _update(
       (settings) => settings.copyWith(themePreference: themePreference),

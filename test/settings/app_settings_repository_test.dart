@@ -32,6 +32,7 @@ void main() {
         savingsColorsEnabled: true,
         bitsPerPixelColorsEnabled: true,
         fileSizeColorsEnabled: true,
+        differenceTooltipShowsCoordinates: false,
         themePreference: AppThemePreference.light,
         developerModeEnabled: true,
         timingLogsEnabled: true,

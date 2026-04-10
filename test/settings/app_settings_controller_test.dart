@@ -54,6 +54,7 @@ void main() {
       await notifier.setSavingsColorsEnabled(true);
       await notifier.setBitsPerPixelColorsEnabled(true);
       await notifier.setFileSizeColorsEnabled(true);
+      await notifier.setDifferenceTooltipShowsCoordinates(false);
       await notifier.setThemePreference(AppThemePreference.dark);
       await notifier.setDeveloperModeEnabled(true);
       await notifier.setTimingLogsEnabled(true);
@@ -79,6 +80,7 @@ void main() {
           savingsColorsEnabled: true,
           bitsPerPixelColorsEnabled: true,
           fileSizeColorsEnabled: true,
+          differenceTooltipShowsCoordinates: false,
           themePreference: AppThemePreference.dark,
           developerModeEnabled: true,
           timingLogsEnabled: true,

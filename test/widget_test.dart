@@ -1040,6 +1040,7 @@ void main() {
               retentionScopeKey: 'first',
               frame: const AsyncData<PreviewDifferenceFrame?>(null),
               fileName: 'first.png',
+              showCoordinates: true,
               unavailableMessage: 'Difference preview unavailable.',
             ),
           ),
@@ -1054,6 +1055,7 @@ void main() {
               retentionScopeKey: 'first',
               frame: AsyncData<PreviewDifferenceFrame?>(firstFrame),
               fileName: 'first.png',
+              showCoordinates: true,
               unavailableMessage: 'Difference preview unavailable.',
             ),
           ),
@@ -1071,6 +1073,7 @@ void main() {
               retentionScopeKey: 'first',
               frame: AsyncLoading<PreviewDifferenceFrame?>(),
               fileName: 'first.png',
+              showCoordinates: true,
               unavailableMessage: 'Difference preview unavailable.',
             ),
           ),
@@ -1112,6 +1115,7 @@ void main() {
                   retentionScopeKey: 'first',
                   frame: AsyncData<PreviewDifferenceFrame?>(frame),
                   fileName: 'first.png',
+                  showCoordinates: true,
                   unavailableMessage: 'Difference preview unavailable.',
                 ),
               ),
@@ -1147,6 +1151,91 @@ void main() {
   );
 
   testWidgets(
+    'difference preview context menu can hide tooltip coordinates',
+    (tester) async {
+      final frame = await _differenceFrame(
+        width: 4,
+        height: 4,
+        rgbaBytes: _rgbaBytesForSinglePixel(
+          width: 4,
+          height: 4,
+          pixelX: 2,
+          pixelY: 2,
+          red: 12,
+          green: 34,
+          blue: 56,
+        ),
+      );
+      addTearDown(frame.image.dispose);
+
+      var showCoordinates = true;
+
+      await tester.pumpWidget(
+        StatefulBuilder(
+          builder: (context, setState) {
+            return ShadcnApp(
+              home: Scaffold(
+                child: Center(
+                  child: SizedBox(
+                    width: 200,
+                    height: 200,
+                    child: DifferencePreview(
+                      retentionScopeKey: 'first',
+                      frame: AsyncData<PreviewDifferenceFrame?>(frame),
+                      fileName: 'first.png',
+                      showCoordinates: showCoordinates,
+                      onShowCoordinatesChanged: (value) {
+                        setState(() {
+                          showCoordinates = value;
+                        });
+                      },
+                      unavailableMessage: 'Difference preview unavailable.',
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+      await tester.pump();
+
+      final region = find.byKey(const ValueKey('difference-preview-region'));
+      final center = tester.getCenter(region);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: center);
+      await mouse.moveTo(center);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.text('x 2, y 2\nR 12 G 34 B 56'), findsOneWidget);
+
+      await tester.tap(region, buttons: kSecondaryButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Show coordinates'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const ValueKey('difference-tooltip-coordinates-toggle')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(showCoordinates, isFalse);
+
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
+
+      await mouse.moveTo(center + const Offset(1, 0));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.text('R 12 G 34 B 56'), findsOneWidget);
+      expect(find.textContaining('x 2, y 2'), findsNothing);
+    },
+  );
+
+  testWidgets(
     'difference preview tooltip stays hidden over viewport background and hides on pan',
     (tester) async {
       final frame = await _differenceFrame(
@@ -1175,6 +1264,7 @@ void main() {
                   retentionScopeKey: 'first',
                   frame: AsyncData<PreviewDifferenceFrame?>(frame),
                   fileName: 'first.png',
+                  showCoordinates: true,
                   unavailableMessage: 'Difference preview unavailable.',
                 ),
               ),
@@ -1255,6 +1345,7 @@ void main() {
                   retentionScopeKey: 'first',
                   frame: frameValue,
                   fileName: 'first.png',
+                  showCoordinates: true,
                   unavailableMessage: 'Difference preview unavailable.',
                 ),
               ),
