@@ -3337,7 +3337,6 @@ class _AnalyzePanel extends ConsumerWidget {
                       },
                     ),
             ),
-            const SizedBox(height: 8),
           ],
           if (state.globalError case final error?) ...[
             const SizedBox(height: 8),
@@ -3428,7 +3427,7 @@ class _AnalyzeChart extends StatelessWidget {
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 26,
+              reservedSize: 18,
               interval: xAxisInterval,
               getTitlesWidget: (value, meta) {
                 if (dataMaxX > 0 && value > dataMaxX + 0.5) {
