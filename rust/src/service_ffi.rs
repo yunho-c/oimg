@@ -1,14 +1,18 @@
 use std::ffi::{CStr, CString};
+use std::fs;
 use std::os::raw::c_char;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
+use slimg_core::{decode, codec::get_codec, EncodeOptions, Format, ImageData};
 
 use crate::codec::parse_format;
-use crate::error::panic_message;
+use crate::error::{panic_message, Result, SlimgBridgeError};
+use crate::fs::safe_write_bytes;
 use crate::types::{
-    ConvertOptions, ImageOperation, OptimizeOptions, ProcessFileBatchRequest, ProcessFileRequest,
+    BatchItemResult, ConvertOptions, ImageOperation, OptimizeOptions, ProcessFileBatchRequest,
+    ProcessFileRequest, ProcessResult,
 };
 
 #[derive(Debug, Deserialize, Clone, Copy)]
@@ -16,6 +20,8 @@ use crate::types::{
 enum CompressionAction {
     Compress,
     CompressKeepOriginal,
+    SaveAsPng,
+    SaveAsJpg,
 }
 
 #[derive(Debug, Deserialize)]
@@ -131,12 +137,7 @@ fn run_request_json(request_json: *const c_char) -> CompressionServiceResponse {
         return invalid_response("paths must contain at least one file");
     }
 
-    let batch_request = match build_batch_request(request) {
-        Ok(value) => value,
-        Err(error) => return invalid_response(error.to_string()),
-    };
-
-    match crate::convert::process_file_batch(batch_request) {
+    match process_request(request) {
         Ok(results) => {
             let mut success_count = 0;
             let mut failure_count = 0;
@@ -166,9 +167,19 @@ fn run_request_json(request_json: *const c_char) -> CompressionServiceResponse {
     }
 }
 
+fn process_request(request: CompressionServiceRequest) -> Result<Vec<BatchItemResult>> {
+    match request.action {
+        CompressionAction::Compress | CompressionAction::CompressKeepOriginal => {
+            let batch_request = build_batch_request(request)?;
+            crate::convert::process_file_batch(batch_request)
+        }
+        CompressionAction::SaveAsPng | CompressionAction::SaveAsJpg => process_save_as(request),
+    }
+}
+
 fn build_batch_request(
     request: CompressionServiceRequest,
-) -> crate::error::Result<ProcessFileBatchRequest> {
+) -> Result<ProcessFileBatchRequest> {
     let CompressionServiceRequest {
         action,
         paths,
@@ -225,6 +236,129 @@ fn build_batch_request(
     })
 }
 
+fn process_save_as(request: CompressionServiceRequest) -> Result<Vec<BatchItemResult>> {
+    let CompressionServiceRequest {
+        action,
+        paths,
+        settings,
+    } = request;
+    let mut results = Vec::with_capacity(paths.len());
+
+    for input_path in paths {
+        let result = process_save_as_path(&input_path, action, &settings);
+        match result {
+            Ok(result) => results.push(BatchItemResult {
+                input_path,
+                success: true,
+                result: Some(result),
+                error: None,
+            }),
+            Err(error) => results.push(BatchItemResult {
+                input_path,
+                success: false,
+                result: None,
+                error: Some(error),
+            }),
+        }
+    }
+
+    Ok(results)
+}
+
+fn process_save_as_path(
+    input_path: &str,
+    action: CompressionAction,
+    settings: &CompressionServiceSettings,
+) -> Result<ProcessResult> {
+    let target_format = action
+        .save_as_target_format()
+        .ok_or_else(|| SlimgBridgeError::invalid_request("unsupported save action"))?;
+    let output_path = save_as_output_path(input_path, target_format);
+
+    match action {
+        CompressionAction::SaveAsPng => crate::convert::process_file_request_with_threads(
+            ProcessFileRequest {
+                input_path: input_path.to_string(),
+                output_path: Some(output_path.to_string_lossy().into_owned()),
+                overwrite: true,
+                preserve_exif: false,
+                preserve_color_profile: false,
+                operation: ImageOperation::Convert(ConvertOptions {
+                    target_format: target_format.to_string(),
+                    quality: 80,
+                }),
+            },
+            None,
+        ),
+        CompressionAction::SaveAsJpg => process_save_as_jpg(input_path, &output_path, settings),
+        CompressionAction::Compress | CompressionAction::CompressKeepOriginal => Err(
+            SlimgBridgeError::invalid_request("unsupported save action"),
+        ),
+    }
+}
+
+fn process_save_as_jpg(
+    input_path: &str,
+    output_path: &Path,
+    settings: &CompressionServiceSettings,
+) -> Result<ProcessResult> {
+    let input_path_buf = PathBuf::from(input_path);
+    if !input_path_buf.exists() {
+        return Err(SlimgBridgeError::invalid_path(
+            &input_path_buf,
+            "input file does not exist",
+        ));
+    }
+    if !input_path_buf.is_file() {
+        return Err(SlimgBridgeError::invalid_path(
+            &input_path_buf,
+            "input path is not a file",
+        ));
+    }
+
+    let input_bytes = fs::read(&input_path_buf)?;
+    let (image, _) = decode(&input_bytes)?;
+    let flattened = composite_image_onto_white(&image);
+    let encoded = get_codec(Format::Jpeg).encode(
+        &flattened,
+        &EncodeOptions {
+            quality: settings.quality,
+            threads: None,
+        },
+    )?;
+
+    safe_write_bytes(output_path, &encoded, true)?;
+
+    Ok(ProcessResult {
+        output_path: output_path.to_string_lossy().into_owned(),
+        format: "jpeg".to_string(),
+        width: flattened.width,
+        height: flattened.height,
+        original_size: input_bytes.len() as u64,
+        new_size: encoded.len() as u64,
+        did_write: true,
+    })
+}
+
+fn composite_image_onto_white(image: &ImageData) -> ImageData {
+    let data = image
+        .data
+        .chunks_exact(4)
+        .flat_map(|pixel| {
+            let [r, g, b, a]: [u8; 4] = pixel.try_into().expect("pixel chunk should be RGBA");
+            let alpha = u32::from(a);
+            let inv_alpha = 255 - alpha;
+            [
+                ((u32::from(r) * alpha + 255 * inv_alpha) / 255) as u8,
+                ((u32::from(g) * alpha + 255 * inv_alpha) / 255) as u8,
+                ((u32::from(b) * alpha + 255 * inv_alpha) / 255) as u8,
+                255,
+            ]
+        })
+        .collect();
+    ImageData::new(image.width, image.height, data)
+}
+
 fn sibling_optimized_path(input_path: &str, target_format: &str) -> PathBuf {
     let input = Path::new(input_path);
     let stem = input
@@ -236,6 +370,19 @@ fn sibling_optimized_path(input_path: &str, target_format: &str) -> PathBuf {
         .expect("service uses supported target formats")
         .extension();
     input.with_file_name(format!("{stem}.optimized.{extension}"))
+}
+
+fn save_as_output_path(input_path: &str, target_format: &str) -> PathBuf {
+    let input = Path::new(input_path);
+    let stem = input
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.is_empty())
+        .unwrap_or("output");
+    let extension = parse_format(target_format)
+        .expect("service uses supported target formats")
+        .extension();
+    input.with_file_name(format!("{stem}.{extension}"))
 }
 
 fn invalid_response(message: impl Into<String>) -> CompressionServiceResponse {
@@ -274,6 +421,16 @@ impl PreferredCodec {
             Self::Webp => "webp",
             Self::Avif => "avif",
             Self::Jxl => "jxl",
+        }
+    }
+}
+
+impl CompressionAction {
+    fn save_as_target_format(self) -> Option<&'static str> {
+        match self {
+            Self::SaveAsPng => Some("png"),
+            Self::SaveAsJpg => Some("jpeg"),
+            Self::Compress | Self::CompressKeepOriginal => None,
         }
     }
 }
@@ -318,6 +475,35 @@ mod tests {
         .data
     }
 
+    fn transparent_png_bytes() -> Vec<u8> {
+        let image = ImageData::new(1, 1, vec![0, 0, 0, 0]);
+        convert(
+            &image,
+            &PipelineOptions {
+                format: Format::Png,
+                quality: 80,
+                threads: None,
+                resize: None,
+                crop: None,
+                extend: None,
+                fill_color: None,
+            },
+        )
+        .unwrap()
+        .data
+    }
+
+    fn run_service_request(request: serde_json::Value) -> CompressionServiceResponse {
+        let request = CString::new(request.to_string()).unwrap();
+        let response = oimg_service_run_request(request.as_ptr());
+        let response_json = unsafe { CStr::from_ptr(response) }
+            .to_str()
+            .unwrap()
+            .to_string();
+        oimg_service_free_string(response);
+        serde_json::from_str(&response_json).unwrap()
+    }
+
     #[test]
     fn compress_keep_original_returns_successful_result() {
         let dir = tempdir().unwrap();
@@ -335,15 +521,7 @@ mod tests {
                 "quality": 80
             }
         });
-        let request = CString::new(request.to_string()).unwrap();
-        let response = oimg_service_run_request(request.as_ptr());
-        let response_json = unsafe { CStr::from_ptr(response) }
-            .to_str()
-            .unwrap()
-            .to_string();
-        oimg_service_free_string(response);
-
-        let response: CompressionServiceResponse = serde_json::from_str(&response_json).unwrap();
+        let response = run_service_request(request);
         assert_eq!(response.success_count, 1);
         assert_eq!(response.failure_count, 0);
         let output_path = response.items[0].output_path.as_ref().unwrap();
@@ -369,20 +547,94 @@ mod tests {
                 "quality": 80
             }
         });
-        let request = CString::new(request.to_string()).unwrap();
-        let response = oimg_service_run_request(request.as_ptr());
-        let response_json = unsafe { CStr::from_ptr(response) }
-            .to_str()
-            .unwrap()
-            .to_string();
-        oimg_service_free_string(response);
-
-        let response: CompressionServiceResponse = serde_json::from_str(&response_json).unwrap();
+        let response = run_service_request(request);
         assert_eq!(response.success_count, 1);
         assert_eq!(response.failure_count, 0);
         let output_path = response.items[0].output_path.as_ref().unwrap();
         assert!(output_path.ends_with("sample.optimized.jpg"));
         assert!(input_path.exists());
+    }
+
+    #[test]
+    fn save_as_png_writes_sibling_png_output() {
+        let dir = tempdir().unwrap();
+        let input_path = dir.path().join("sample.webp");
+        let output_path = dir.path().join("sample.png");
+        let webp_bytes = convert(
+            &test_image(),
+            &PipelineOptions {
+                format: Format::WebP,
+                quality: 80,
+                threads: None,
+                resize: None,
+                crop: None,
+                extend: None,
+                fill_color: None,
+            },
+        )
+        .unwrap()
+        .data;
+        fs::write(&input_path, webp_bytes).unwrap();
+
+        let response = run_service_request(serde_json::json!({
+            "action": "save_as_png",
+            "paths": [input_path.to_string_lossy()],
+            "settings": {
+                "compressionMethod": "lossy",
+                "compressionPriority": "compatibility",
+                "advancedMode": false,
+                "preferredCodec": "jpeg",
+                "quality": 12
+            }
+        }));
+
+        assert_eq!(response.success_count, 1);
+        assert_eq!(response.failure_count, 0);
+        assert_eq!(
+            response.items[0].output_path.as_deref(),
+            Some(output_path.to_string_lossy().as_ref())
+        );
+        assert!(output_path.exists());
+        let output_bytes = fs::read(&output_path).unwrap();
+        let (_, format) = decode(&output_bytes).unwrap();
+        assert_eq!(format, Format::Png);
+    }
+
+    #[test]
+    fn save_as_jpg_overwrites_existing_target_and_flattens_transparency_to_white() {
+        let dir = tempdir().unwrap();
+        let input_path = dir.path().join("transparent.png");
+        let output_path = dir.path().join("transparent.jpg");
+        fs::write(&input_path, transparent_png_bytes()).unwrap();
+        fs::write(&output_path, b"old-jpeg").unwrap();
+
+        let response = run_service_request(serde_json::json!({
+            "action": "save_as_jpg",
+            "paths": [input_path.to_string_lossy()],
+            "settings": {
+                "compressionMethod": "lossy",
+                "compressionPriority": "compatibility",
+                "advancedMode": false,
+                "preferredCodec": "jpeg",
+                "quality": 80
+            }
+        }));
+
+        assert_eq!(response.success_count, 1);
+        assert_eq!(response.failure_count, 0);
+        assert_eq!(
+            response.items[0].output_path.as_deref(),
+            Some(output_path.to_string_lossy().as_ref())
+        );
+
+        let output_bytes = fs::read(&output_path).unwrap();
+        assert_ne!(output_bytes, b"old-jpeg");
+        let (decoded, format) = decode(&output_bytes).unwrap();
+        assert_eq!(format, Format::Jpeg);
+        assert!(decoded.data[0] > 240);
+        assert!(decoded.data[1] > 240);
+        assert!(decoded.data[2] > 240);
+        assert_eq!(decoded.data[3], 255);
     }
 
     #[test]
@@ -394,7 +646,6 @@ mod tests {
             .unwrap()
             .to_string();
         oimg_service_free_string(response);
-
         let response: CompressionServiceResponse = serde_json::from_str(&response_json).unwrap();
         assert_eq!(response.success_count, 0);
         assert_eq!(response.failure_count, 1);

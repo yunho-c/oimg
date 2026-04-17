@@ -100,6 +100,50 @@
 			<key>NSUserData</key>
 			<string>compress_keep_original</string>
 		</dict>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Save as PNG</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>runCompressionService</string>
+			<key>NSPortName</key>
+			<string>OIMG</string>
+			<key>NSRequiredContext</key>
+			<dict>
+				<key>NSApplicationIdentifier</key>
+				<string>com.apple.finder</string>
+			</dict>
+			<key>NSSendFileTypes</key>
+			<array>
+				<string>public.image</string>
+			</array>
+			<key>NSUserData</key>
+			<string>save_as_png</string>
+		</dict>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Save as JPG</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>runCompressionService</string>
+			<key>NSPortName</key>
+			<string>OIMG</string>
+			<key>NSRequiredContext</key>
+			<dict>
+				<key>NSApplicationIdentifier</key>
+				<string>com.apple.finder</string>
+			</dict>
+			<key>NSSendFileTypes</key>
+			<array>
+				<string>public.image</string>
+			</array>
+			<key>NSUserData</key>
+			<string>save_as_jpg</string>
+		</dict>
 	</array>
 	<key>NSHumanReadableCopyright</key>
 	<string>$(PRODUCT_COPYRIGHT)</string>

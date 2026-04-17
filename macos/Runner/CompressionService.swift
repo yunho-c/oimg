@@ -9,6 +9,17 @@ private func oimg_service_free_string(_ value: UnsafeMutablePointer<CChar>?)
 private enum CompressionServiceAction: String, Codable {
   case compress
   case compressKeepOriginal = "compress_keep_original"
+  case saveAsPng = "save_as_png"
+  case saveAsJpg = "save_as_jpg"
+
+  var revealsOutputsInFinder: Bool {
+    switch self {
+    case .compress:
+      return false
+    case .compressKeepOriginal, .saveAsPng, .saveAsJpg:
+      return true
+    }
+  }
 }
 
 private struct CompressionServiceRequest: Codable {
@@ -60,7 +71,7 @@ final class CompressionServiceProvider: NSObject {
     error: AutoreleasingUnsafeMutablePointer<NSString?>
   ) {
     guard let actionKey = userData, let action = CompressionServiceAction(rawValue: actionKey) else {
-      error.pointee = "Unsupported compression action." as NSString
+      error.pointee = "Unsupported service action." as NSString
       return
     }
 
@@ -93,7 +104,7 @@ final class CompressionServiceProvider: NSObject {
         return
       }
 
-      if action == .compressKeepOriginal {
+      if action.revealsOutputsInFinder {
         let outputURLs = response.items.compactMap { item -> URL? in
           guard let outputPath = item.outputPath, outputPath != item.inputPath else {
             return nil
