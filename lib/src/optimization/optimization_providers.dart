@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -602,6 +603,18 @@ class PreviewDifferenceFrame {
   final RawImageResult rawImage;
 }
 
+class DifferenceErrorStats {
+  const DifferenceErrorStats({
+    required this.mean,
+    required this.top10Percent,
+    required this.top1Percent,
+  });
+
+  final double mean;
+  final double top10Percent;
+  final double top1Percent;
+}
+
 final _previewCacheControllerProvider = Provider<_PreviewCacheController>((ref) {
   final controller = _PreviewCacheController(ref.read(slimgApiProvider));
   ref.onDispose(controller.dispose);
@@ -1199,6 +1212,55 @@ final currentPreviewDifferenceFrameProvider =
         rethrow;
       }
     });
+
+final currentDifferenceErrorStatsProvider =
+    FutureProvider.autoDispose.family<DifferenceErrorStats, RawImageResult>((
+      ref,
+      rawImage,
+    ) async {
+      return Future<DifferenceErrorStats>.value(
+        _computeDifferenceErrorStats(rawImage),
+      );
+    });
+
+DifferenceErrorStats _computeDifferenceErrorStats(RawImageResult rawImage) {
+  final pixelCount = rawImage.width * rawImage.height;
+  if (pixelCount <= 0) {
+    return const DifferenceErrorStats(mean: 0, top10Percent: 0, top1Percent: 0);
+  }
+
+  final pixelSums = List<int>.filled(pixelCount, 0);
+  var totalSum = 0;
+  for (var i = 0; i < pixelCount; i++) {
+    final byteIndex = i * 4;
+    final pixelSum =
+        rawImage.rgbaBytes[byteIndex] +
+        rawImage.rgbaBytes[byteIndex + 1] +
+        rawImage.rgbaBytes[byteIndex + 2];
+    pixelSums[i] = pixelSum;
+    totalSum += pixelSum;
+  }
+
+  pixelSums.sort((a, b) => b.compareTo(a));
+  final top10Count = math.max(1, (pixelCount * 0.10).ceil());
+  final top1Count = math.max(1, (pixelCount * 0.01).ceil());
+
+  var top10Sum = 0;
+  for (var i = 0; i < top10Count; i++) {
+    top10Sum += pixelSums[i];
+  }
+
+  var top1Sum = 0;
+  for (var i = 0; i < top1Count; i++) {
+    top1Sum += pixelSums[i];
+  }
+
+  return DifferenceErrorStats(
+    mean: totalSum / pixelCount / 3,
+    top10Percent: top10Sum / top10Count / 3,
+    top1Percent: top1Sum / top1Count / 3,
+  );
+}
 
 Future<ui.Image> _decodeRawImage(RawImageResult result) {
   final completer = Completer<ui.Image>();

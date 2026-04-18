@@ -1050,7 +1050,7 @@ class _PreviewCanvas extends StatelessWidget {
   }
 }
 
-class DifferencePreview extends StatefulWidget {
+class DifferencePreview extends ConsumerStatefulWidget {
   const DifferencePreview({
     super.key,
     required this.retentionScopeKey,
@@ -1073,7 +1073,7 @@ class DifferencePreview extends StatefulWidget {
   final String unavailableMessage;
 
   @override
-  State<DifferencePreview> createState() => _DifferencePreviewState();
+  ConsumerState<DifferencePreview> createState() => _DifferencePreviewState();
 }
 
 class _DifferenceTooltipSample {
@@ -1108,7 +1108,7 @@ class _DifferenceTooltipSample {
   }
 }
 
-class _DifferencePreviewState extends State<DifferencePreview> {
+class _DifferencePreviewState extends ConsumerState<DifferencePreview> {
   static const _tooltipDelay = Duration(seconds: 1);
   static const _tooltipOffset = Offset(12, 12);
   static const _rgbSwatchSlotWidth = 34.0;
@@ -1332,6 +1332,59 @@ class _DifferencePreviewState extends State<DifferencePreview> {
     );
   }
 
+  String _formatDifferenceErrorStat(double value) => value.toStringAsFixed(1);
+
+  Widget _buildDifferenceStatsCard(
+    BuildContext context,
+    DifferenceErrorStats stats,
+  ) {
+    final theme = Theme.of(context);
+
+    Widget statRow(String label, String value) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 44,
+            child: Text(
+              label,
+              style: TextStyle(color: theme.colorScheme.mutedForeground),
+            ).xSmall(),
+          ),
+          const SizedBox(width: 12),
+          Text(value).xSmall().medium(),
+        ],
+      );
+    }
+
+    return SurfaceBlur(
+      surfaceBlur: 8,
+      borderRadius: theme.borderRadiusLg,
+      child: Container(
+        key: const ValueKey('difference-preview-stats-card'),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.background.withValues(alpha: 0.72),
+          borderRadius: theme.borderRadiusLg,
+          border: Border.all(
+            color: theme.colorScheme.border.withValues(alpha: 0.7),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            statRow('Mean', _formatDifferenceErrorStat(stats.mean)),
+            const SizedBox(height: 4),
+            statRow('Top 10%', _formatDifferenceErrorStat(stats.top10Percent)),
+            const SizedBox(height: 4),
+            statRow('Top 1%', _formatDifferenceErrorStat(stats.top1Percent)),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildTooltipContent(
     BuildContext context,
     _DifferenceTooltipSample tooltip,
@@ -1432,6 +1485,9 @@ class _DifferencePreviewState extends State<DifferencePreview> {
           Size(rawImage.width.toDouble(), rawImage.height.toDouble()),
         );
         final tooltip = _tooltipSample;
+        final errorStats = ref.watch(
+          currentDifferenceErrorStatsProvider(rawImage),
+        );
         final tooltipText = tooltip?.label(
           showCoordinates: widget.showCoordinates,
         );
@@ -1523,6 +1579,14 @@ class _DifferencePreviewState extends State<DifferencePreview> {
                 ),
               ),
             ),
+            if (errorStats case AsyncData(:final value))
+              Positioned(
+                top: 8,
+                right: 8,
+                child: IgnorePointer(
+                  child: _buildDifferenceStatsCard(context, value),
+                ),
+              ),
             if (tooltipText != null &&
                 tooltipLeft != null &&
                 tooltipTop != null)
