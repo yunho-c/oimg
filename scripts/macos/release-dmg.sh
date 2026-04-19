@@ -43,6 +43,36 @@ require_env() {
   fi
 }
 
+detect_sign_identity() {
+  local identities=()
+  local identity
+
+  while IFS= read -r identity; do
+    identities+=("$identity")
+  done < <(
+    security find-identity -v -p codesigning 2>/dev/null \
+      | awk -F '"' '/Developer ID Application:/ { print $2 }'
+  )
+
+  if [[ "${#identities[@]}" -eq 1 ]]; then
+    APPLE_SIGN_IDENTITY="${identities[0]}"
+    export APPLE_SIGN_IDENTITY
+    echo "==> Auto-detected signing identity: $APPLE_SIGN_IDENTITY"
+    return
+  fi
+
+  if [[ "${#identities[@]}" -eq 0 ]]; then
+    echo "No Developer ID Application signing identity found." >&2
+    echo "Set APPLE_SIGN_IDENTITY explicitly or install a Developer ID Application certificate." >&2
+    exit 1
+  fi
+
+  echo "Multiple Developer ID Application signing identities found:" >&2
+  printf '  %s\n' "${identities[@]}" >&2
+  echo "Set APPLE_SIGN_IDENTITY explicitly to choose one." >&2
+  exit 1
+}
+
 repo_root() {
   local script_dir
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -198,7 +228,10 @@ require_tool hdiutil
 
 if [[ "$SIGN_ARTIFACTS" == "1" ]]; then
   require_tool codesign
-  require_env APPLE_SIGN_IDENTITY
+  require_tool security
+  if [[ -z "${APPLE_SIGN_IDENTITY:-}" ]]; then
+    detect_sign_identity
+  fi
 fi
 
 if [[ "$NOTARIZE_ARTIFACTS" == "1" ]]; then
