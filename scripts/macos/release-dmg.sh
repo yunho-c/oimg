@@ -14,16 +14,17 @@ Behavior:
   - Builds an unsigned release app with `xcodebuild`
   - Always creates a DMG under `dist/macos/`
   - `--sign` signs the built app and DMG using `APPLE_SIGN_IDENTITY`
-  - `--notarize` notarizes and staples the DMG using `APPLE_NOTARY_PROFILE`
+  - `--notarize` notarizes and staples the DMG using a keychain profile
 
 Required environment variables:
   APPLE_SIGN_IDENTITY   Signing identity for `codesign` when `--sign` is used
-  APPLE_NOTARY_PROFILE  Keychain profile for `xcrun notarytool` when `--notarize` is used
 
 Optional environment variables:
-  APP_NAME    Override app name (default: PRODUCT_NAME from macOS config, then OIMG)
-  DMG_NAME    Override DMG filename prefix (default: APP_NAME)
-  DIST_DIR    Override artifact output directory (default: dist/macos)
+  APPLE_NOTARY_PROFILE  Override keychain profile for `xcrun notarytool`
+                        (default: oimg-notary)
+  APP_NAME              Override app name (default: PRODUCT_NAME from macOS config, then OIMG)
+  DMG_NAME              Override DMG filename prefix (default: APP_NAME)
+  DIST_DIR              Override artifact output directory (default: dist/macos)
 EOF
 }
 
@@ -184,6 +185,7 @@ notarize_dmg_if_requested() {
 
 SIGN_ARTIFACTS=0
 NOTARIZE_ARTIFACTS=0
+DEFAULT_NOTARY_PROFILE="oimg-notary"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -236,7 +238,9 @@ fi
 
 if [[ "$NOTARIZE_ARTIFACTS" == "1" ]]; then
   require_tool xcrun
-  require_env APPLE_NOTARY_PROFILE
+  APPLE_NOTARY_PROFILE="${APPLE_NOTARY_PROFILE:-$DEFAULT_NOTARY_PROFILE}"
+  export APPLE_NOTARY_PROFILE
+  echo "==> Using notary profile: $APPLE_NOTARY_PROFILE"
 fi
 
 mkdir -p "$DIST_DIR"
