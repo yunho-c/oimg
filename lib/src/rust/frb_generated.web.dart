@@ -29,13 +29,37 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String dco_decode_String(dynamic raw);
 
   @protected
+  AnalyzeFileJobHandle dco_decode_analyze_file_job_handle(dynamic raw);
+
+  @protected
+  AnalyzeFileJobSnapshot dco_decode_analyze_file_job_snapshot(dynamic raw);
+
+  @protected
+  AnalyzeFileRequest dco_decode_analyze_file_request(dynamic raw);
+
+  @protected
+  AnalyzeSampleResult dco_decode_analyze_sample_result(dynamic raw);
+
+  @protected
   BatchItemResult dco_decode_batch_item_result(dynamic raw);
+
+  @protected
+  BatchJobHandle dco_decode_batch_job_handle(dynamic raw);
+
+  @protected
+  BatchJobSnapshot dco_decode_batch_job_snapshot(dynamic raw);
+
+  @protected
+  BatchJobState dco_decode_batch_job_state(dynamic raw);
 
   @protected
   BatchProcessRequest dco_decode_batch_process_request(dynamic raw);
 
   @protected
   bool dco_decode_bool(dynamic raw);
+
+  @protected
+  AnalyzeFileRequest dco_decode_box_autoadd_analyze_file_request(dynamic raw);
 
   @protected
   BatchProcessRequest dco_decode_box_autoadd_batch_process_request(dynamic raw);
@@ -50,10 +74,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ExtendOptions dco_decode_box_autoadd_extend_options(dynamic raw);
 
   @protected
+  double dco_decode_box_autoadd_f_64(dynamic raw);
+
+  @protected
   FillSpec dco_decode_box_autoadd_fill_spec(dynamic raw);
 
   @protected
   OptimizeOptions dco_decode_box_autoadd_optimize_options(dynamic raw);
+
+  @protected
+  PreviewArtifactRequest dco_decode_box_autoadd_preview_artifact_request(
+    dynamic raw,
+  );
 
   @protected
   PreviewFileRequest dco_decode_box_autoadd_preview_file_request(dynamic raw);
@@ -62,10 +94,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ProcessBytesRequest dco_decode_box_autoadd_process_bytes_request(dynamic raw);
 
   @protected
+  ProcessFileBatchRequest dco_decode_box_autoadd_process_file_batch_request(
+    dynamic raw,
+  );
+
+  @protected
   ProcessFileRequest dco_decode_box_autoadd_process_file_request(dynamic raw);
 
   @protected
   ProcessResult dco_decode_box_autoadd_process_result(dynamic raw);
+
+  @protected
+  RawImageResult dco_decode_box_autoadd_raw_image_result(dynamic raw);
 
   @protected
   ResizeOptions dco_decode_box_autoadd_resize_options(dynamic raw);
@@ -75,6 +115,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   BigInt dco_decode_box_autoadd_u_64(dynamic raw);
+
+  @protected
+  int dco_decode_box_autoadd_u_8(dynamic raw);
 
   @protected
   ConvertOptions dco_decode_convert_options(dynamic raw);
@@ -104,6 +147,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   FormatInfo dco_decode_format_info(dynamic raw);
 
   @protected
+  int dco_decode_i_32(dynamic raw);
+
+  @protected
   ImageMetadata dco_decode_image_metadata(dynamic raw);
 
   @protected
@@ -111,6 +157,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<String> dco_decode_list_String(dynamic raw);
+
+  @protected
+  List<AnalyzeSampleResult> dco_decode_list_analyze_sample_result(dynamic raw);
 
   @protected
   List<BatchItemResult> dco_decode_list_batch_item_result(dynamic raw);
@@ -125,7 +174,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  List<ProcessFileRequest> dco_decode_list_process_file_request(dynamic raw);
+
+  @protected
   String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  double? dco_decode_opt_box_autoadd_f_64(dynamic raw);
 
   @protected
   FillSpec? dco_decode_opt_box_autoadd_fill_spec(dynamic raw);
@@ -134,13 +189,22 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ProcessResult? dco_decode_opt_box_autoadd_process_result(dynamic raw);
 
   @protected
+  RawImageResult? dco_decode_opt_box_autoadd_raw_image_result(dynamic raw);
+
+  @protected
   SlimgBridgeError? dco_decode_opt_box_autoadd_slimg_bridge_error(dynamic raw);
 
   @protected
   BigInt? dco_decode_opt_box_autoadd_u_64(dynamic raw);
 
   @protected
+  int? dco_decode_opt_box_autoadd_u_8(dynamic raw);
+
+  @protected
   OptimizeOptions dco_decode_optimize_options(dynamic raw);
+
+  @protected
+  PreviewArtifactRequest dco_decode_preview_artifact_request(dynamic raw);
 
   @protected
   PreviewFileRequest dco_decode_preview_file_request(dynamic raw);
@@ -152,10 +216,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ProcessBytesRequest dco_decode_process_bytes_request(dynamic raw);
 
   @protected
+  ProcessFileBatchRequest dco_decode_process_file_batch_request(dynamic raw);
+
+  @protected
   ProcessFileRequest dco_decode_process_file_request(dynamic raw);
 
   @protected
   ProcessResult dco_decode_process_result(dynamic raw);
+
+  @protected
+  RawImageResult dco_decode_raw_image_result(dynamic raw);
 
   @protected
   ResizeOptions dco_decode_resize_options(dynamic raw);
@@ -185,7 +255,36 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
+  AnalyzeFileJobHandle sse_decode_analyze_file_job_handle(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  AnalyzeFileJobSnapshot sse_decode_analyze_file_job_snapshot(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  AnalyzeFileRequest sse_decode_analyze_file_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  AnalyzeSampleResult sse_decode_analyze_sample_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   BatchItemResult sse_decode_batch_item_result(SseDeserializer deserializer);
+
+  @protected
+  BatchJobHandle sse_decode_batch_job_handle(SseDeserializer deserializer);
+
+  @protected
+  BatchJobSnapshot sse_decode_batch_job_snapshot(SseDeserializer deserializer);
+
+  @protected
+  BatchJobState sse_decode_batch_job_state(SseDeserializer deserializer);
 
   @protected
   BatchProcessRequest sse_decode_batch_process_request(
@@ -194,6 +293,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   bool sse_decode_bool(SseDeserializer deserializer);
+
+  @protected
+  AnalyzeFileRequest sse_decode_box_autoadd_analyze_file_request(
+    SseDeserializer deserializer,
+  );
 
   @protected
   BatchProcessRequest sse_decode_box_autoadd_batch_process_request(
@@ -214,10 +318,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  double sse_decode_box_autoadd_f_64(SseDeserializer deserializer);
+
+  @protected
   FillSpec sse_decode_box_autoadd_fill_spec(SseDeserializer deserializer);
 
   @protected
   OptimizeOptions sse_decode_box_autoadd_optimize_options(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PreviewArtifactRequest sse_decode_box_autoadd_preview_artifact_request(
     SseDeserializer deserializer,
   );
 
@@ -232,12 +344,22 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  ProcessFileBatchRequest sse_decode_box_autoadd_process_file_batch_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   ProcessFileRequest sse_decode_box_autoadd_process_file_request(
     SseDeserializer deserializer,
   );
 
   @protected
   ProcessResult sse_decode_box_autoadd_process_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RawImageResult sse_decode_box_autoadd_raw_image_result(
     SseDeserializer deserializer,
   );
 
@@ -253,6 +375,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   BigInt sse_decode_box_autoadd_u_64(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_box_autoadd_u_8(SseDeserializer deserializer);
 
   @protected
   ConvertOptions sse_decode_convert_options(SseDeserializer deserializer);
@@ -284,6 +409,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   FormatInfo sse_decode_format_info(SseDeserializer deserializer);
 
   @protected
+  int sse_decode_i_32(SseDeserializer deserializer);
+
+  @protected
   ImageMetadata sse_decode_image_metadata(SseDeserializer deserializer);
 
   @protected
@@ -291,6 +419,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<AnalyzeSampleResult> sse_decode_list_analyze_sample_result(
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<BatchItemResult> sse_decode_list_batch_item_result(
@@ -307,13 +440,26 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  List<ProcessFileRequest> sse_decode_list_process_file_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
+  double? sse_decode_opt_box_autoadd_f_64(SseDeserializer deserializer);
 
   @protected
   FillSpec? sse_decode_opt_box_autoadd_fill_spec(SseDeserializer deserializer);
 
   @protected
   ProcessResult? sse_decode_opt_box_autoadd_process_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RawImageResult? sse_decode_opt_box_autoadd_raw_image_result(
     SseDeserializer deserializer,
   );
 
@@ -326,7 +472,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt? sse_decode_opt_box_autoadd_u_64(SseDeserializer deserializer);
 
   @protected
+  int? sse_decode_opt_box_autoadd_u_8(SseDeserializer deserializer);
+
+  @protected
   OptimizeOptions sse_decode_optimize_options(SseDeserializer deserializer);
+
+  @protected
+  PreviewArtifactRequest sse_decode_preview_artifact_request(
+    SseDeserializer deserializer,
+  );
 
   @protected
   PreviewFileRequest sse_decode_preview_file_request(
@@ -342,12 +496,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  ProcessFileBatchRequest sse_decode_process_file_batch_request(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   ProcessFileRequest sse_decode_process_file_request(
     SseDeserializer deserializer,
   );
 
   @protected
   ProcessResult sse_decode_process_result(SseDeserializer deserializer);
+
+  @protected
+  RawImageResult sse_decode_raw_image_result(SseDeserializer deserializer);
 
   @protected
   ResizeOptions sse_decode_resize_options(SseDeserializer deserializer);
@@ -371,9 +533,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_decode_unit(SseDeserializer deserializer);
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer);
-
-  @protected
   void sse_encode_AnyhowException(
     AnyhowException self,
     SseSerializer serializer,
@@ -383,10 +542,49 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
+  void sse_encode_analyze_file_job_handle(
+    AnalyzeFileJobHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_analyze_file_job_snapshot(
+    AnalyzeFileJobSnapshot self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_analyze_file_request(
+    AnalyzeFileRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_analyze_sample_result(
+    AnalyzeSampleResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_batch_item_result(
     BatchItemResult self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_batch_job_handle(
+    BatchJobHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_batch_job_snapshot(
+    BatchJobSnapshot self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_batch_job_state(BatchJobState self, SseSerializer serializer);
 
   @protected
   void sse_encode_batch_process_request(
@@ -396,6 +594,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_analyze_file_request(
+    AnalyzeFileRequest self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_box_autoadd_batch_process_request(
@@ -422,6 +626,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_f_64(double self, SseSerializer serializer);
+
+  @protected
   void sse_encode_box_autoadd_fill_spec(
     FillSpec self,
     SseSerializer serializer,
@@ -430,6 +637,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_optimize_options(
     OptimizeOptions self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_preview_artifact_request(
+    PreviewArtifactRequest self,
     SseSerializer serializer,
   );
 
@@ -446,6 +659,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_process_file_batch_request(
+    ProcessFileBatchRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_process_file_request(
     ProcessFileRequest self,
     SseSerializer serializer,
@@ -454,6 +673,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_process_result(
     ProcessResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_raw_image_result(
+    RawImageResult self,
     SseSerializer serializer,
   );
 
@@ -471,6 +696,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_box_autoadd_u_64(BigInt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_u_8(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_convert_options(
@@ -506,6 +734,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_format_info(FormatInfo self, SseSerializer serializer);
 
   @protected
+  void sse_encode_i_32(int self, SseSerializer serializer);
+
+  @protected
   void sse_encode_image_metadata(ImageMetadata self, SseSerializer serializer);
 
   @protected
@@ -516,6 +747,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_analyze_sample_result(
+    List<AnalyzeSampleResult> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_batch_item_result(
@@ -539,7 +776,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_process_file_request(
+    List<ProcessFileRequest> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_f_64(double? self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_box_autoadd_fill_spec(
@@ -554,6 +800,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_opt_box_autoadd_raw_image_result(
+    RawImageResult? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_box_autoadd_slimg_bridge_error(
     SlimgBridgeError? self,
     SseSerializer serializer,
@@ -563,8 +815,17 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_box_autoadd_u_64(BigInt? self, SseSerializer serializer);
 
   @protected
+  void sse_encode_opt_box_autoadd_u_8(int? self, SseSerializer serializer);
+
+  @protected
   void sse_encode_optimize_options(
     OptimizeOptions self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_preview_artifact_request(
+    PreviewArtifactRequest self,
     SseSerializer serializer,
   );
 
@@ -584,6 +845,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_process_file_batch_request(
+    ProcessFileBatchRequest self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_process_file_request(
     ProcessFileRequest self,
     SseSerializer serializer,
@@ -591,6 +858,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_process_result(ProcessResult self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_raw_image_result(
+    RawImageResult self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_resize_options(ResizeOptions self, SseSerializer serializer);
@@ -615,9 +888,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_unit(void self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer);
 }
 
 // Section: wire_class

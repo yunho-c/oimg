@@ -6,6 +6,9 @@ typedef OpenFilesHandler = Future<void> Function(List<String> paths);
 
 abstract class FileOpenChannel {
   Future<void> bind(OpenFilesHandler onOpenFiles);
+  Future<List<String>> pickFiles();
+  Future<List<String>> pickFolder();
+  Future<void> showInFileManager(String path);
 }
 
 class MethodChannelFileOpenChannel implements FileOpenChannel {
@@ -44,5 +47,41 @@ class MethodChannelFileOpenChannel implements FileOpenChannel {
         await Future<void>.delayed(const Duration(milliseconds: 100));
       }
     }
+  }
+
+  @override
+  Future<List<String>> pickFiles() async {
+    try {
+      final result = await _channel.invokeMethod<List<Object?>>('pickFiles');
+      return _parsePathList(result);
+    } on MissingPluginException {
+      return const <String>[];
+    }
+  }
+
+  @override
+  Future<List<String>> pickFolder() async {
+    try {
+      final result = await _channel.invokeMethod<List<Object?>>('pickFolder');
+      return _parsePathList(result);
+    } on MissingPluginException {
+      return const <String>[];
+    }
+  }
+
+  @override
+  Future<void> showInFileManager(String path) async {
+    try {
+      await _channel.invokeMethod<void>('showInFileManager', path);
+    } on MissingPluginException {
+      return;
+    }
+  }
+
+  List<String> _parsePathList(List<Object?>? paths) {
+    if (paths == null) {
+      return const <String>[];
+    }
+    return paths.whereType<String>().toList(growable: false);
   }
 }

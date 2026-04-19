@@ -1,9 +1,15 @@
+mod analyze_jobs;
 pub mod api;
+mod batch_jobs;
 mod codec;
 mod convert;
+mod diagnostics;
 mod error;
+mod execution;
 mod frb_generated;
 mod fs;
+mod metrics;
 mod preview;
+mod preview_artifacts;
 mod service_ffi;
 mod types;

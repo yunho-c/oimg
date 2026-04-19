@@ -1,10 +1,55 @@
 import 'dart:convert';
 
+import 'package:shadcn_flutter/shadcn_flutter.dart';
+
 enum CompressionMethod { lossless, lossy }
 
 enum CompressionPriority { compatibility, efficiency }
 
 enum PreferredCodec { png, jpeg, webp, avif, jxl }
+
+enum StorageDestinationMode { sameFolder, differentLocation }
+
+enum SameFolderAction { replaceSource, keepSource }
+
+enum AppThemePreference { system, light, dark }
+
+const Object _noAppSettingsValue = Object();
+
+extension PreferredCodecCapabilities on PreferredCodec {
+  bool get supportsTransparency {
+    return switch (this) {
+      PreferredCodec.jpeg => false,
+      _ => true,
+    };
+  }
+}
+
+extension AppThemePreferenceValues on AppThemePreference {
+  ThemeMode get themeMode {
+    return switch (this) {
+      AppThemePreference.system => ThemeMode.system,
+      AppThemePreference.light => ThemeMode.light,
+      AppThemePreference.dark => ThemeMode.dark,
+    };
+  }
+
+  String get label {
+    return switch (this) {
+      AppThemePreference.system => 'System',
+      AppThemePreference.light => 'Light',
+      AppThemePreference.dark => 'Dark',
+    };
+  }
+
+  AppThemePreference get next {
+    return switch (this) {
+      AppThemePreference.system => AppThemePreference.light,
+      AppThemePreference.light => AppThemePreference.dark,
+      AppThemePreference.dark => AppThemePreference.system,
+    };
+  }
+}
 
 class AppSettings {
   const AppSettings({
@@ -13,6 +58,24 @@ class AppSettings {
     required this.advancedMode,
     required this.preferredCodec,
     required this.quality,
+    required this.storageDestinationMode,
+    required this.sameFolderAction,
+    required this.preserveFolderStructure,
+    required this.preserveOriginalDate,
+    required this.preserveExif,
+    required this.preserveColorProfile,
+    this.qualityMetricColorsEnabled = false,
+    this.similarityMetricColorsEnabled = false,
+    this.savingsColorsEnabled = false,
+    this.bitsPerPixelColorsEnabled = false,
+    this.fileSizeColorsEnabled = false,
+    this.differenceTooltipShowsCoordinates = true,
+    this.differenceTooltipUsesSwatches = true,
+    this.themePreference = AppThemePreference.system,
+    required this.developerModeEnabled,
+    required this.timingLogsEnabled,
+    this.differentLocationPath,
+    this.previewPathHeaderEnabled = false,
   });
 
   final CompressionMethod compressionMethod;
@@ -20,6 +83,24 @@ class AppSettings {
   final bool advancedMode;
   final PreferredCodec preferredCodec;
   final int quality;
+  final StorageDestinationMode storageDestinationMode;
+  final SameFolderAction sameFolderAction;
+  final String? differentLocationPath;
+  final bool preserveFolderStructure;
+  final bool preserveOriginalDate;
+  final bool preserveExif;
+  final bool preserveColorProfile;
+  final bool qualityMetricColorsEnabled;
+  final bool similarityMetricColorsEnabled;
+  final bool savingsColorsEnabled;
+  final bool bitsPerPixelColorsEnabled;
+  final bool fileSizeColorsEnabled;
+  final bool differenceTooltipShowsCoordinates;
+  final bool differenceTooltipUsesSwatches;
+  final AppThemePreference themePreference;
+  final bool developerModeEnabled;
+  final bool timingLogsEnabled;
+  final bool previewPathHeaderEnabled;
 
   static const defaults = AppSettings(
     compressionMethod: CompressionMethod.lossy,
@@ -27,6 +108,23 @@ class AppSettings {
     advancedMode: false,
     preferredCodec: PreferredCodec.jpeg,
     quality: 80,
+    storageDestinationMode: StorageDestinationMode.sameFolder,
+    sameFolderAction: SameFolderAction.replaceSource,
+    preserveFolderStructure: true,
+    preserveOriginalDate: false,
+    preserveExif: false,
+    preserveColorProfile: false,
+    qualityMetricColorsEnabled: false,
+    similarityMetricColorsEnabled: false,
+    savingsColorsEnabled: false,
+    bitsPerPixelColorsEnabled: false,
+    fileSizeColorsEnabled: false,
+    differenceTooltipShowsCoordinates: true,
+    differenceTooltipUsesSwatches: true,
+    themePreference: AppThemePreference.system,
+    developerModeEnabled: false,
+    timingLogsEnabled: false,
+    previewPathHeaderEnabled: false,
   );
 
   PreferredCodec get effectiveCodec {
@@ -78,6 +176,24 @@ class AppSettings {
     bool? advancedMode,
     PreferredCodec? preferredCodec,
     int? quality,
+    StorageDestinationMode? storageDestinationMode,
+    SameFolderAction? sameFolderAction,
+    Object? differentLocationPath = _noAppSettingsValue,
+    bool? preserveFolderStructure,
+    bool? preserveOriginalDate,
+    bool? preserveExif,
+    bool? preserveColorProfile,
+    bool? qualityMetricColorsEnabled,
+    bool? similarityMetricColorsEnabled,
+    bool? savingsColorsEnabled,
+    bool? bitsPerPixelColorsEnabled,
+    bool? fileSizeColorsEnabled,
+    bool? differenceTooltipShowsCoordinates,
+    bool? differenceTooltipUsesSwatches,
+    AppThemePreference? themePreference,
+    bool? developerModeEnabled,
+    bool? timingLogsEnabled,
+    bool? previewPathHeaderEnabled,
   }) {
     return AppSettings(
       compressionMethod: compressionMethod ?? this.compressionMethod,
@@ -85,6 +201,38 @@ class AppSettings {
       advancedMode: advancedMode ?? this.advancedMode,
       preferredCodec: preferredCodec ?? this.preferredCodec,
       quality: quality ?? this.quality,
+      storageDestinationMode:
+          storageDestinationMode ?? this.storageDestinationMode,
+      sameFolderAction: sameFolderAction ?? this.sameFolderAction,
+      differentLocationPath:
+          identical(differentLocationPath, _noAppSettingsValue)
+          ? this.differentLocationPath
+          : differentLocationPath as String?,
+      preserveFolderStructure:
+          preserveFolderStructure ?? this.preserveFolderStructure,
+      preserveOriginalDate: preserveOriginalDate ?? this.preserveOriginalDate,
+      preserveExif: preserveExif ?? this.preserveExif,
+      preserveColorProfile: preserveColorProfile ?? this.preserveColorProfile,
+      qualityMetricColorsEnabled:
+          qualityMetricColorsEnabled ?? this.qualityMetricColorsEnabled,
+      similarityMetricColorsEnabled:
+          similarityMetricColorsEnabled ?? this.similarityMetricColorsEnabled,
+      savingsColorsEnabled: savingsColorsEnabled ?? this.savingsColorsEnabled,
+      bitsPerPixelColorsEnabled:
+          bitsPerPixelColorsEnabled ?? this.bitsPerPixelColorsEnabled,
+      fileSizeColorsEnabled:
+          fileSizeColorsEnabled ?? this.fileSizeColorsEnabled,
+      differenceTooltipShowsCoordinates:
+          differenceTooltipShowsCoordinates ??
+          this.differenceTooltipShowsCoordinates,
+      differenceTooltipUsesSwatches:
+          differenceTooltipUsesSwatches ??
+          this.differenceTooltipUsesSwatches,
+      themePreference: themePreference ?? this.themePreference,
+      developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,
+      timingLogsEnabled: timingLogsEnabled ?? this.timingLogsEnabled,
+      previewPathHeaderEnabled:
+          previewPathHeaderEnabled ?? this.previewPathHeaderEnabled,
     );
   }
 
@@ -95,6 +243,24 @@ class AppSettings {
       'advancedMode': advancedMode,
       'preferredCodec': preferredCodec.name,
       'quality': quality,
+      'storageDestinationMode': storageDestinationMode.name,
+      'sameFolderAction': sameFolderAction.name,
+      'differentLocationPath': differentLocationPath,
+      'preserveFolderStructure': preserveFolderStructure,
+      'preserveOriginalDate': preserveOriginalDate,
+      'preserveExif': preserveExif,
+      'preserveColorProfile': preserveColorProfile,
+      'qualityMetricColorsEnabled': qualityMetricColorsEnabled,
+      'similarityMetricColorsEnabled': similarityMetricColorsEnabled,
+      'savingsColorsEnabled': savingsColorsEnabled,
+      'bitsPerPixelColorsEnabled': bitsPerPixelColorsEnabled,
+      'fileSizeColorsEnabled': fileSizeColorsEnabled,
+      'differenceTooltipShowsCoordinates': differenceTooltipShowsCoordinates,
+      'differenceTooltipUsesSwatches': differenceTooltipUsesSwatches,
+      'themePreference': themePreference.name,
+      'developerModeEnabled': developerModeEnabled,
+      'timingLogsEnabled': timingLogsEnabled,
+      'previewPathHeaderEnabled': previewPathHeaderEnabled,
     };
   }
 
@@ -121,6 +287,58 @@ class AppSettings {
         json['preferredCodec'] as String,
       ),
       quality: json['quality'] as int? ?? defaults.quality,
+      storageDestinationMode: StorageDestinationMode.values.byName(
+        json['storageDestinationMode'] as String? ??
+            defaults.storageDestinationMode.name,
+      ),
+      sameFolderAction: SameFolderAction.values.byName(
+        json['sameFolderAction'] as String? ?? defaults.sameFolderAction.name,
+      ),
+      differentLocationPath:
+          json['differentLocationPath'] as String? ??
+          defaults.differentLocationPath,
+      preserveFolderStructure:
+          json['preserveFolderStructure'] as bool? ??
+          defaults.preserveFolderStructure,
+      preserveOriginalDate:
+          json['preserveOriginalDate'] as bool? ??
+          defaults.preserveOriginalDate,
+      preserveExif: json['preserveExif'] as bool? ?? defaults.preserveExif,
+      preserveColorProfile:
+          json['preserveColorProfile'] as bool? ??
+          defaults.preserveColorProfile,
+      qualityMetricColorsEnabled:
+          json['qualityMetricColorsEnabled'] as bool? ??
+          defaults.qualityMetricColorsEnabled,
+      similarityMetricColorsEnabled:
+          json['similarityMetricColorsEnabled'] as bool? ??
+          defaults.similarityMetricColorsEnabled,
+      savingsColorsEnabled:
+          json['savingsColorsEnabled'] as bool? ??
+          defaults.savingsColorsEnabled,
+      bitsPerPixelColorsEnabled:
+          json['bitsPerPixelColorsEnabled'] as bool? ??
+          defaults.bitsPerPixelColorsEnabled,
+      fileSizeColorsEnabled:
+          json['fileSizeColorsEnabled'] as bool? ??
+          defaults.fileSizeColorsEnabled,
+      differenceTooltipShowsCoordinates:
+          json['differenceTooltipShowsCoordinates'] as bool? ??
+          defaults.differenceTooltipShowsCoordinates,
+      differenceTooltipUsesSwatches:
+          json['differenceTooltipUsesSwatches'] as bool? ??
+          defaults.differenceTooltipUsesSwatches,
+      themePreference: AppThemePreference.values.byName(
+        json['themePreference'] as String? ?? defaults.themePreference.name,
+      ),
+      developerModeEnabled:
+          json['developerModeEnabled'] as bool? ??
+          defaults.developerModeEnabled,
+      timingLogsEnabled:
+          json['timingLogsEnabled'] as bool? ?? defaults.timingLogsEnabled,
+      previewPathHeaderEnabled:
+          json['previewPathHeaderEnabled'] as bool? ??
+          defaults.previewPathHeaderEnabled,
     );
   }
 
@@ -131,15 +349,53 @@ class AppSettings {
         other.compressionPriority == compressionPriority &&
         other.advancedMode == advancedMode &&
         other.preferredCodec == preferredCodec &&
-        other.quality == quality;
+        other.quality == quality &&
+        other.storageDestinationMode == storageDestinationMode &&
+        other.sameFolderAction == sameFolderAction &&
+        other.differentLocationPath == differentLocationPath &&
+        other.preserveFolderStructure == preserveFolderStructure &&
+        other.preserveOriginalDate == preserveOriginalDate &&
+        other.preserveExif == preserveExif &&
+        other.preserveColorProfile == preserveColorProfile &&
+        other.qualityMetricColorsEnabled == qualityMetricColorsEnabled &&
+        other.similarityMetricColorsEnabled == similarityMetricColorsEnabled &&
+        other.savingsColorsEnabled == savingsColorsEnabled &&
+        other.bitsPerPixelColorsEnabled == bitsPerPixelColorsEnabled &&
+        other.fileSizeColorsEnabled == fileSizeColorsEnabled &&
+        other.differenceTooltipShowsCoordinates ==
+            differenceTooltipShowsCoordinates &&
+        other.differenceTooltipUsesSwatches ==
+            differenceTooltipUsesSwatches &&
+        other.themePreference == themePreference &&
+        other.developerModeEnabled == developerModeEnabled &&
+        other.timingLogsEnabled == timingLogsEnabled &&
+        other.previewPathHeaderEnabled == previewPathHeaderEnabled;
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     compressionMethod,
     compressionPriority,
     advancedMode,
     preferredCodec,
     quality,
-  );
+    storageDestinationMode,
+    sameFolderAction,
+    differentLocationPath,
+    preserveFolderStructure,
+    preserveOriginalDate,
+    preserveExif,
+    preserveColorProfile,
+    qualityMetricColorsEnabled,
+    similarityMetricColorsEnabled,
+    savingsColorsEnabled,
+    bitsPerPixelColorsEnabled,
+    fileSizeColorsEnabled,
+    differenceTooltipShowsCoordinates,
+    differenceTooltipUsesSwatches,
+    themePreference,
+    developerModeEnabled,
+    timingLogsEnabled,
+    previewPathHeaderEnabled,
+  ]);
 }

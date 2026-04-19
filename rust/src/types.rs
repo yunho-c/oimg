@@ -13,15 +13,22 @@ pub struct ImageMetadata {
     pub height: u32,
     pub format: String,
     pub file_size: Option<u64>,
+    pub has_transparency: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreviewResult {
     pub encoded_bytes: Vec<u8>,
+    pub artifact_id: String,
     pub format: String,
     pub width: u32,
     pub height: u32,
     pub size_bytes: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PreviewArtifactRequest {
+    pub artifact_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,6 +41,13 @@ pub struct EncodedImageResult {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RawImageResult {
+    pub rgba_bytes: Vec<u8>,
+    pub width: u32,
+    pub height: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProcessResult {
     pub output_path: String,
     pub format: String,
@@ -41,6 +55,7 @@ pub struct ProcessResult {
     pub height: u32,
     pub original_size: u64,
     pub new_size: u64,
+    pub did_write: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -48,6 +63,68 @@ pub struct BatchItemResult {
     pub input_path: String,
     pub success: bool,
     pub result: Option<ProcessResult>,
+    pub error: Option<SlimgBridgeError>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BatchJobHandle {
+    pub job_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AnalyzeFileJobHandle {
+    pub job_id: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BatchJobState {
+    Running,
+    CancelRequested,
+    Completed,
+    Canceled,
+    Failed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BatchJobSnapshot {
+    pub job_id: String,
+    pub state: BatchJobState,
+    pub total_count: u32,
+    pub completed_count: u32,
+    pub current_input_path: Option<String>,
+    pub results: Vec<BatchItemResult>,
+    pub error: Option<SlimgBridgeError>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AnalyzeSampleResult {
+    pub quality: u8,
+    pub temp_output_path: String,
+    pub format: String,
+    pub width: u32,
+    pub height: u32,
+    pub size_bytes: u64,
+    pub pixel_match: Option<f64>,
+    pub ms_ssim: Option<f64>,
+    pub ssimulacra2: Option<f64>,
+    pub artifact_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AnalyzeFileRequest {
+    pub input_path: String,
+    pub operation: ImageOperation,
+    pub qualities: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AnalyzeFileJobSnapshot {
+    pub job_id: String,
+    pub state: BatchJobState,
+    pub total_count: u32,
+    pub completed_count: u32,
+    pub current_quality: Option<u8>,
+    pub results: Vec<AnalyzeSampleResult>,
     pub error: Option<SlimgBridgeError>,
 }
 
@@ -65,6 +142,8 @@ pub struct ProcessFileRequest {
     pub input_path: String,
     pub output_path: Option<String>,
     pub overwrite: bool,
+    pub preserve_exif: bool,
+    pub preserve_color_profile: bool,
     pub operation: ImageOperation,
 }
 
@@ -80,6 +159,12 @@ pub struct BatchProcessRequest {
     pub output_dir: Option<String>,
     pub overwrite: bool,
     pub operation: ImageOperation,
+    pub continue_on_error: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProcessFileBatchRequest {
+    pub requests: Vec<ProcessFileRequest>,
     pub continue_on_error: bool,
 }
 
@@ -166,6 +251,35 @@ impl ImageOperation {
             Self::Resize(_) => "resized",
             Self::Crop(_) => "cropped",
             Self::Extend(_) => "extended",
+        }
+    }
+
+    pub(crate) fn with_quality(&self, quality: u8) -> Self {
+        match self {
+            Self::Convert(options) => Self::Convert(ConvertOptions {
+                target_format: options.target_format.clone(),
+                quality,
+            }),
+            Self::Optimize(options) => Self::Optimize(OptimizeOptions {
+                quality,
+                write_only_if_smaller: options.write_only_if_smaller,
+            }),
+            Self::Resize(options) => Self::Resize(ResizeOptions {
+                resize: options.resize.clone(),
+                target_format: options.target_format.clone(),
+                quality,
+            }),
+            Self::Crop(options) => Self::Crop(CropOptions {
+                crop: options.crop.clone(),
+                target_format: options.target_format.clone(),
+                quality,
+            }),
+            Self::Extend(options) => Self::Extend(ExtendOptions {
+                extend: options.extend.clone(),
+                fill: options.fill.clone(),
+                target_format: options.target_format.clone(),
+                quality,
+            }),
         }
     }
 }

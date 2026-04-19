@@ -2,6 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:oimg/src/settings/app_settings.dart';
 
 void main() {
+  test('defaults show coordinates in the difference tooltip', () {
+    expect(AppSettings.defaults.differenceTooltipShowsCoordinates, isTrue);
+    expect(AppSettings.defaults.differenceTooltipUsesSwatches, isTrue);
+  });
+
   group('AppSettings.effectiveCodec', () {
     test('uses intuitive mapping when advanced mode is off', () {
       expect(
@@ -11,6 +16,14 @@ void main() {
           advancedMode: false,
           preferredCodec: PreferredCodec.avif,
           quality: 80,
+          storageDestinationMode: StorageDestinationMode.sameFolder,
+          sameFolderAction: SameFolderAction.replaceSource,
+          preserveFolderStructure: true,
+          preserveOriginalDate: false,
+          preserveExif: false,
+          preserveColorProfile: false,
+          developerModeEnabled: false,
+          timingLogsEnabled: false,
         ).effectiveCodec,
         PreferredCodec.png,
       );
@@ -22,6 +35,14 @@ void main() {
           advancedMode: false,
           preferredCodec: PreferredCodec.png,
           quality: 80,
+          storageDestinationMode: StorageDestinationMode.sameFolder,
+          sameFolderAction: SameFolderAction.replaceSource,
+          preserveFolderStructure: true,
+          preserveOriginalDate: false,
+          preserveExif: false,
+          preserveColorProfile: false,
+          developerModeEnabled: false,
+          timingLogsEnabled: false,
         ).effectiveCodec,
         PreferredCodec.jxl,
       );
@@ -33,6 +54,14 @@ void main() {
           advancedMode: false,
           preferredCodec: PreferredCodec.avif,
           quality: 80,
+          storageDestinationMode: StorageDestinationMode.sameFolder,
+          sameFolderAction: SameFolderAction.replaceSource,
+          preserveFolderStructure: true,
+          preserveOriginalDate: false,
+          preserveExif: false,
+          preserveColorProfile: false,
+          developerModeEnabled: false,
+          timingLogsEnabled: false,
         ).effectiveCodec,
         PreferredCodec.jpeg,
       );
@@ -44,6 +73,14 @@ void main() {
           advancedMode: false,
           preferredCodec: PreferredCodec.jpeg,
           quality: 80,
+          storageDestinationMode: StorageDestinationMode.sameFolder,
+          sameFolderAction: SameFolderAction.replaceSource,
+          preserveFolderStructure: true,
+          preserveOriginalDate: false,
+          preserveExif: false,
+          preserveColorProfile: false,
+          developerModeEnabled: false,
+          timingLogsEnabled: false,
         ).effectiveCodec,
         PreferredCodec.avif,
       );
@@ -57,6 +94,14 @@ void main() {
           advancedMode: true,
           preferredCodec: PreferredCodec.webp,
           quality: 80,
+          storageDestinationMode: StorageDestinationMode.sameFolder,
+          sameFolderAction: SameFolderAction.replaceSource,
+          preserveFolderStructure: true,
+          preserveOriginalDate: false,
+          preserveExif: false,
+          preserveColorProfile: false,
+          developerModeEnabled: false,
+          timingLogsEnabled: false,
         ).effectiveCodec,
         PreferredCodec.webp,
       );
@@ -72,6 +117,14 @@ void main() {
           advancedMode: false,
           preferredCodec: PreferredCodec.jpeg,
           quality: 80,
+          storageDestinationMode: StorageDestinationMode.sameFolder,
+          sameFolderAction: SameFolderAction.replaceSource,
+          preserveFolderStructure: true,
+          preserveOriginalDate: false,
+          preserveExif: false,
+          preserveColorProfile: false,
+          developerModeEnabled: false,
+          timingLogsEnabled: false,
         ).showsQualityControl,
         isFalse,
       );
@@ -83,6 +136,14 @@ void main() {
           advancedMode: false,
           preferredCodec: PreferredCodec.png,
           quality: 80,
+          storageDestinationMode: StorageDestinationMode.sameFolder,
+          sameFolderAction: SameFolderAction.replaceSource,
+          preserveFolderStructure: true,
+          preserveOriginalDate: false,
+          preserveExif: false,
+          preserveColorProfile: false,
+          developerModeEnabled: false,
+          timingLogsEnabled: false,
         ).showsQualityControl,
         isTrue,
       );
@@ -94,6 +155,14 @@ void main() {
           advancedMode: true,
           preferredCodec: PreferredCodec.png,
           quality: 80,
+          storageDestinationMode: StorageDestinationMode.sameFolder,
+          sameFolderAction: SameFolderAction.replaceSource,
+          preserveFolderStructure: true,
+          preserveOriginalDate: false,
+          preserveExif: false,
+          preserveColorProfile: false,
+          developerModeEnabled: false,
+          timingLogsEnabled: false,
         ).showsQualityControl,
         isFalse,
       );
@@ -107,6 +176,14 @@ void main() {
           advancedMode: true,
           preferredCodec: PreferredCodec.webp,
           quality: 100,
+          storageDestinationMode: StorageDestinationMode.sameFolder,
+          sameFolderAction: SameFolderAction.replaceSource,
+          preserveFolderStructure: true,
+          preserveOriginalDate: false,
+          preserveExif: false,
+          preserveColorProfile: false,
+          developerModeEnabled: false,
+          timingLogsEnabled: false,
         ).qualitySupportsLosslessAtMax,
         isTrue,
       );
@@ -118,6 +195,14 @@ void main() {
           advancedMode: true,
           preferredCodec: PreferredCodec.jxl,
           quality: 100,
+          storageDestinationMode: StorageDestinationMode.sameFolder,
+          sameFolderAction: SameFolderAction.replaceSource,
+          preserveFolderStructure: true,
+          preserveOriginalDate: false,
+          preserveExif: false,
+          preserveColorProfile: false,
+          developerModeEnabled: false,
+          timingLogsEnabled: false,
         ).qualitySupportsLosslessAtMax,
         isTrue,
       );
@@ -129,9 +214,43 @@ void main() {
           advancedMode: true,
           preferredCodec: PreferredCodec.jpeg,
           quality: 100,
+          storageDestinationMode: StorageDestinationMode.sameFolder,
+          sameFolderAction: SameFolderAction.replaceSource,
+          preserveFolderStructure: true,
+          preserveOriginalDate: false,
+          preserveExif: false,
+          preserveColorProfile: false,
+          developerModeEnabled: false,
+          timingLogsEnabled: false,
         ).qualitySupportsLosslessAtMax,
         isFalse,
       );
+    });
+
+    test('defaults developer fields when older JSON omits them', () {
+      final settings = AppSettings.fromJsonString(
+        '{"compressionMethod":"lossy","compressionPriority":"compatibility","advancedMode":false,"preferredCodec":"jpeg","quality":80}',
+      );
+
+      expect(settings.developerModeEnabled, isFalse);
+      expect(settings.timingLogsEnabled, isFalse);
+      expect(settings.previewPathHeaderEnabled, isFalse);
+      expect(
+        settings.storageDestinationMode,
+        StorageDestinationMode.sameFolder,
+      );
+      expect(settings.sameFolderAction, SameFolderAction.replaceSource);
+      expect(settings.differentLocationPath, isNull);
+      expect(settings.preserveFolderStructure, isTrue);
+      expect(settings.preserveOriginalDate, isFalse);
+      expect(settings.preserveExif, isFalse);
+      expect(settings.preserveColorProfile, isFalse);
+      expect(settings.qualityMetricColorsEnabled, isFalse);
+      expect(settings.similarityMetricColorsEnabled, isFalse);
+      expect(settings.savingsColorsEnabled, isFalse);
+      expect(settings.bitsPerPixelColorsEnabled, isFalse);
+      expect(settings.fileSizeColorsEnabled, isFalse);
+      expect(settings.themePreference, AppThemePreference.system);
     });
   });
 }

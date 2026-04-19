@@ -1,19 +1,23 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::time::Instant;
 
-use rayon::prelude::*;
+use img_parts::{DynImage, ImageEXIF, ImageICC};
 use slimg_core::{
-    convert as core_convert, decode, optimize as core_optimize, CropMode, ExtendMode, FillColor,
-    Format, PipelineOptions, ResizeMode,
+    codec::{get_codec, EncodeOptions},
+    convert as core_convert, decode, CropMode, ExtendMode, FillColor, Format, PipelineOptions,
+    ResizeMode,
 };
 
 use crate::codec::format_to_string;
 use crate::error::{Result, SlimgBridgeError};
 use crate::fs::{derive_output_path, safe_write_bytes, to_path_buf};
+use crate::preview_artifacts::{preview_artifact_store, PreviewArtifact};
 use crate::types::{
     BatchItemResult, BatchProcessRequest, ConvertOptions, CropSpec, EncodedImageResult, ExtendSpec,
     FillSpec, ImageMetadata, ImageOperation, OptimizeOptions, PreviewResult, ProcessBytesRequest,
-    ProcessFileRequest, ProcessResult, ResizeSpec,
+    ProcessFileBatchRequest, ProcessFileRequest, ProcessResult, ResizeSpec,
 };
 
 pub(crate) fn inspect_file(input_path: String) -> Result<ImageMetadata> {
@@ -35,6 +39,7 @@ pub(crate) fn inspect_bytes(data: Vec<u8>) -> Result<ImageMetadata> {
         height: image.height,
         format: format_to_string(format),
         file_size: None,
+        has_transparency: image.data.chunks_exact(4).any(|pixel| pixel[3] < 255),
     })
 }
 
@@ -43,7 +48,7 @@ pub(crate) fn process_bytes(request: ProcessBytesRequest) -> Result<EncodedImage
         return Err(SlimgBridgeError::invalid_request("data must not be empty"));
     }
 
-    let output = run_operation(&request.data, &request.operation)?;
+    let output = run_operation(&request.data, &request.operation, None)?;
     Ok(EncodedImageResult {
         encoded_bytes: output.data.clone(),
         format: format_to_string(output.format),
@@ -54,82 +59,84 @@ pub(crate) fn process_bytes(request: ProcessBytesRequest) -> Result<EncodedImage
 }
 
 pub(crate) fn preview_file(request: crate::types::PreviewFileRequest) -> Result<PreviewResult> {
-    let path = read_existing_input_path(&request.input_path)?;
-    let data = fs::read(&path).map_err(|error| map_input_io(&path, error))?;
-    let output = run_operation(&data, &request.operation)?;
+    let total_start = Instant::now();
+    crate::diagnostics::timing_log(format!(
+        "preview start path={} operation={:?}",
+        request.input_path, request.operation
+    ));
 
-    Ok(PreviewResult {
-        encoded_bytes: output.data.clone(),
-        format: format_to_string(output.format),
-        width: output.width,
-        height: output.height,
-        size_bytes: output.data.len() as u64,
-    })
+    let result = (|| -> Result<PreviewResult> {
+        let read_start = Instant::now();
+        let path = read_existing_input_path(&request.input_path)?;
+        let data = fs::read(&path).map_err(|error| map_input_io(&path, error))?;
+        let read_elapsed = read_start.elapsed();
+
+        let operation_start = Instant::now();
+        let (source_image, source_format) = decode(&data)?;
+        let output = run_preview_operation(&source_image, source_format, &request.operation, None)?;
+        let operation_elapsed = operation_start.elapsed();
+        crate::diagnostics::timing_log(format!(
+            "preview path={} read={}ms operation={}ms input_bytes={}",
+            request.input_path,
+            read_elapsed.as_millis(),
+            operation_elapsed.as_millis(),
+            data.len()
+        ));
+
+        Ok(PreviewResult {
+            encoded_bytes: output.data.clone(),
+            artifact_id: preview_artifact_store().insert(PreviewArtifact::new(
+                source_image.width,
+                source_image.height,
+                output.width,
+                output.height,
+                Arc::<[u8]>::from(source_image.data),
+                Arc::<[u8]>::from(output.preview_rgba_bytes),
+            )),
+            format: format_to_string(output.format),
+            width: output.width,
+            height: output.height,
+            size_bytes: output.data.len() as u64,
+        })
+    })();
+
+    match &result {
+        Ok(preview) => crate::diagnostics::timing_log(format!(
+            "preview done path={} format={} size={} total={}ms",
+            request.input_path,
+            preview.format,
+            preview.size_bytes,
+            total_start.elapsed().as_millis()
+        )),
+        Err(error) => crate::diagnostics::timing_log(format!(
+            "preview failed path={} error={} total={}ms",
+            request.input_path,
+            error,
+            total_start.elapsed().as_millis()
+        )),
+    }
+
+    result
 }
 
 pub(crate) fn process_file(request: ProcessFileRequest) -> Result<ProcessResult> {
-    process_file_at_path(
-        request.input_path,
-        request.output_path,
-        None,
-        request.overwrite,
-        request.operation,
-    )
+    crate::diagnostics::timing_log(format!(
+        "process start input={} output={:?} overwrite={} operation={:?}",
+        request.input_path, request.output_path, request.overwrite, request.operation
+    ));
+    process_file_request_with_threads(request, None)
 }
 
 pub(crate) fn process_files(request: BatchProcessRequest) -> Result<Vec<BatchItemResult>> {
-    if request.input_paths.is_empty() {
-        return Err(SlimgBridgeError::invalid_request(
-            "input_paths must contain at least one file",
-        ));
-    }
+    let continue_on_error = request.continue_on_error;
+    let items = crate::execution::build_work_items_for_process_files(request)?;
+    crate::execution::execute_batch_items(items, continue_on_error)
+}
 
-    let output_dir = request
-        .output_dir
-        .as_deref()
-        .map(|value| to_path_buf(value, "output_dir"))
-        .transpose()?;
-
-    if request.continue_on_error {
-        return Ok(request
-            .input_paths
-            .into_par_iter()
-            .map(|input_path| {
-                batch_item_for_path(
-                    input_path,
-                    output_dir.clone(),
-                    request.overwrite,
-                    request.operation.clone(),
-                )
-            })
-            .collect());
-    }
-
-    let mut results = Vec::with_capacity(request.input_paths.len());
-    let mut failed = false;
-
-    for input_path in request.input_paths {
-        if failed {
-            results.push(BatchItemResult {
-                input_path: input_path.clone(),
-                success: false,
-                result: None,
-                error: Some(SlimgBridgeError::skipped_after_failure(&input_path)),
-            });
-            continue;
-        }
-
-        let item = batch_item_for_path(
-            input_path,
-            output_dir.clone(),
-            request.overwrite,
-            request.operation.clone(),
-        );
-        failed = !item.success;
-        results.push(item);
-    }
-
-    Ok(results)
+pub(crate) fn process_file_batch(request: ProcessFileBatchRequest) -> Result<Vec<BatchItemResult>> {
+    let continue_on_error = request.continue_on_error;
+    let items = crate::execution::build_work_items_for_process_file_batch(request)?;
+    crate::execution::execute_batch_items(items, continue_on_error)
 }
 
 struct OperationOutput {
@@ -140,35 +147,61 @@ struct OperationOutput {
     should_write: bool,
 }
 
-fn batch_item_for_path(
-    input_path: String,
-    output_dir: Option<PathBuf>,
-    overwrite: bool,
-    operation: ImageOperation,
-) -> BatchItemResult {
-    match process_file_at_path(input_path.clone(), None, output_dir, overwrite, operation) {
-        Ok(result) => BatchItemResult {
-            input_path,
-            success: true,
-            result: Some(result),
-            error: None,
-        },
-        Err(error) => BatchItemResult {
-            input_path,
-            success: false,
-            result: None,
-            error: Some(error),
-        },
-    }
+pub(crate) struct PreviewOperationOutput {
+    pub(crate) data: Vec<u8>,
+    pub(crate) preview_rgba_bytes: Vec<u8>,
+    pub(crate) format: Format,
+    pub(crate) width: u32,
+    pub(crate) height: u32,
 }
 
-fn process_file_at_path(
+pub(crate) fn process_file_request_with_threads(
+    request: ProcessFileRequest,
+    threads: Option<usize>,
+) -> Result<ProcessResult> {
+    process_file_path_with_metadata(
+        request.input_path,
+        request.output_path,
+        None,
+        request.overwrite,
+        request.preserve_exif,
+        request.preserve_color_profile,
+        request.operation,
+        threads,
+    )
+}
+
+pub(crate) fn process_file_path_with_threads(
     input_path: String,
     explicit_output_path: Option<String>,
     output_dir: Option<PathBuf>,
     overwrite: bool,
     operation: ImageOperation,
+    threads: Option<usize>,
 ) -> Result<ProcessResult> {
+    process_file_path_with_metadata(
+        input_path,
+        explicit_output_path,
+        output_dir,
+        overwrite,
+        false,
+        false,
+        operation,
+        threads,
+    )
+}
+
+fn process_file_path_with_metadata(
+    input_path: String,
+    explicit_output_path: Option<String>,
+    output_dir: Option<PathBuf>,
+    overwrite: bool,
+    preserve_exif: bool,
+    preserve_color_profile: bool,
+    operation: ImageOperation,
+    threads: Option<usize>,
+) -> Result<ProcessResult> {
+    let total_start = Instant::now();
     let input = read_existing_input_path(&input_path)?;
     let input_bytes = fs::read(&input).map_err(|error| map_input_io(&input, error))?;
     let source_format = detect_source_format(&input_bytes)?;
@@ -187,32 +220,124 @@ fn process_file_at_path(
         target_format,
     )?;
 
-    let output = run_operation(&input_bytes, &operation)?;
+    let mut output = run_operation(&input_bytes, &operation, threads)?;
+    if output.should_write {
+        output.data = preserve_metadata(
+            &input_bytes,
+            output.data,
+            preserve_exif,
+            preserve_color_profile,
+        )?;
+    }
+    crate::diagnostics::timing_log(format!(
+        "process resolved input={} output={} source_format={} target_format={} should_write={} overwrite={}",
+        input_path,
+        derived_output_path.display(),
+        format_to_string(source_format),
+        format_to_string(output.format),
+        output.should_write,
+        overwrite
+    ));
     let final_output_path = if output.should_write {
+        crate::diagnostics::timing_log(format!(
+            "process write start output={} bytes={}",
+            derived_output_path.display(),
+            output.data.len()
+        ));
         safe_write_bytes(&derived_output_path, &output.data, overwrite)?;
+        crate::diagnostics::timing_log(format!(
+            "process write done output={}",
+            derived_output_path.display()
+        ));
         derived_output_path
     } else {
+        crate::diagnostics::timing_log(format!(
+            "process skipped write input={} output={} reason=not-smaller-or-no-change",
+            input_path,
+            input.display()
+        ));
         input.clone()
     };
 
-    Ok(ProcessResult {
+    let result = ProcessResult {
         output_path: final_output_path.to_string_lossy().into_owned(),
         format: format_to_string(output.format),
         width: output.width,
         height: output.height,
         original_size: input_bytes.len() as u64,
         new_size: output.data.len() as u64,
-    })
+        did_write: output.should_write,
+    };
+    crate::diagnostics::timing_log(format!(
+        "process done input={} output={} did_write={} total={}ms",
+        input_path,
+        result.output_path,
+        result.did_write,
+        total_start.elapsed().as_millis()
+    ));
+    Ok(result)
 }
 
-fn run_operation(data: &[u8], operation: &ImageOperation) -> Result<OperationOutput> {
+fn preserve_metadata(
+    input_bytes: &[u8],
+    output_bytes: Vec<u8>,
+    preserve_exif: bool,
+    preserve_color_profile: bool,
+) -> Result<Vec<u8>> {
+    if !preserve_exif && !preserve_color_profile {
+        return Ok(output_bytes);
+    }
+
+    let Some(source_image) =
+        DynImage::from_bytes(input_bytes.to_vec().into()).map_err(|error| {
+            SlimgBridgeError::Internal {
+                message: format!("metadata source parse failed: {error}"),
+            }
+        })?
+    else {
+        return Ok(output_bytes);
+    };
+
+    let Some(mut output_image) =
+        DynImage::from_bytes(output_bytes.clone().into()).map_err(|error| {
+            SlimgBridgeError::Internal {
+                message: format!("metadata output parse failed: {error}"),
+            }
+        })?
+    else {
+        return Ok(output_bytes);
+    };
+
+    if preserve_exif {
+        output_image.set_exif(source_image.exif());
+    }
+    if preserve_color_profile {
+        output_image.set_icc_profile(source_image.icc_profile());
+    }
+
+    let mut encoded = Vec::new();
+    output_image
+        .encoder()
+        .write_to(&mut encoded)
+        .map_err(|error| SlimgBridgeError::Internal {
+            message: format!("metadata encode failed: {error}"),
+        })?;
+    Ok(encoded)
+}
+
+fn run_operation(
+    data: &[u8],
+    operation: &ImageOperation,
+    threads: Option<usize>,
+) -> Result<OperationOutput> {
     match operation {
-        ImageOperation::Convert(options) => convert_bytes(data, options),
-        ImageOperation::Optimize(options) => optimize_bytes(data, options),
+        ImageOperation::Convert(options) => convert_bytes(data, options, threads),
+        ImageOperation::Optimize(options) => optimize_bytes(data, options, threads),
         ImageOperation::Resize(options) => transform_bytes(data, options.quality, |source| {
             Ok(PipelineOptions {
                 format: resolve_optional_target_format(options.target_format.as_deref(), source)?,
                 quality: validate_quality(options.quality)?,
+                threads,
                 resize: Some(map_resize_spec(&options.resize)?),
                 crop: None,
                 extend: None,
@@ -223,6 +348,7 @@ fn run_operation(data: &[u8], operation: &ImageOperation) -> Result<OperationOut
             Ok(PipelineOptions {
                 format: resolve_optional_target_format(options.target_format.as_deref(), source)?,
                 quality: validate_quality(options.quality)?,
+                threads,
                 resize: None,
                 crop: Some(map_crop_spec(&options.crop)?),
                 extend: None,
@@ -233,6 +359,7 @@ fn run_operation(data: &[u8], operation: &ImageOperation) -> Result<OperationOut
             Ok(PipelineOptions {
                 format: resolve_optional_target_format(options.target_format.as_deref(), source)?,
                 quality: validate_quality(options.quality)?,
+                threads,
                 resize: None,
                 crop: None,
                 extend: Some(map_extend_spec(&options.extend)?),
@@ -242,7 +369,107 @@ fn run_operation(data: &[u8], operation: &ImageOperation) -> Result<OperationOut
     }
 }
 
-fn convert_bytes(data: &[u8], options: &ConvertOptions) -> Result<OperationOutput> {
+pub(crate) fn run_preview_operation(
+    image: &slimg_core::ImageData,
+    source_format: Format,
+    operation: &ImageOperation,
+    threads: Option<usize>,
+) -> Result<PreviewOperationOutput> {
+    let output = match operation {
+        ImageOperation::Convert(options) => {
+            let quality = validate_quality(options.quality)?;
+            let target_format = crate::codec::parse_format(&options.target_format)?;
+            let result = core_convert(
+                image,
+                &PipelineOptions {
+                    format: target_format,
+                    quality,
+                    threads,
+                    resize: None,
+                    crop: None,
+                    extend: None,
+                    fill_color: None,
+                },
+            )?;
+            (result.data, result.format, result.width, result.height)
+        }
+        ImageOperation::Optimize(options) => {
+            let quality = validate_quality(options.quality)?;
+            let codec = get_codec(source_format);
+            let encoded = codec.encode(image, &EncodeOptions { quality, threads })?;
+            (encoded, source_format, image.width, image.height)
+        }
+        ImageOperation::Resize(options) => {
+            let result = core_convert(
+                image,
+                &PipelineOptions {
+                    format: resolve_optional_target_format(
+                        options.target_format.as_deref(),
+                        source_format,
+                    )?,
+                    quality: validate_quality(options.quality)?,
+                    threads,
+                    resize: Some(map_resize_spec(&options.resize)?),
+                    crop: None,
+                    extend: None,
+                    fill_color: None,
+                },
+            )?;
+            (result.data, result.format, result.width, result.height)
+        }
+        ImageOperation::Crop(options) => {
+            let result = core_convert(
+                image,
+                &PipelineOptions {
+                    format: resolve_optional_target_format(
+                        options.target_format.as_deref(),
+                        source_format,
+                    )?,
+                    quality: validate_quality(options.quality)?,
+                    threads,
+                    resize: None,
+                    crop: Some(map_crop_spec(&options.crop)?),
+                    extend: None,
+                    fill_color: None,
+                },
+            )?;
+            (result.data, result.format, result.width, result.height)
+        }
+        ImageOperation::Extend(options) => {
+            let result = core_convert(
+                image,
+                &PipelineOptions {
+                    format: resolve_optional_target_format(
+                        options.target_format.as_deref(),
+                        source_format,
+                    )?,
+                    quality: validate_quality(options.quality)?,
+                    threads,
+                    resize: None,
+                    crop: None,
+                    extend: Some(map_extend_spec(&options.extend)?),
+                    fill_color: map_fill_spec(options.fill.as_ref()),
+                },
+            )?;
+            (result.data, result.format, result.width, result.height)
+        }
+    };
+
+    let (preview_image, _) = decode(&output.0)?;
+    Ok(PreviewOperationOutput {
+        data: output.0,
+        preview_rgba_bytes: preview_image.data,
+        format: output.1,
+        width: output.2,
+        height: output.3,
+    })
+}
+
+fn convert_bytes(
+    data: &[u8],
+    options: &ConvertOptions,
+    threads: Option<usize>,
+) -> Result<OperationOutput> {
     let quality = validate_quality(options.quality)?;
     let target_format = crate::codec::parse_format(&options.target_format)?;
     let (image, _) = decode(data)?;
@@ -251,6 +478,7 @@ fn convert_bytes(data: &[u8], options: &ConvertOptions) -> Result<OperationOutpu
         &PipelineOptions {
             format: target_format,
             quality,
+            threads,
             resize: None,
             crop: None,
             extend: None,
@@ -266,19 +494,40 @@ fn convert_bytes(data: &[u8], options: &ConvertOptions) -> Result<OperationOutpu
     })
 }
 
-fn optimize_bytes(data: &[u8], options: &OptimizeOptions) -> Result<OperationOutput> {
+fn optimize_bytes(
+    data: &[u8],
+    options: &OptimizeOptions,
+    threads: Option<usize>,
+) -> Result<OperationOutput> {
     let quality = validate_quality(options.quality)?;
-    let (image, _) = decode(data)?;
-    let result = core_optimize(data, quality)?;
-    let should_write = !options.write_only_if_smaller || result.data.len() < data.len();
+    let total_start = Instant::now();
+
+    let decode_start = Instant::now();
+    let (image, format) = decode(data)?;
+    let decode_elapsed = decode_start.elapsed();
+
+    let encode_start = Instant::now();
+    let codec = get_codec(format);
+    let encoded = codec.encode(&image, &EncodeOptions { quality, threads })?;
+    let encode_elapsed = encode_start.elapsed();
+
+    let should_write = !options.write_only_if_smaller || encoded.len() < data.len();
+
+    crate::diagnostics::timing_log(format!(
+        "optimize format={} quality={} decode={}ms encode={}ms total={}ms input_bytes={} output_bytes={} write={}",
+        format_to_string(format),
+        quality,
+        decode_elapsed.as_millis(),
+        encode_elapsed.as_millis(),
+        total_start.elapsed().as_millis(),
+        data.len(),
+        encoded.len(),
+        should_write
+    ));
 
     Ok(OperationOutput {
-        data: if should_write {
-            result.data
-        } else {
-            data.to_vec()
-        },
-        format: result.format,
+        data: if should_write { encoded } else { data.to_vec() },
+        format,
         width: image.width,
         height: image.height,
         should_write,
@@ -473,6 +722,7 @@ mod tests {
             &PipelineOptions {
                 format: Format::Png,
                 quality: 80,
+                threads: None,
                 resize: None,
                 crop: None,
                 extend: None,
@@ -505,6 +755,7 @@ mod tests {
         assert_eq!(metadata.height, 24);
         assert_eq!(metadata.format, "png");
         assert_eq!(metadata.file_size, None);
+        assert!(!metadata.has_transparency);
     }
 
     #[test]

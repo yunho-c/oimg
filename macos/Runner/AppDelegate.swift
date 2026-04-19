@@ -8,6 +8,7 @@ class AppDelegate: FlutterAppDelegate {
   private var pendingOpenRequests: [[String]] = []
   private var fileOpenChannelReady = false
   private let compressionServiceProvider = CompressionServiceProvider()
+  private var securityScopedUrlsByPath: [String: URL] = [:]
 
   func attachFileOpenChannel(to controller: FlutterViewController) {
     guard fileOpenChannel == nil else {
@@ -29,6 +30,27 @@ class AppDelegate: FlutterAppDelegate {
         self.fileOpenChannelReady = true
         self.flushPendingOpenRequests()
         result(nil)
+      } else if call.method == "pickFiles" {
+        result(
+          self.presentOpenPanel(
+            canChooseFiles: true,
+            canChooseDirectories: false,
+            allowsMultipleSelection: true
+          )
+        )
+      } else if call.method == "pickFolder" {
+        result(
+          self.presentOpenPanel(
+            canChooseFiles: false,
+            canChooseDirectories: true,
+            allowsMultipleSelection: false
+          )
+        )
+      } else if call.method == "showInFileManager" {
+        if let path = call.arguments as? String {
+          self.showInFileManager(path: path)
+        }
+        result(nil)
       } else {
         result(FlutterMethodNotImplemented)
       }
@@ -39,19 +61,20 @@ class AppDelegate: FlutterAppDelegate {
   }
 
   override func applicationDidFinishLaunching(_ notification: Notification) {
-    super.applicationDidFinishLaunching(notification)
     NSApp.servicesProvider = compressionServiceProvider
     NSUpdateDynamicServices()
     attachIfPossible()
   }
 
   override func application(_ sender: NSApplication, openFiles filenames: [String]) {
+    retainSecurityScopedAccess(for: filenames.map(URL.init(fileURLWithPath:)))
     queueOpenRequest(filenames)
     attachIfPossible()
     sender.reply(toOpenOrPrint: .success)
   }
 
   override func application(_ application: NSApplication, open urls: [URL]) {
+    retainSecurityScopedAccess(for: urls)
     let filePaths = urls.filter(\.isFileURL).map(\.path)
     if !filePaths.isEmpty {
       queueOpenRequest(filePaths)
@@ -101,5 +124,55 @@ class AppDelegate: FlutterAppDelegate {
       fileOpenChannel.invokeMethod("openFiles", arguments: paths)
     }
     pendingOpenRequests.removeAll()
+  }
+
+  private func retainSecurityScopedAccess(for urls: [URL]) {
+    for url in urls where url.isFileURL {
+      let path = url.path
+      if securityScopedUrlsByPath[path] != nil {
+        continue
+      }
+
+      if url.startAccessingSecurityScopedResource() {
+        securityScopedUrlsByPath[path] = url
+      }
+    }
+  }
+
+  private func presentOpenPanel(
+    canChooseFiles: Bool,
+    canChooseDirectories: Bool,
+    allowsMultipleSelection: Bool
+  ) -> [String] {
+    let panel = NSOpenPanel()
+    panel.canChooseFiles = canChooseFiles
+    panel.canChooseDirectories = canChooseDirectories
+    panel.allowsMultipleSelection = allowsMultipleSelection
+    panel.resolvesAliases = true
+    panel.canCreateDirectories = false
+    panel.title = canChooseDirectories ? "Open Folder" : "Open Files"
+    panel.message = canChooseDirectories
+      ? "Choose a folder to open in OIMG."
+      : "Choose one or more image files to open in OIMG."
+
+    guard panel.runModal() == .OK else {
+      return []
+    }
+
+    retainSecurityScopedAccess(for: panel.urls)
+    return panel.urls.filter(\.isFileURL).map(\.path)
+  }
+
+  private func showInFileManager(path: String) {
+    guard !path.isEmpty else {
+      return
+    }
+
+    let url = URL(fileURLWithPath: path)
+    guard FileManager.default.fileExists(atPath: url.path) else {
+      return
+    }
+
+    NSWorkspace.shared.activateFileViewerSelecting([url])
   }
 }

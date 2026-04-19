@@ -21,6 +21,22 @@ void main() {
         advancedMode: true,
         preferredCodec: PreferredCodec.webp,
         quality: 90,
+        storageDestinationMode: StorageDestinationMode.sameFolder,
+        sameFolderAction: SameFolderAction.replaceSource,
+        preserveFolderStructure: true,
+        preserveOriginalDate: true,
+        preserveExif: true,
+        preserveColorProfile: true,
+        qualityMetricColorsEnabled: true,
+        similarityMetricColorsEnabled: true,
+        savingsColorsEnabled: true,
+        bitsPerPixelColorsEnabled: true,
+        fileSizeColorsEnabled: true,
+        differenceTooltipShowsCoordinates: false,
+        differenceTooltipUsesSwatches: true,
+        themePreference: AppThemePreference.light,
+        developerModeEnabled: true,
+        timingLogsEnabled: true,
       );
 
       await repository.save(settings);

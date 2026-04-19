@@ -15,6 +15,9 @@ String version() => RustLib.instance.api.crateApiBridgeVersion();
 List<FormatInfo> supportedFormats() =>
     RustLib.instance.api.crateApiBridgeSupportedFormats();
 
+void setTimingLogsEnabled({required bool enabled}) =>
+    RustLib.instance.api.crateApiBridgeSetTimingLogsEnabled(enabled: enabled);
+
 Future<ImageMetadata> inspectFile({required String inputPath}) =>
     RustLib.instance.api.crateApiBridgeInspectFile(inputPath: inputPath);
 
@@ -23,6 +26,33 @@ Future<ImageMetadata> inspectBytes({required List<int> data}) =>
 
 Future<PreviewResult> previewFile({required PreviewFileRequest request}) =>
     RustLib.instance.api.crateApiBridgePreviewFile(request: request);
+
+Future<double?> computePreviewPixelMatchPercentage({
+  required PreviewArtifactRequest request,
+}) => RustLib.instance.api.crateApiBridgeComputePreviewPixelMatchPercentage(
+  request: request,
+);
+
+Future<double?> computePreviewMsSsim({
+  required PreviewArtifactRequest request,
+}) => RustLib.instance.api.crateApiBridgeComputePreviewMsSsim(request: request);
+
+Future<double?> computePreviewSsimulacra2({
+  required PreviewArtifactRequest request,
+}) => RustLib.instance.api.crateApiBridgeComputePreviewSsimulacra2(
+  request: request,
+);
+
+Future<RawImageResult?> computePreviewDifferenceImage({
+  required PreviewArtifactRequest request,
+}) => RustLib.instance.api.crateApiBridgeComputePreviewDifferenceImage(
+  request: request,
+);
+
+Future<void> disposePreviewArtifact({required String artifactId}) => RustLib
+    .instance
+    .api
+    .crateApiBridgeDisposePreviewArtifact(artifactId: artifactId);
 
 Future<ProcessResult> processFile({required ProcessFileRequest request}) =>
     RustLib.instance.api.crateApiBridgeProcessFile(request: request);
@@ -34,3 +64,35 @@ Future<EncodedImageResult> processBytes({
 Future<List<BatchItemResult>> processFiles({
   required BatchProcessRequest request,
 }) => RustLib.instance.api.crateApiBridgeProcessFiles(request: request);
+
+Future<List<BatchItemResult>> processFileBatch({
+  required ProcessFileBatchRequest request,
+}) => RustLib.instance.api.crateApiBridgeProcessFileBatch(request: request);
+
+Future<BatchJobHandle> startProcessFileBatchJob({
+  required ProcessFileBatchRequest request,
+}) => RustLib.instance.api.crateApiBridgeStartProcessFileBatchJob(
+  request: request,
+);
+
+Future<BatchJobSnapshot> getProcessFileBatchJob({required String jobId}) =>
+    RustLib.instance.api.crateApiBridgeGetProcessFileBatchJob(jobId: jobId);
+
+Future<void> cancelProcessFileBatchJob({required String jobId}) =>
+    RustLib.instance.api.crateApiBridgeCancelProcessFileBatchJob(jobId: jobId);
+
+Future<void> disposeProcessFileBatchJob({required String jobId}) =>
+    RustLib.instance.api.crateApiBridgeDisposeProcessFileBatchJob(jobId: jobId);
+
+Future<AnalyzeFileJobHandle> startAnalyzeFileJob({
+  required AnalyzeFileRequest request,
+}) => RustLib.instance.api.crateApiBridgeStartAnalyzeFileJob(request: request);
+
+Future<AnalyzeFileJobSnapshot> getAnalyzeFileJob({required String jobId}) =>
+    RustLib.instance.api.crateApiBridgeGetAnalyzeFileJob(jobId: jobId);
+
+Future<void> cancelAnalyzeFileJob({required String jobId}) =>
+    RustLib.instance.api.crateApiBridgeCancelAnalyzeFileJob(jobId: jobId);
+
+Future<void> disposeAnalyzeFileJob({required String jobId}) =>
+    RustLib.instance.api.crateApiBridgeDisposeAnalyzeFileJob(jobId: jobId);

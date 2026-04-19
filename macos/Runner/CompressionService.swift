@@ -9,11 +9,39 @@ private func oimg_service_free_string(_ value: UnsafeMutablePointer<CChar>?)
 private enum CompressionServiceAction: String, Codable {
   case compress
   case compressKeepOriginal = "compress_keep_original"
+  case saveAsPng = "save_as_png"
+  case saveAsJpg = "save_as_jpg"
+
+  var revealsOutputsInFinder: Bool {
+    switch self {
+    case .compress:
+      return false
+    case .compressKeepOriginal, .saveAsPng, .saveAsJpg:
+      return true
+    }
+  }
 }
 
 private struct CompressionServiceRequest: Codable {
   let action: CompressionServiceAction
   let paths: [String]
+  let settings: CompressionServiceSettings
+}
+
+private struct CompressionServiceSettings: Codable {
+  let compressionMethod: String
+  let compressionPriority: String
+  let advancedMode: Bool
+  let preferredCodec: String
+  let quality: Int
+
+  static let defaults = CompressionServiceSettings(
+    compressionMethod: "lossy",
+    compressionPriority: "compatibility",
+    advancedMode: false,
+    preferredCodec: "jpeg",
+    quality: 80
+  )
 }
 
 private struct CompressionServiceResponse: Decodable {
@@ -29,17 +57,6 @@ private struct CompressionServiceItem: Decodable {
 }
 
 final class CompressionServiceProvider: NSObject {
-  private static let supportedExtensions: Set<String> = [
-    "png",
-    "jpg",
-    "jpeg",
-    "gif",
-    "bmp",
-    "webp",
-    "tif",
-    "tiff",
-  ]
-
   private let encoder = JSONEncoder()
   private let decoder: JSONDecoder = {
     let decoder = JSONDecoder()
@@ -54,13 +71,13 @@ final class CompressionServiceProvider: NSObject {
     error: AutoreleasingUnsafeMutablePointer<NSString?>
   ) {
     guard let actionKey = userData, let action = CompressionServiceAction(rawValue: actionKey) else {
-      error.pointee = "Unsupported compression action." as NSString
+      error.pointee = "Unsupported service action." as NSString
       return
     }
 
     let urls = fileURLs(from: pasteboard)
     if urls.isEmpty {
-      error.pointee = "Select at least one supported image file." as NSString
+      error.pointee = "Select at least one image file." as NSString
       return
     }
 
@@ -76,7 +93,8 @@ final class CompressionServiceProvider: NSObject {
 
     let request = CompressionServiceRequest(
       action: action,
-      paths: urls.map(\.path)
+      paths: urls.map(\.path),
+      settings: loadSettings()
     )
 
     do {
@@ -86,7 +104,7 @@ final class CompressionServiceProvider: NSObject {
         return
       }
 
-      if action == .compressKeepOriginal {
+      if action.revealsOutputsInFinder {
         let outputURLs = response.items.compactMap { item -> URL? in
           guard let outputPath = item.outputPath, outputPath != item.inputPath else {
             return nil
@@ -109,21 +127,27 @@ final class CompressionServiceProvider: NSObject {
     ]
 
     if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: readOptions) as? [URL] {
-      return filterSupported(urls)
+      return urls
     }
 
     let fileNamesType = NSPasteboard.PasteboardType("NSFilenamesPboardType")
     if let fileNames = pasteboard.propertyList(forType: fileNamesType) as? [String] {
-      return filterSupported(fileNames.map(URL.init(fileURLWithPath:)))
+      return fileNames.map(URL.init(fileURLWithPath:))
     }
 
     return []
   }
 
-  private func filterSupported(_ urls: [URL]) -> [URL] {
-    urls.filter { url in
-      Self.supportedExtensions.contains(url.pathExtension.lowercased())
+  private func loadSettings() -> CompressionServiceSettings {
+    guard
+      let rawValue = UserDefaults.standard.string(forKey: "app_settings"),
+      let data = rawValue.data(using: .utf8),
+      let settings = try? JSONDecoder().decode(CompressionServiceSettings.self, from: data)
+    else {
+      return .defaults
     }
+
+    return settings
   }
 
   private func runRustRequest(_ request: CompressionServiceRequest) throws -> CompressionServiceResponse {

@@ -11,14 +11,39 @@ NEW_PATH=`echo $PATH | tr ":" "\n" | grep -v "Contents/Developer/" | tr "\n" ":"
 
 export PATH=${NEW_PATH%?} # remove trailing :
 
+# Finder-launched Xcode often misses the user's shell PATH. Prepend common
+# Homebrew locations so pkg-config and native build tools are visible in pod builds.
+for HOMEBREW_BIN in /opt/homebrew/bin /usr/local/bin
+do
+  if [ -d "$HOMEBREW_BIN" ]; then
+    export PATH="$HOMEBREW_BIN:$PATH"
+  fi
+done
+
+for HOMEBREW_PKGCONFIG in /opt/homebrew/lib/pkgconfig /opt/homebrew/share/pkgconfig /usr/local/lib/pkgconfig /usr/local/share/pkgconfig
+do
+  if [ -d "$HOMEBREW_PKGCONFIG" ]; then
+    if [ -n "$PKG_CONFIG_PATH" ]; then
+      export PKG_CONFIG_PATH="$HOMEBREW_PKGCONFIG:$PKG_CONFIG_PATH"
+    else
+      export PKG_CONFIG_PATH="$HOMEBREW_PKGCONFIG"
+    fi
+  fi
+done
+
 # Platform name (macosx, iphoneos, iphonesimulator)
 export CARGOKIT_DARWIN_PLATFORM_NAME=$PLATFORM_NAME
 
-# slimg-core enables AVIF decode through dav1d-sys. On macOS, force dav1d-sys
-# to build dav1d from source as a static library so the app does not depend on
-# a Homebrew dylib at runtime.
+# slimg-core enables AVIF decode through dav1d-sys. Prefer a Homebrew-installed
+# dav1d for local macOS Debug builds so Xcode can build without an extra source
+# toolchain. Keep source builds for non-Debug builds to avoid shipping a runtime
+# dependency on a Homebrew dylib.
 if [ "$CARGOKIT_DARWIN_PLATFORM_NAME" = "macosx" ]; then
-  export SYSTEM_DEPS_DAV1D_BUILD_INTERNAL=${SYSTEM_DEPS_DAV1D_BUILD_INTERNAL:-always}
+  if [ "$CONFIGURATION" = "Debug" ] && pkg-config --exists dav1d; then
+    unset SYSTEM_DEPS_DAV1D_BUILD_INTERNAL
+  else
+    export SYSTEM_DEPS_DAV1D_BUILD_INTERNAL=${SYSTEM_DEPS_DAV1D_BUILD_INTERNAL:-always}
+  fi
 fi
 
 # Arctive architectures (arm64, armv7, x86_64), space separated.

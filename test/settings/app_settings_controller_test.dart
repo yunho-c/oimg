@@ -40,6 +40,25 @@ void main() {
       await notifier.setAdvancedMode(true);
       await notifier.setPreferredCodec(PreferredCodec.webp);
       await notifier.setQuality(92);
+      await notifier.setStorageDestinationMode(
+        StorageDestinationMode.differentLocation,
+      );
+      await notifier.setSameFolderAction(SameFolderAction.keepSource);
+      await notifier.setDifferentLocationPath('/tmp/export');
+      await notifier.setPreserveFolderStructure(false);
+      await notifier.setPreserveOriginalDate(true);
+      await notifier.setPreserveExif(true);
+      await notifier.setPreserveColorProfile(true);
+      await notifier.setQualityMetricColorsEnabled(true);
+      await notifier.setSimilarityMetricColorsEnabled(true);
+      await notifier.setSavingsColorsEnabled(true);
+      await notifier.setBitsPerPixelColorsEnabled(true);
+      await notifier.setFileSizeColorsEnabled(true);
+      await notifier.setDifferenceTooltipShowsCoordinates(false);
+      await notifier.setDifferenceTooltipUsesSwatches(true);
+      await notifier.setThemePreference(AppThemePreference.dark);
+      await notifier.setDeveloperModeEnabled(true);
+      await notifier.setTimingLogsEnabled(true);
 
       final settings = container.read(appSettingsProvider).requireValue;
       expect(
@@ -50,6 +69,23 @@ void main() {
           advancedMode: true,
           preferredCodec: PreferredCodec.webp,
           quality: 92,
+          storageDestinationMode: StorageDestinationMode.differentLocation,
+          sameFolderAction: SameFolderAction.keepSource,
+          differentLocationPath: '/tmp/export',
+          preserveFolderStructure: false,
+          preserveOriginalDate: true,
+          preserveExif: true,
+          preserveColorProfile: true,
+          qualityMetricColorsEnabled: true,
+          similarityMetricColorsEnabled: true,
+          savingsColorsEnabled: true,
+          bitsPerPixelColorsEnabled: true,
+          fileSizeColorsEnabled: true,
+          differenceTooltipShowsCoordinates: false,
+          differenceTooltipUsesSwatches: true,
+          themePreference: AppThemePreference.dark,
+          developerModeEnabled: true,
+          timingLogsEnabled: true,
         ),
       );
       expect(await store.read(), settings.toJsonString());

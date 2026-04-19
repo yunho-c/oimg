@@ -9,6 +9,145 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'types.freezed.dart';
 
+class AnalyzeFileJobHandle {
+  final String jobId;
+
+  const AnalyzeFileJobHandle({required this.jobId});
+
+  @override
+  int get hashCode => jobId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AnalyzeFileJobHandle &&
+          runtimeType == other.runtimeType &&
+          jobId == other.jobId;
+}
+
+class AnalyzeFileJobSnapshot {
+  final String jobId;
+  final BatchJobState state;
+  final int totalCount;
+  final int completedCount;
+  final int? currentQuality;
+  final List<AnalyzeSampleResult> results;
+  final SlimgBridgeError? error;
+
+  const AnalyzeFileJobSnapshot({
+    required this.jobId,
+    required this.state,
+    required this.totalCount,
+    required this.completedCount,
+    this.currentQuality,
+    required this.results,
+    this.error,
+  });
+
+  @override
+  int get hashCode =>
+      jobId.hashCode ^
+      state.hashCode ^
+      totalCount.hashCode ^
+      completedCount.hashCode ^
+      currentQuality.hashCode ^
+      results.hashCode ^
+      error.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AnalyzeFileJobSnapshot &&
+          runtimeType == other.runtimeType &&
+          jobId == other.jobId &&
+          state == other.state &&
+          totalCount == other.totalCount &&
+          completedCount == other.completedCount &&
+          currentQuality == other.currentQuality &&
+          results == other.results &&
+          error == other.error;
+}
+
+class AnalyzeFileRequest {
+  final String inputPath;
+  final ImageOperation operation;
+  final Uint8List qualities;
+
+  const AnalyzeFileRequest({
+    required this.inputPath,
+    required this.operation,
+    required this.qualities,
+  });
+
+  @override
+  int get hashCode =>
+      inputPath.hashCode ^ operation.hashCode ^ qualities.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AnalyzeFileRequest &&
+          runtimeType == other.runtimeType &&
+          inputPath == other.inputPath &&
+          operation == other.operation &&
+          qualities == other.qualities;
+}
+
+class AnalyzeSampleResult {
+  final int quality;
+  final String tempOutputPath;
+  final String format;
+  final int width;
+  final int height;
+  final BigInt sizeBytes;
+  final double? pixelMatch;
+  final double? msSsim;
+  final double? ssimulacra2;
+  final String artifactId;
+
+  const AnalyzeSampleResult({
+    required this.quality,
+    required this.tempOutputPath,
+    required this.format,
+    required this.width,
+    required this.height,
+    required this.sizeBytes,
+    this.pixelMatch,
+    this.msSsim,
+    this.ssimulacra2,
+    required this.artifactId,
+  });
+
+  @override
+  int get hashCode =>
+      quality.hashCode ^
+      tempOutputPath.hashCode ^
+      format.hashCode ^
+      width.hashCode ^
+      height.hashCode ^
+      sizeBytes.hashCode ^
+      pixelMatch.hashCode ^
+      msSsim.hashCode ^
+      ssimulacra2.hashCode ^
+      artifactId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AnalyzeSampleResult &&
+          runtimeType == other.runtimeType &&
+          quality == other.quality &&
+          tempOutputPath == other.tempOutputPath &&
+          format == other.format &&
+          width == other.width &&
+          height == other.height &&
+          sizeBytes == other.sizeBytes &&
+          pixelMatch == other.pixelMatch &&
+          msSsim == other.msSsim &&
+          ssimulacra2 == other.ssimulacra2 &&
+          artifactId == other.artifactId;
+}
+
 class BatchItemResult {
   final String inputPath;
   final bool success;
@@ -36,6 +175,67 @@ class BatchItemResult {
           result == other.result &&
           error == other.error;
 }
+
+class BatchJobHandle {
+  final String jobId;
+
+  const BatchJobHandle({required this.jobId});
+
+  @override
+  int get hashCode => jobId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BatchJobHandle &&
+          runtimeType == other.runtimeType &&
+          jobId == other.jobId;
+}
+
+class BatchJobSnapshot {
+  final String jobId;
+  final BatchJobState state;
+  final int totalCount;
+  final int completedCount;
+  final String? currentInputPath;
+  final List<BatchItemResult> results;
+  final SlimgBridgeError? error;
+
+  const BatchJobSnapshot({
+    required this.jobId,
+    required this.state,
+    required this.totalCount,
+    required this.completedCount,
+    this.currentInputPath,
+    required this.results,
+    this.error,
+  });
+
+  @override
+  int get hashCode =>
+      jobId.hashCode ^
+      state.hashCode ^
+      totalCount.hashCode ^
+      completedCount.hashCode ^
+      currentInputPath.hashCode ^
+      results.hashCode ^
+      error.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BatchJobSnapshot &&
+          runtimeType == other.runtimeType &&
+          jobId == other.jobId &&
+          state == other.state &&
+          totalCount == other.totalCount &&
+          completedCount == other.completedCount &&
+          currentInputPath == other.currentInputPath &&
+          results == other.results &&
+          error == other.error;
+}
+
+enum BatchJobState { running, cancelRequested, completed, canceled, failed }
 
 class BatchProcessRequest {
   final List<String> inputPaths;
@@ -250,17 +450,23 @@ class ImageMetadata {
   final int height;
   final String format;
   final BigInt? fileSize;
+  final bool hasTransparency;
 
   const ImageMetadata({
     required this.width,
     required this.height,
     required this.format,
     this.fileSize,
+    required this.hasTransparency,
   });
 
   @override
   int get hashCode =>
-      width.hashCode ^ height.hashCode ^ format.hashCode ^ fileSize.hashCode;
+      width.hashCode ^
+      height.hashCode ^
+      format.hashCode ^
+      fileSize.hashCode ^
+      hasTransparency.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -270,7 +476,8 @@ class ImageMetadata {
           width == other.width &&
           height == other.height &&
           format == other.format &&
-          fileSize == other.fileSize;
+          fileSize == other.fileSize &&
+          hasTransparency == other.hasTransparency;
 }
 
 @freezed
@@ -309,6 +516,22 @@ class OptimizeOptions {
           writeOnlyIfSmaller == other.writeOnlyIfSmaller;
 }
 
+class PreviewArtifactRequest {
+  final String artifactId;
+
+  const PreviewArtifactRequest({required this.artifactId});
+
+  @override
+  int get hashCode => artifactId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PreviewArtifactRequest &&
+          runtimeType == other.runtimeType &&
+          artifactId == other.artifactId;
+}
+
 class PreviewFileRequest {
   final String inputPath;
   final ImageOperation operation;
@@ -329,6 +552,7 @@ class PreviewFileRequest {
 
 class PreviewResult {
   final Uint8List encodedBytes;
+  final String artifactId;
   final String format;
   final int width;
   final int height;
@@ -336,6 +560,7 @@ class PreviewResult {
 
   const PreviewResult({
     required this.encodedBytes,
+    required this.artifactId,
     required this.format,
     required this.width,
     required this.height,
@@ -345,6 +570,7 @@ class PreviewResult {
   @override
   int get hashCode =>
       encodedBytes.hashCode ^
+      artifactId.hashCode ^
       format.hashCode ^
       width.hashCode ^
       height.hashCode ^
@@ -356,6 +582,7 @@ class PreviewResult {
       other is PreviewResult &&
           runtimeType == other.runtimeType &&
           encodedBytes == other.encodedBytes &&
+          artifactId == other.artifactId &&
           format == other.format &&
           width == other.width &&
           height == other.height &&
@@ -380,16 +607,41 @@ class ProcessBytesRequest {
           operation == other.operation;
 }
 
+class ProcessFileBatchRequest {
+  final List<ProcessFileRequest> requests;
+  final bool continueOnError;
+
+  const ProcessFileBatchRequest({
+    required this.requests,
+    required this.continueOnError,
+  });
+
+  @override
+  int get hashCode => requests.hashCode ^ continueOnError.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ProcessFileBatchRequest &&
+          runtimeType == other.runtimeType &&
+          requests == other.requests &&
+          continueOnError == other.continueOnError;
+}
+
 class ProcessFileRequest {
   final String inputPath;
   final String? outputPath;
   final bool overwrite;
+  final bool preserveExif;
+  final bool preserveColorProfile;
   final ImageOperation operation;
 
   const ProcessFileRequest({
     required this.inputPath,
     this.outputPath,
     required this.overwrite,
+    required this.preserveExif,
+    required this.preserveColorProfile,
     required this.operation,
   });
 
@@ -398,6 +650,8 @@ class ProcessFileRequest {
       inputPath.hashCode ^
       outputPath.hashCode ^
       overwrite.hashCode ^
+      preserveExif.hashCode ^
+      preserveColorProfile.hashCode ^
       operation.hashCode;
 
   @override
@@ -408,6 +662,8 @@ class ProcessFileRequest {
           inputPath == other.inputPath &&
           outputPath == other.outputPath &&
           overwrite == other.overwrite &&
+          preserveExif == other.preserveExif &&
+          preserveColorProfile == other.preserveColorProfile &&
           operation == other.operation;
 }
 
@@ -418,6 +674,7 @@ class ProcessResult {
   final int height;
   final BigInt originalSize;
   final BigInt newSize;
+  final bool didWrite;
 
   const ProcessResult({
     required this.outputPath,
@@ -426,6 +683,7 @@ class ProcessResult {
     required this.height,
     required this.originalSize,
     required this.newSize,
+    required this.didWrite,
   });
 
   @override
@@ -435,7 +693,8 @@ class ProcessResult {
       width.hashCode ^
       height.hashCode ^
       originalSize.hashCode ^
-      newSize.hashCode;
+      newSize.hashCode ^
+      didWrite.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -447,7 +706,32 @@ class ProcessResult {
           width == other.width &&
           height == other.height &&
           originalSize == other.originalSize &&
-          newSize == other.newSize;
+          newSize == other.newSize &&
+          didWrite == other.didWrite;
+}
+
+class RawImageResult {
+  final Uint8List rgbaBytes;
+  final int width;
+  final int height;
+
+  const RawImageResult({
+    required this.rgbaBytes,
+    required this.width,
+    required this.height,
+  });
+
+  @override
+  int get hashCode => rgbaBytes.hashCode ^ width.hashCode ^ height.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RawImageResult &&
+          runtimeType == other.runtimeType &&
+          rgbaBytes == other.rgbaBytes &&
+          width == other.width &&
+          height == other.height;
 }
 
 class ResizeOptions {
