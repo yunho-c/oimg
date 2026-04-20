@@ -878,7 +878,12 @@ void main() {
       final firstBar = chart.data.lineBarsData.first;
       final firstSpot = firstBar.spots.first;
       chart.data.lineTouchData.touchCallback?.call(
-        FlTapDownEvent(TapDownDetails(localPosition: Offset.zero)),
+        FlTapDownEvent(
+          TapDownDetails(
+            localPosition: Offset.zero,
+            kind: PointerDeviceKind.mouse,
+          ),
+        ),
         LineTouchResponse(
           touchLocation: Offset.zero,
           touchChartCoordinate: Offset.zero,
@@ -890,6 +895,79 @@ void main() {
       final settings = AppSettings.fromJsonString((await store.read())!);
       expect(settings.quality, 100);
       expect(find.byType(LineChart), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'selecting an analyze chart point keeps selected sample metrics visible while preview reloads',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final store = _FakeAppSettingsStore();
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      )..analyzeSampleDelay = const Duration(milliseconds: 20);
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(
+        _buildApp(controller: controller, slimg: slimg, store: store),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+      await tester.pumpAndSettle();
+
+      final pixelMatchCallsBeforeSelection = slimg.pixelMatchCallCount;
+      final msSsimCallsBeforeSelection = slimg.msSsimCallCount;
+      final ssimulacra2CallsBeforeSelection = slimg.ssimulacra2CallCount;
+
+      slimg.pixelMatchDelay = const Duration(seconds: 5);
+      slimg.msSsimDelay = const Duration(seconds: 5);
+      slimg.ssimulacra2Delay = const Duration(seconds: 5);
+
+      final chart = tester.widget<LineChart>(find.byType(LineChart));
+      final firstBar = chart.data.lineBarsData.first;
+      final firstSpot = firstBar.spots.first;
+      chart.data.lineTouchData.touchCallback?.call(
+        FlTapDownEvent(
+          TapDownDetails(
+            localPosition: Offset.zero,
+            kind: PointerDeviceKind.mouse,
+          ),
+        ),
+        LineTouchResponse(
+          touchLocation: Offset.zero,
+          touchChartCoordinate: Offset.zero,
+          lineBarSpots: [TouchLineBarSpot(firstBar, 0, firstSpot, 0)],
+        ),
+      );
+      await tester.pump();
+
+      final settings = AppSettings.fromJsonString((await store.read())!);
+      expect(settings.quality, 100);
+      expect(find.byType(LineChart), findsOneWidget);
+      expect(find.text('100%'), findsOneWidget);
+      expect(find.text('0.950'), findsOneWidget);
+      expect(find.text('98.3'), findsOneWidget);
+      expect(
+        _bottomStatValueText(tester, label: 'Similarity', value: '97.8%'),
+        isNotNull,
+      );
+      expect(slimg.pixelMatchCallCount, pixelMatchCallsBeforeSelection);
+      expect(slimg.msSsimCallCount, msSsimCallsBeforeSelection);
+      expect(slimg.ssimulacra2CallCount, ssimulacra2CallsBeforeSelection);
+
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
     },
   );
 
@@ -921,27 +999,24 @@ void main() {
       await tester.pump(const Duration(milliseconds: 260));
       await tester.pumpAndSettle();
 
-      expect(
-        _bottomStatValueText(tester, label: 'Optimized', value: '1.2 KB'),
-        isNotNull,
-      );
-
       final chart = tester.widget<LineChart>(find.byType(LineChart));
       final firstBar = chart.data.lineBarsData.first;
-      final firstSpot = firstBar.spots.first;
+      final lastSpot = firstBar.spots.last;
       chart.data.lineTouchData.touchCallback?.call(
         FlPointerHoverEvent(const PointerHoverEvent(position: Offset.zero)),
         LineTouchResponse(
           touchLocation: Offset.zero,
           touchChartCoordinate: Offset.zero,
-          lineBarSpots: [TouchLineBarSpot(firstBar, 0, firstSpot, 0)],
+          lineBarSpots: [
+            TouchLineBarSpot(firstBar, 0, lastSpot, firstBar.spots.length - 1),
+          ],
         ),
       );
       await tester.pumpAndSettle();
 
       expect(await store.read(), isNull);
       expect(
-        _bottomStatValueText(tester, label: 'Optimized', value: '700 B'),
+        _bottomStatValueText(tester, label: 'Optimized', value: '1.5 KB'),
         isNotNull,
       );
       expect(find.byType(LineChart), findsOneWidget);

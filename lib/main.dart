@@ -3978,9 +3978,15 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
     final runController = ref.read(optimizationRunControllerProvider.notifier);
     final selectedAnalyzeSample = ref.watch(selectedAnalyzeSampleProvider);
     final optimizedDisplay = ref.watch(currentOptimizedDisplayProvider);
-    final pixelMatchMetric = ref.watch(currentPreviewPixelMatchProvider);
-    final msSsimMetric = ref.watch(currentPreviewMsSsimProvider);
-    final ssimulacra2Metric = ref.watch(currentPreviewSsimulacra2Provider);
+    final pixelMatchMetric = selectedAnalyzeSample == null
+        ? ref.watch(currentPreviewPixelMatchProvider)
+        : const AsyncData<PreviewMetricResult?>(null);
+    final msSsimMetric = selectedAnalyzeSample == null
+        ? ref.watch(currentPreviewMsSsimProvider)
+        : const AsyncData<PreviewMetricResult?>(null);
+    final ssimulacra2Metric = selectedAnalyzeSample == null
+        ? ref.watch(currentPreviewSsimulacra2Provider)
+        : const AsyncData<PreviewMetricResult?>(null);
     final optimizedPreviewSizeWarning = _optimizedPreviewSizeWarningText(
       controller: controller,
       file: currentFile,
@@ -4590,14 +4596,41 @@ class _BottomQualitySection extends ConsumerWidget {
     final theme = Theme.of(context);
     final settings = ref.watch(appSettingsProvider).asData?.value;
     final previewState = ref.watch(currentPreviewProvider);
+    final selectedAnalyzeSample = ref.watch(selectedAnalyzeSampleProvider);
     final previewPendingBeforeMetrics =
-        previewState.isLoading && previewState.asData?.value == null;
+        selectedAnalyzeSample == null &&
+        previewState.isLoading &&
+        previewState.asData?.value == null;
     final colorCodingEnabled = settings?.qualityMetricColorsEnabled ?? false;
     final rows = isFolderSelected
         ? const <_BottomMetricRowState>[
             _BottomMetricRowState.text(label: 'Pixel Match', value: 'N/A'),
             _BottomMetricRowState.text(label: 'MS-SSIM', value: 'N/A'),
             _BottomMetricRowState.text(label: 'SSIMULACRA 2', value: 'N/A'),
+          ]
+        : selectedAnalyzeSample != null
+        ? <_BottomMetricRowState>[
+            _metricRowStateFromAnalyzeSample(
+              label: 'Pixel Match',
+              value: selectedAnalyzeSample.pixelMatch,
+              formatter: _formatNullableMetricPercent,
+              scoreMapper: (value) => value?.clamp(0, 100).toDouble(),
+            ),
+            _metricRowStateFromAnalyzeSample(
+              label: 'MS-SSIM',
+              value: selectedAnalyzeSample.msSsim,
+              formatter: (value) =>
+                  _formatNullableMetric(value, trimIfOne: true),
+              scoreMapper: (value) =>
+                  value == null ? null : (value * 100).clamp(0, 100).toDouble(),
+            ),
+            _metricRowStateFromAnalyzeSample(
+              label: 'SSIMULACRA 2',
+              value: selectedAnalyzeSample.ssimulacra2,
+              formatter: (value) =>
+                  _formatNullableMetric(value, digits: 1, trimIfHundred: true),
+              scoreMapper: (value) => value?.clamp(0, 100).toDouble(),
+            ),
           ]
         : <_BottomMetricRowState>[
             _metricRowState(
@@ -4720,6 +4753,19 @@ class _BottomQualitySection extends ConsumerWidget {
       ),
     );
   }
+}
+
+_BottomMetricRowState _metricRowStateFromAnalyzeSample({
+  required String label,
+  required double? value,
+  required String Function(double? value) formatter,
+  required double? Function(double? value) scoreMapper,
+}) {
+  return _BottomMetricRowState.text(
+    label: label,
+    value: formatter(value),
+    qualityScore: scoreMapper(value),
+  );
 }
 
 _BottomMetricRowState _metricRowState({
@@ -5118,6 +5164,7 @@ class _BottomSummaryViewModel {
         ? _formatMetricTimingTooltip(preview.elapsedMilliseconds)
         : null;
     final similarityStat = _deriveSimilarityStat(
+      analyzeSample: analyzeSample,
       pixelMatchMetric: pixelMatchMetric,
       msSsimMetric: msSsimMetric,
       ssimulacra2Metric: ssimulacra2Metric,
@@ -5302,10 +5349,33 @@ class _DerivedSimilarityStat {
 }
 
 _DerivedSimilarityStat _deriveSimilarityStat({
+  AnalyzeSampleResult? analyzeSample,
   required AsyncValue<PreviewMetricResult?> pixelMatchMetric,
   required AsyncValue<PreviewMetricResult?> msSsimMetric,
   required AsyncValue<PreviewMetricResult?> ssimulacra2Metric,
 }) {
+  if (analyzeSample != null) {
+    final normalizedValues = <double>[
+      if (analyzeSample.pixelMatch case final pixelMatch?)
+        pixelMatch.clamp(0, 100).toDouble(),
+      if (analyzeSample.msSsim case final msSsim?)
+        (msSsim * 100).clamp(0, 100).toDouble(),
+      if (analyzeSample.ssimulacra2 case final ssimulacra2?)
+        ssimulacra2.clamp(0, 100).toDouble(),
+    ];
+
+    if (normalizedValues.isNotEmpty) {
+      final average =
+          normalizedValues.reduce((sum, value) => sum + value) /
+          normalizedValues.length;
+      return _DerivedSimilarityStat(
+        value: _formatSimilarityPercentValue(average),
+        loading: false,
+        score: average,
+      );
+    }
+  }
+
   final normalizedValues = <double>[
     ..._normalizedSimilarityValues(
       pixelMatchMetric,
@@ -5578,7 +5648,7 @@ bool _isAnalyzeSelectionEvent(FlTouchEvent event) {
 }
 
 bool _isAnalyzeCommitEvent(FlTouchEvent event) {
-  return event is FlTapDownEvent || event is FlTapUpEvent;
+  return event is FlTapDownEvent;
 }
 
 bool _isTerminalStatus(OptimizationItemStatus status) {
