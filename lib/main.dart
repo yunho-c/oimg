@@ -869,7 +869,8 @@ class _ImageStage extends ConsumerWidget {
                             frame: differenceFrame,
                             fileName: fileName,
                             showCoordinates:
-                                appSettings?.differenceTooltipShowsCoordinates ??
+                                appSettings
+                                    ?.differenceTooltipShowsCoordinates ??
                                 true,
                             useRgbSwatches:
                                 appSettings?.differenceTooltipUsesSwatches ??
@@ -1097,8 +1098,7 @@ class _DifferenceTooltipSample {
   String get greenLabel => green.toString().padLeft(3);
   String get blueLabel => blue.toString().padLeft(3);
 
-  String get _rgbLabel =>
-      'R $redLabel G $greenLabel B $blueLabel';
+  String get _rgbLabel => 'R $redLabel G $greenLabel B $blueLabel';
 
   String label({required bool showCoordinates}) {
     if (!showCoordinates) {
@@ -1305,10 +1305,7 @@ class _DifferencePreviewState extends State<DifferencePreview> {
       viewportSize.width / imageSize.width,
       viewportSize.height / imageSize.height,
     );
-    final fittedSize = Size(
-      imageSize.width * scale,
-      imageSize.height * scale,
-    );
+    final fittedSize = Size(imageSize.width * scale, imageSize.height * scale);
     final left = (viewportSize.width - fittedSize.width) / 2;
     final top = (viewportSize.height - fittedSize.height) / 2;
     return Rect.fromLTWH(left, top, fittedSize.width, fittedSize.height);
@@ -1365,10 +1362,7 @@ class _DifferencePreviewState extends State<DifferencePreview> {
               ),
             ],
           )
-        : Text(
-            tooltip._rgbLabel,
-            style: numberStyle,
-          );
+        : Text(tooltip._rgbLabel, style: numberStyle);
 
     if (!widget.showCoordinates) {
       return KeyedSubtree(
@@ -1423,10 +1417,7 @@ class _DifferencePreviewState extends State<DifferencePreview> {
   }) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final viewportSize = Size(
-          constraints.maxWidth,
-          constraints.maxHeight,
-        );
+        final viewportSize = Size(constraints.maxWidth, constraints.maxHeight);
         final imageRect = _containedImageRect(
           viewportSize,
           Size(rawImage.width.toDouble(), rawImage.height.toDouble()),
@@ -1465,7 +1456,9 @@ class _DifferencePreviewState extends State<DifferencePreview> {
               child: ContextMenu(
                 items: [
                   MenuCheckbox(
-                    key: const ValueKey('difference-tooltip-coordinates-toggle'),
+                    key: const ValueKey(
+                      'difference-tooltip-coordinates-toggle',
+                    ),
                     value: widget.showCoordinates,
                     autoClose: false,
                     onChanged: widget.onShowCoordinatesChanged == null
@@ -1511,10 +1504,7 @@ class _DifferencePreviewState extends State<DifferencePreview> {
                           child: SizedBox(
                             width: imageRect.width,
                             height: imageRect.height,
-                            child: RawImage(
-                              image: image,
-                              fit: BoxFit.fill,
-                            ),
+                            child: RawImage(image: image, fit: BoxFit.fill),
                           ),
                         ),
                       ),
@@ -1547,9 +1537,7 @@ class _DifferencePreviewState extends State<DifferencePreview> {
     return frame.when(
       data: (resolvedFrame) {
         if (resolvedFrame == null) {
-          return _PreviewUnavailable(
-            message: widget.unavailableMessage,
-          );
+          return _PreviewUnavailable(message: widget.unavailableMessage);
         }
         return KeyedSubtree(
           key: const ValueKey('difference-preview-ready'),
@@ -1574,9 +1562,7 @@ class _DifferencePreviewState extends State<DifferencePreview> {
           child: CircularProgressIndicator(),
         );
       },
-      error: (_, _) => _PreviewUnavailable(
-        message: widget.unavailableMessage,
-      ),
+      error: (_, _) => _PreviewUnavailable(message: widget.unavailableMessage),
     );
   }
 }
@@ -1828,7 +1814,8 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
     final settings = ref.watch(appSettingsProvider).asData?.value;
     final optimizedLoading = preview.isLoading && !hasOptimizedPreview;
     final differenceLoading =
-        displayMode == PreviewDisplayMode.difference && differenceFrame.isLoading;
+        displayMode == PreviewDisplayMode.difference &&
+        differenceFrame.isLoading;
     final analyzeTooltip =
         !analyzeAvailability.isEnabled &&
             settings != null &&
@@ -2176,7 +2163,9 @@ class _SettingsSidebar extends ConsumerWidget {
     }) {
       final transparencyWarning = _transparencyWarningText(
         settings: settings,
-        file: fileController.isFolderSelected ? null : fileController.currentFile,
+        file: fileController.isFolderSelected
+            ? null
+            : fileController.currentFile,
       );
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2293,7 +2282,8 @@ class _SettingsSidebar extends ConsumerWidget {
               builder: (context, constraints) {
                 final foldBottomSectionsIntoScroll =
                     showAnalyzePanel &&
-                    constraints.maxHeight < _settingsBottomSectionsFoldThreshold;
+                    constraints.maxHeight <
+                        _settingsBottomSectionsFoldThreshold;
 
                 return Padding(
                   padding: const EdgeInsets.all(12),
@@ -2598,9 +2588,7 @@ class _HoverValueSliderState extends State<_HoverValueSlider> {
                     child: AnimatedSlide(
                       duration: _showDuration,
                       curve: Curves.easeOutCubic,
-                      offset: showLabel
-                          ? Offset.zero
-                          : const Offset(0, -0.12),
+                      offset: showLabel ? Offset.zero : const Offset(0, -0.12),
                       child: AnimatedOpacity(
                         key: const ValueKey('quality-slider-hover-opacity'),
                         duration: _showDuration,
@@ -3488,17 +3476,17 @@ class _AnalyzeChart extends StatelessWidget {
         lineBarsData: [
           _buildAnalyzeLine(
             points: pixelMatchPoints,
-            color: const Color(0xFF2563EB),
+            color: _analyzeMetricColorForLabel('Pixel Match'),
             selectedArtifactId: selectedArtifactId,
           ),
           _buildAnalyzeLine(
             points: msSsimPoints,
-            color: const Color(0xFFD97706),
+            color: _analyzeMetricColorForLabel('MS-SSIM'),
             selectedArtifactId: selectedArtifactId,
           ),
           _buildAnalyzeLine(
             points: ssimulacra2Points,
-            color: const Color(0xFF16A34A),
+            color: _analyzeMetricColorForLabel('SSIMULACRA 2'),
             selectedArtifactId: selectedArtifactId,
           ),
         ],
@@ -4073,7 +4061,8 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (optimizedPreviewSizeWarning case final warning?) ...[
+                        if (optimizedPreviewSizeWarning
+                            case final warning?) ...[
                           _SettingsWarningBlock(
                             icon: LucideIcons.triangleAlert,
                             message: warning,
@@ -4094,11 +4083,10 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
                               return FadeTransition(
                                 opacity: curved,
                                 child: SlideTransition(
-                                  position:
-                                      Tween<Offset>(
-                                        begin: const Offset(0, 0.03),
-                                        end: Offset.zero,
-                                      ).animate(curved),
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0, 0.03),
+                                    end: Offset.zero,
+                                  ).animate(curved),
                                   child: child,
                                 ),
                               );
@@ -4792,6 +4780,19 @@ class _BottomMetricRowState {
 
 enum _BottomMetricRowDisplayState { loading, text }
 
+const _pixelMatchAnalyzeColor = Color(0xFF2563EB);
+const _msSsimAnalyzeColor = Color(0xFFD97706);
+const _ssimulacra2AnalyzeColor = Color(0xFF16A34A);
+
+Color _analyzeMetricColorForLabel(String label) {
+  return switch (label) {
+    'Pixel Match' => _pixelMatchAnalyzeColor,
+    'MS-SSIM' => _msSsimAnalyzeColor,
+    'SSIMULACRA 2' => _ssimulacra2AnalyzeColor,
+    _ => const Color(0xFF94A3B8),
+  };
+}
+
 class _BottomMetricRow extends StatelessWidget {
   const _BottomMetricRow({required this.row, required this.colorCodingEnabled});
 
@@ -4801,7 +4802,22 @@ class _BottomMetricRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final labelWidget = Text(row.label).xSmall().medium().muted();
+    final labelWidget = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          key: ValueKey('metric-legend-dot-${row.label}'),
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _analyzeMetricColorForLabel(row.label),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Flexible(child: Text(row.label).xSmall().medium().muted()),
+      ],
+    );
     final help = _metricHelpFor(row.label);
     final valueColor = colorCodingEnabled && row.qualityScore != null
         ? _qualityMetricColor(row.qualityScore!)
