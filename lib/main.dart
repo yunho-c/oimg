@@ -3299,9 +3299,9 @@ class _AnalyzePanel extends ConsumerWidget {
                       originalSizeBytes: state.isRunning
                           ? null
                           : currentFile?.metadata.fileSize?.toDouble(),
-                      selectedArtifactId: state.selectedArtifactId,
-                      onSelectSample: (sample) {
-                        controller.selectSample(sample);
+                      selectedArtifactId: state.activeArtifactId,
+                      onHoverSample: (sample) {
+                        controller.hoverSample(sample);
                         if (currentFilePath != null) {
                           ref
                               .read(previewDisplaySelectionProvider.notifier)
@@ -3316,12 +3316,35 @@ class _AnalyzePanel extends ConsumerWidget {
                               .requestForArtifact(sample.artifactId);
                         }
                       },
-                      onCommitSampleQuality: (sample) {
+                      onCommitSample: (sample) {
+                        controller.selectSample(sample);
+                        if (currentFilePath != null) {
+                          ref
+                              .read(previewDisplaySelectionProvider.notifier)
+                              .select(
+                                filePath: currentFilePath,
+                                mode: displayMode,
+                              );
+                        }
+                        if (displayMode == PreviewDisplayMode.difference) {
+                          ref
+                              .read(previewDifferenceRequestProvider.notifier)
+                              .requestForArtifact(sample.artifactId);
+                        }
                         unawaited(
                           ref
                               .read(appSettingsProvider.notifier)
                               .setQuality(sample.quality),
                         );
+                      },
+                      onExitChart: () {
+                        final activeSample = controller.clearHoveredSample();
+                        if (displayMode == PreviewDisplayMode.difference &&
+                            activeSample != null) {
+                          ref
+                              .read(previewDifferenceRequestProvider.notifier)
+                              .requestForArtifact(activeSample.artifactId);
+                        }
                       },
                     ),
             ),
@@ -3341,15 +3364,17 @@ class _AnalyzeChart extends StatefulWidget {
     required this.samples,
     required this.originalSizeBytes,
     required this.selectedArtifactId,
-    required this.onSelectSample,
-    required this.onCommitSampleQuality,
+    required this.onHoverSample,
+    required this.onCommitSample,
+    required this.onExitChart,
   });
 
   final List<AnalyzeSampleResult> samples;
   final double? originalSizeBytes;
   final String? selectedArtifactId;
-  final ValueChanged<AnalyzeSampleResult> onSelectSample;
-  final ValueChanged<AnalyzeSampleResult> onCommitSampleQuality;
+  final ValueChanged<AnalyzeSampleResult> onHoverSample;
+  final ValueChanged<AnalyzeSampleResult> onCommitSample;
+  final VoidCallback onExitChart;
 
   @override
   State<_AnalyzeChart> createState() => _AnalyzeChartState();
@@ -3403,132 +3428,135 @@ class _AnalyzeChartState extends State<_AnalyzeChart>
       alpha: 0.08,
     );
 
-    return AnimatedBuilder(
-      animation: _selectionPulseController,
-      builder: (context, child) {
-        final selectedPulse = math
-            .sin(_selectionPulseController.value * math.pi)
-            .clamp(0.0, 1.0);
-        return LineChart(
-          LineChartData(
-            minY: 0,
-            maxY: 100,
-            minX: 0,
-            maxX: chartMaxX,
-            gridData: FlGridData(
-              drawVerticalLine: true,
-              horizontalInterval: 20,
-              verticalInterval: xAxisInterval,
-              getDrawingHorizontalLine: (value) =>
-                  FlLine(color: theme.colorScheme.border, strokeWidth: 1),
-              getDrawingVerticalLine: (value) => FlLine(
-                color: theme.colorScheme.border.withValues(alpha: 0.6),
-                strokeWidth: 1,
-              ),
-            ),
-            titlesData: FlTitlesData(
-              topTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              leftTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 30,
-                  interval: 20,
-                  getTitlesWidget: (value, meta) =>
-                      Text(value.toInt().toString()).xSmall().muted(),
+    return MouseRegion(
+      key: const ValueKey('analyze-chart-region'),
+      onExit: (_) => widget.onExitChart(),
+      child: AnimatedBuilder(
+        animation: _selectionPulseController,
+        builder: (context, child) {
+          final selectedPulse = math
+              .sin(_selectionPulseController.value * math.pi)
+              .clamp(0.0, 1.0);
+          return LineChart(
+            LineChartData(
+              minY: 0,
+              maxY: 100,
+              minX: 0,
+              maxX: chartMaxX,
+              gridData: FlGridData(
+                drawVerticalLine: true,
+                horizontalInterval: 20,
+                verticalInterval: xAxisInterval,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: theme.colorScheme.border, strokeWidth: 1),
+                getDrawingVerticalLine: (value) => FlLine(
+                  color: theme.colorScheme.border.withValues(alpha: 0.6),
+                  strokeWidth: 1,
                 ),
               ),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 18,
-                  interval: xAxisInterval,
-                  getTitlesWidget: (value, meta) {
-                    if (dataMaxX > 0 && value > dataMaxX + 0.5) {
-                      return const SizedBox.shrink();
-                    }
-                    return Text(_formatBytes(value.round())).xSmall().muted();
-                  },
+              titlesData: FlTitlesData(
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 30,
+                    interval: 20,
+                    getTitlesWidget: (value, meta) =>
+                        Text(value.toInt().toString()).xSmall().muted(),
+                  ),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 18,
+                    interval: xAxisInterval,
+                    getTitlesWidget: (value, meta) {
+                      if (dataMaxX > 0 && value > dataMaxX + 0.5) {
+                        return const SizedBox.shrink();
+                      }
+                      return Text(_formatBytes(value.round())).xSmall().muted();
+                    },
+                  ),
                 ),
               ),
-            ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border.all(color: theme.colorScheme.border),
-            ),
-            rangeAnnotations: RangeAnnotations(
-              verticalRangeAnnotations: [
-                if (originalMarkerX != null && originalMarkerX < chartMaxX)
-                  VerticalRangeAnnotation(
-                    x1: originalMarkerX,
-                    x2: chartMaxX,
-                    color: originalSizeOverlayColor,
-                  ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border.all(color: theme.colorScheme.border),
+              ),
+              rangeAnnotations: RangeAnnotations(
+                verticalRangeAnnotations: [
+                  if (originalMarkerX != null && originalMarkerX < chartMaxX)
+                    VerticalRangeAnnotation(
+                      x1: originalMarkerX,
+                      x2: chartMaxX,
+                      color: originalSizeOverlayColor,
+                    ),
+                ],
+              ),
+              extraLinesData: ExtraLinesData(
+                extraLinesOnTop: true,
+                verticalLines: [
+                  if (originalMarkerX != null)
+                    VerticalLine(
+                      x: originalMarkerX,
+                      color: originalSizeLineColor,
+                      strokeWidth: 1.5,
+                      dashArray: [3, 4],
+                    ),
+                ],
+              ),
+              lineTouchData: LineTouchData(
+                handleBuiltInTouches: false,
+                touchCallback: (event, response) {
+                  final touchedSpots = response?.lineBarSpots;
+                  if (touchedSpots == null ||
+                      touchedSpots.isEmpty ||
+                      !_isAnalyzeSelectionEvent(event)) {
+                    return;
+                  }
+                  final touched = touchedSpots.first;
+                  final point = switch (touched.barIndex) {
+                    0 => pixelMatchPoints[touched.spotIndex],
+                    1 => msSsimPoints[touched.spotIndex],
+                    _ => ssimulacra2Points[touched.spotIndex],
+                  };
+                  if (_isAnalyzeCommitEvent(event)) {
+                    _selectionPulseController.forward(from: 0);
+                    widget.onCommitSample(point.sample);
+                  } else if (event is FlPointerHoverEvent) {
+                    widget.onHoverSample(point.sample);
+                  }
+                },
+              ),
+              lineBarsData: [
+                _buildAnalyzeLine(
+                  points: pixelMatchPoints,
+                  color: _analyzeMetricColorForLabel('Pixel Match'),
+                  selectedArtifactId: widget.selectedArtifactId,
+                  selectedPulse: selectedPulse,
+                ),
+                _buildAnalyzeLine(
+                  points: msSsimPoints,
+                  color: _analyzeMetricColorForLabel('MS-SSIM'),
+                  selectedArtifactId: widget.selectedArtifactId,
+                  selectedPulse: selectedPulse,
+                ),
+                _buildAnalyzeLine(
+                  points: ssimulacra2Points,
+                  color: _analyzeMetricColorForLabel('SSIMULACRA 2'),
+                  selectedArtifactId: widget.selectedArtifactId,
+                  selectedPulse: selectedPulse,
+                ),
               ],
             ),
-            extraLinesData: ExtraLinesData(
-              extraLinesOnTop: true,
-              verticalLines: [
-                if (originalMarkerX != null)
-                  VerticalLine(
-                    x: originalMarkerX,
-                    color: originalSizeLineColor,
-                    strokeWidth: 1.5,
-                    dashArray: [3, 4],
-                  ),
-              ],
-            ),
-            lineTouchData: LineTouchData(
-              handleBuiltInTouches: false,
-              touchCallback: (event, response) {
-                final touchedSpots = response?.lineBarSpots;
-                if (touchedSpots == null ||
-                    touchedSpots.isEmpty ||
-                    !_isAnalyzeSelectionEvent(event)) {
-                  return;
-                }
-                final touched = touchedSpots.first;
-                final point = switch (touched.barIndex) {
-                  0 => pixelMatchPoints[touched.spotIndex],
-                  1 => msSsimPoints[touched.spotIndex],
-                  _ => ssimulacra2Points[touched.spotIndex],
-                };
-                if (_isAnalyzeCommitEvent(event)) {
-                  _selectionPulseController.forward(from: 0);
-                }
-                widget.onSelectSample(point.sample);
-                if (_isAnalyzeCommitEvent(event)) {
-                  widget.onCommitSampleQuality(point.sample);
-                }
-              },
-            ),
-            lineBarsData: [
-              _buildAnalyzeLine(
-                points: pixelMatchPoints,
-                color: _analyzeMetricColorForLabel('Pixel Match'),
-                selectedArtifactId: widget.selectedArtifactId,
-                selectedPulse: selectedPulse,
-              ),
-              _buildAnalyzeLine(
-                points: msSsimPoints,
-                color: _analyzeMetricColorForLabel('MS-SSIM'),
-                selectedArtifactId: widget.selectedArtifactId,
-                selectedPulse: selectedPulse,
-              ),
-              _buildAnalyzeLine(
-                points: ssimulacra2Points,
-                color: _analyzeMetricColorForLabel('SSIMULACRA 2'),
-                selectedArtifactId: widget.selectedArtifactId,
-                selectedPulse: selectedPulse,
-              ),
-            ],
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }

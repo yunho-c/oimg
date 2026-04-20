@@ -44,10 +44,7 @@ enum PreviewDisplayMode { original, optimized, difference }
 enum _PreviewMetricKind { pixelMatch, msSsim, ssimulacra2 }
 
 class _PreviewCacheKey {
-  const _PreviewCacheKey({
-    required this.filePath,
-    required this.operation,
-  });
+  const _PreviewCacheKey({required this.filePath, required this.operation});
 
   final String filePath;
   final ImageOperation operation;
@@ -65,20 +62,14 @@ class _PreviewCacheKey {
 }
 
 class _PreviewMetricCacheSlot {
-  const _PreviewMetricCacheSlot({
-    required this.hasValue,
-    this.result,
-  });
+  const _PreviewMetricCacheSlot({required this.hasValue, this.result});
 
   final bool hasValue;
   final PreviewMetricResult? result;
 }
 
 class _PreviewCacheEntry {
-  _PreviewCacheEntry({
-    required this.key,
-    required this.preview,
-  });
+  _PreviewCacheEntry({required this.key, required this.preview});
 
   final _PreviewCacheKey key;
   final OptimizationPreview preview;
@@ -121,12 +112,15 @@ class _PreviewCacheEntry {
 
   int estimatedBytes() {
     final originalRgbaBytes =
-        preview.sourceFile.metadata.width * preview.sourceFile.metadata.height * 4;
+        preview.sourceFile.metadata.width *
+        preview.sourceFile.metadata.height *
+        4;
     final previewRgbaBytes = preview.result.width * preview.result.height * 4;
     final encodedBytes = preview.result.encodedBytes.length;
     final rawDifferenceBytes = differenceRawImage?.rgbaBytes.length ?? 0;
-    final differenceBytes =
-        differenceImage == null ? 0 : preview.result.width * preview.result.height * 4;
+    final differenceBytes = differenceImage == null
+        ? 0
+        : preview.result.width * preview.result.height * 4;
     return _previewCacheEntryOverheadBytes +
         originalRgbaBytes +
         previewRgbaBytes +
@@ -186,7 +180,9 @@ class _PreviewCacheController {
 
   ui.Image? getDifferenceImage(_PreviewCacheKey key) {
     final entry = _touchEntry(key);
-    if (entry == null || !entry.hasResolvedDifference || !entry.differenceAvailable) {
+    if (entry == null ||
+        !entry.hasResolvedDifference ||
+        !entry.differenceAvailable) {
       return null;
     }
     final image = entry.differenceImage;
@@ -198,7 +194,9 @@ class _PreviewCacheController {
 
   RawImageResult? getDifferenceRawImage(_PreviewCacheKey key) {
     final entry = _touchEntry(key);
-    if (entry == null || !entry.hasResolvedDifference || !entry.differenceAvailable) {
+    if (entry == null ||
+        !entry.hasResolvedDifference ||
+        !entry.differenceAvailable) {
       return null;
     }
     return entry.differenceRawImage;
@@ -292,7 +290,8 @@ class _PreviewCacheController {
   }
 
   void _evictEntriesIfNeeded() {
-    while (_estimatedTotalBytes() > _previewCacheBudgetBytes && _entries.length > 1) {
+    while (_estimatedTotalBytes() > _previewCacheBudgetBytes &&
+        _entries.length > 1) {
       final key = _entries.keys.first;
       final entry = _entries.remove(key);
       if (entry == null) {
@@ -325,37 +324,33 @@ class _PreviewCacheController {
 
   void _disposeArtifact(String artifactId) {
     unawaited(
-      _slimgApi.disposePreviewArtifact(artifactId: artifactId).catchError(
-        (Object error, StackTrace stackTrace) {
-          DeveloperDiagnostics.logTimingError(
-            'preview-artifact-dispose-cache',
-            error,
-            stackTrace,
-          );
-        },
-      ),
+      _slimgApi.disposePreviewArtifact(artifactId: artifactId).catchError((
+        Object error,
+        StackTrace stackTrace,
+      ) {
+        DeveloperDiagnostics.logTimingError(
+          'preview-artifact-dispose-cache',
+          error,
+          stackTrace,
+        );
+      }),
     );
   }
 }
 
 class PreviewDisplaySelection {
-  const PreviewDisplaySelection({
-    required this.filePath,
-    required this.mode,
-  });
+  const PreviewDisplaySelection({required this.filePath, required this.mode});
 
   final String filePath;
   final PreviewDisplayMode mode;
 }
 
-class PreviewDisplaySelectionNotifier extends Notifier<PreviewDisplaySelection?> {
+class PreviewDisplaySelectionNotifier
+    extends Notifier<PreviewDisplaySelection?> {
   @override
   PreviewDisplaySelection? build() => null;
 
-  void select({
-    required String filePath,
-    required PreviewDisplayMode mode,
-  }) {
+  void select({required String filePath, required PreviewDisplayMode mode}) {
     state = PreviewDisplaySelection(filePath: filePath, mode: mode);
   }
 }
@@ -370,10 +365,7 @@ class PreviewDifferenceRequestNotifier extends Notifier<String?> {
 }
 
 class AnalyzeConfig {
-  const AnalyzeConfig({
-    required this.inputPath,
-    required this.operation,
-  });
+  const AnalyzeConfig({required this.inputPath, required this.operation});
 
   final String inputPath;
   final ImageOperation operation;
@@ -442,26 +434,16 @@ ImageOperation _normalizeAnalyzeOperation(ImageOperation operation) {
 enum AnalyzeAvailabilityStatus { loading, disabled, enabled }
 
 class AnalyzeAvailability {
-  const AnalyzeAvailability._({
-    required this.status,
-    this.reason,
-    this.config,
-  });
+  const AnalyzeAvailability._({required this.status, this.reason, this.config});
 
   const AnalyzeAvailability.loading()
     : this._(status: AnalyzeAvailabilityStatus.loading);
 
   const AnalyzeAvailability.disabled(String reason)
-    : this._(
-        status: AnalyzeAvailabilityStatus.disabled,
-        reason: reason,
-      );
+    : this._(status: AnalyzeAvailabilityStatus.disabled, reason: reason);
 
   const AnalyzeAvailability.enabled(AnalyzeConfig config)
-    : this._(
-        status: AnalyzeAvailabilityStatus.enabled,
-        config: config,
-      );
+    : this._(status: AnalyzeAvailabilityStatus.enabled, config: config);
 
   final AnalyzeAvailabilityStatus status;
   final String? reason;
@@ -513,6 +495,7 @@ class AnalyzeRunState {
     this.currentQuality,
     this.samples = const <AnalyzeSampleResult>[],
     this.selectedArtifactId,
+    this.hoveredArtifactId,
     this.globalError,
   });
 
@@ -525,6 +508,7 @@ class AnalyzeRunState {
   final int? currentQuality;
   final List<AnalyzeSampleResult> samples;
   final String? selectedArtifactId;
+  final String? hoveredArtifactId;
   final String? globalError;
 
   bool get isRunning =>
@@ -533,8 +517,10 @@ class AnalyzeRunState {
 
   bool get isCancelRequested => jobState == BatchJobState.cancelRequested;
 
+  String? get activeArtifactId => hoveredArtifactId ?? selectedArtifactId;
+
   AnalyzeSampleResult? get selectedSample {
-    final artifactId = selectedArtifactId;
+    final artifactId = activeArtifactId;
     if (artifactId == null) {
       return null;
     }
@@ -556,11 +542,13 @@ class AnalyzeRunState {
     int? currentQuality,
     List<AnalyzeSampleResult>? samples,
     String? selectedArtifactId,
+    String? hoveredArtifactId,
     String? globalError,
     bool clearJobId = false,
     bool clearJobState = false,
     bool clearCurrentQuality = false,
     bool clearSelectedArtifactId = false,
+    bool clearHoveredArtifactId = false,
     bool clearGlobalError = false,
   }) {
     return AnalyzeRunState(
@@ -577,6 +565,9 @@ class AnalyzeRunState {
       selectedArtifactId: clearSelectedArtifactId
           ? null
           : (selectedArtifactId ?? this.selectedArtifactId),
+      hoveredArtifactId: clearHoveredArtifactId
+          ? null
+          : (hoveredArtifactId ?? this.hoveredArtifactId),
       globalError: clearGlobalError ? null : (globalError ?? this.globalError),
     );
   }
@@ -593,16 +584,15 @@ class _PreviewArtifactContext {
 }
 
 class PreviewDifferenceFrame {
-  const PreviewDifferenceFrame({
-    required this.image,
-    required this.rawImage,
-  });
+  const PreviewDifferenceFrame({required this.image, required this.rawImage});
 
   final ui.Image image;
   final RawImageResult rawImage;
 }
 
-final _previewCacheControllerProvider = Provider<_PreviewCacheController>((ref) {
+final _previewCacheControllerProvider = Provider<_PreviewCacheController>((
+  ref,
+) {
   final controller = _PreviewCacheController(ref.read(slimgApiProvider));
   ref.onDispose(controller.dispose);
   return controller;
@@ -641,7 +631,10 @@ final analyzeAvailabilityProvider = Provider.autoDispose<AnalyzeAvailability>((
   if (settings.isLoading || plan.isLoading) {
     return const AnalyzeAvailability.loading();
   }
-  if (settings.hasError || plan.hasError || settingsData == null || planData == null) {
+  if (settings.hasError ||
+      plan.hasError ||
+      settingsData == null ||
+      planData == null) {
     return const AnalyzeAvailability.disabled('Unavailable right now.');
   }
   if (!settingsData.showsQualityControl) {
@@ -709,6 +702,7 @@ class AnalyzeRunController extends Notifier<AnalyzeRunState> {
         previous.jobId == null &&
         previous.samples.isEmpty &&
         previous.selectedArtifactId == null &&
+        previous.hoveredArtifactId == null &&
         previous.globalError == null;
     if (isEmptyIdleState) {
       return previous.copyWith(
@@ -762,7 +756,11 @@ class AnalyzeRunController extends Notifier<AnalyzeRunState> {
       _activeJobId = handle.jobId;
       unawaited(_pollJob(handle.jobId, requestId));
     } on Object catch (error, stackTrace) {
-      DeveloperDiagnostics.logTimingError('analyze:$requestId', error, stackTrace);
+      DeveloperDiagnostics.logTimingError(
+        'analyze:$requestId',
+        error,
+        stackTrace,
+      );
       _activeJobId = null;
       state = AnalyzeRunState(
         availability: state.availability,
@@ -786,31 +784,53 @@ class AnalyzeRunController extends Notifier<AnalyzeRunState> {
   }
 
   void selectSample(AnalyzeSampleResult sample) {
-    state = state.copyWith(selectedArtifactId: sample.artifactId);
+    state = state.copyWith(
+      selectedArtifactId: sample.artifactId,
+      clearHoveredArtifactId: true,
+    );
+  }
+
+  void hoverSample(AnalyzeSampleResult sample) {
+    state = state.copyWith(hoveredArtifactId: sample.artifactId);
+  }
+
+  AnalyzeSampleResult? clearHoveredSample() {
+    state = state.copyWith(clearHoveredArtifactId: true);
+    return state.selectedSample;
   }
 
   Future<void> _pollJob(String jobId, int requestId) async {
     while (state.jobId == jobId) {
       try {
-        final snapshot = await ref.read(slimgApiProvider).getAnalyzeFileJob(
-          jobId: jobId,
-        );
+        final snapshot = await ref
+            .read(slimgApiProvider)
+            .getAnalyzeFileJob(jobId: jobId);
         if (state.jobId != jobId) {
           return;
         }
 
         final priorSelection = state.selectedArtifactId;
         final autoSelectedArtifactId =
-            !_isTerminalAnalyzeState(snapshot.state) && snapshot.results.isNotEmpty
+            !_isTerminalAnalyzeState(snapshot.state) &&
+                snapshot.results.isNotEmpty
             ? snapshot.results.last.artifactId
             : null;
-        final selectedArtifactId = autoSelectedArtifactId ??
+        final selectedArtifactId =
+            autoSelectedArtifactId ??
             (priorSelection != null &&
                     snapshot.results.any(
                       (sample) => sample.artifactId == priorSelection,
                     )
                 ? priorSelection
                 : null);
+        final priorHover = state.hoveredArtifactId;
+        final hoveredArtifactId =
+            priorHover != null &&
+                snapshot.results.any(
+                  (sample) => sample.artifactId == priorHover,
+                )
+            ? priorHover
+            : null;
 
         state = state.copyWith(
           jobState: snapshot.state,
@@ -819,6 +839,7 @@ class AnalyzeRunController extends Notifier<AnalyzeRunState> {
           currentQuality: snapshot.currentQuality,
           samples: snapshot.results,
           selectedArtifactId: selectedArtifactId,
+          hoveredArtifactId: hoveredArtifactId,
           globalError: snapshot.error?.toString(),
         );
 
@@ -830,12 +851,17 @@ class AnalyzeRunController extends Notifier<AnalyzeRunState> {
           return;
         }
       } on Object catch (error, stackTrace) {
-        DeveloperDiagnostics.logTimingError('analyze:$requestId', error, stackTrace);
+        DeveloperDiagnostics.logTimingError(
+          'analyze:$requestId',
+          error,
+          stackTrace,
+        );
         state = AnalyzeRunState(
           availability: state.availability,
           contextConfig: state.contextConfig,
           samples: state.samples,
           selectedArtifactId: state.selectedArtifactId,
+          hoveredArtifactId: state.hoveredArtifactId,
           globalError: error.toString(),
         );
         _activeJobId = null;
@@ -868,11 +894,10 @@ bool _isTerminalAnalyzeState(BatchJobState state) {
   };
 }
 
-final selectedAnalyzeSampleProvider = Provider.autoDispose<AnalyzeSampleResult?>((
-  ref,
-) {
-  return ref.watch(analyzeRunControllerProvider).selectedSample;
-});
+final selectedAnalyzeSampleProvider =
+    Provider.autoDispose<AnalyzeSampleResult?>((ref) {
+      return ref.watch(analyzeRunControllerProvider).selectedSample;
+    });
 
 final currentOptimizedDisplayProvider =
     Provider.autoDispose<OptimizedPreviewDisplay?>((ref) {
@@ -1007,20 +1032,25 @@ final currentPreviewProvider = FutureProvider.autoDispose<OptimizationPreview?>(
     cache.cachePreview(cacheKey, preview);
     return preview;
   } on Object catch (error, stackTrace) {
-    DeveloperDiagnostics.logTimingError('preview:$requestId', error, stackTrace);
+    DeveloperDiagnostics.logTimingError(
+      'preview:$requestId',
+      error,
+      stackTrace,
+    );
     rethrow;
   }
 });
 
-final previewDisplaySelectionProvider = NotifierProvider.autoDispose<
-  PreviewDisplaySelectionNotifier,
-  PreviewDisplaySelection?
->(PreviewDisplaySelectionNotifier.new);
+final previewDisplaySelectionProvider =
+    NotifierProvider.autoDispose<
+      PreviewDisplaySelectionNotifier,
+      PreviewDisplaySelection?
+    >(PreviewDisplaySelectionNotifier.new);
 
-final previewDifferenceRequestProvider = NotifierProvider.autoDispose<
-  PreviewDifferenceRequestNotifier,
-  String?
->(PreviewDifferenceRequestNotifier.new);
+final previewDifferenceRequestProvider =
+    NotifierProvider.autoDispose<PreviewDifferenceRequestNotifier, String?>(
+      PreviewDifferenceRequestNotifier.new,
+    );
 
 final currentPreviewDisplayModeProvider =
     Provider.autoDispose<PreviewDisplayMode>((ref) {
@@ -1032,10 +1062,9 @@ final currentPreviewDisplayModeProvider =
 
       final manualSelection = ref.watch(previewDisplaySelectionProvider);
       final optimizedDisplay = ref.watch(currentOptimizedDisplayProvider);
-      final plan = ref.watch(currentOptimizationPlanProvider).maybeWhen(
-        data: (value) => value,
-        orElse: () => null,
-      );
+      final plan = ref
+          .watch(currentOptimizationPlanProvider)
+          .maybeWhen(data: (value) => value, orElse: () => null);
 
       final hasPreview = optimizedDisplay != null;
       final isLosslessPreview = plan?.useSourceImageForPreview ?? false;
@@ -1045,7 +1074,8 @@ final currentPreviewDisplayModeProvider =
           optimizedDisplay.width == currentFile.metadata.width &&
           optimizedDisplay.height == currentFile.metadata.height;
 
-      if (manualSelection != null && manualSelection.filePath == currentFile.path) {
+      if (manualSelection != null &&
+          manualSelection.filePath == currentFile.path) {
         switch (manualSelection.mode) {
           case PreviewDisplayMode.original:
             return PreviewDisplayMode.original;
@@ -1090,115 +1120,112 @@ final _currentPreviewArtifactContextProvider =
       );
     });
 
-final currentPreviewDifferenceFrameProvider =
-    FutureProvider.autoDispose<PreviewDifferenceFrame?>((ref) async {
-      final requestId = ++_previewDifferenceRequestSequence;
-      final totalStopwatch = Stopwatch()..start();
-      final cache = ref.read(_previewCacheControllerProvider);
-      ref.onDispose(() {
-        DeveloperDiagnostics.logTiming(
-          'preview-diff:$requestId',
-          'disposed total=${totalStopwatch.elapsedMilliseconds}ms',
-        );
-      });
+final currentPreviewDifferenceFrameProvider = FutureProvider.autoDispose<PreviewDifferenceFrame?>((
+  ref,
+) async {
+  final requestId = ++_previewDifferenceRequestSequence;
+  final totalStopwatch = Stopwatch()..start();
+  final cache = ref.read(_previewCacheControllerProvider);
+  ref.onDispose(() {
+    DeveloperDiagnostics.logTiming(
+      'preview-diff:$requestId',
+      'disposed total=${totalStopwatch.elapsedMilliseconds}ms',
+    );
+  });
 
-      try {
-        final context = await ref.watch(_currentPreviewArtifactContextProvider.future);
-        if (context == null) {
-          return null;
-        }
-        final requestedArtifactId = ref.watch(previewDifferenceRequestProvider);
-        if (requestedArtifactId != context.request.artifactId) {
-          return null;
-        }
-        final cacheKey = context.cacheKey;
-        if (cacheKey != null) {
-          final cachedImage = cache.getDifferenceImage(cacheKey);
-          final cachedRawImage = cache.getDifferenceRawImage(cacheKey);
-          if (cachedImage != null && cachedRawImage != null) {
-            totalStopwatch.stop();
-            DeveloperDiagnostics.logTiming(
-              'preview-diff:$requestId',
-              'cache-hit total=${totalStopwatch.elapsedMilliseconds}ms artifact=${context.request.artifactId}',
-            );
-            return PreviewDifferenceFrame(
-              image: cachedImage,
-              rawImage: cachedRawImage,
-            );
-          }
-          if (cache.isDifferenceUnavailable(cacheKey)) {
-            totalStopwatch.stop();
-            DeveloperDiagnostics.logTiming(
-              'preview-diff:$requestId',
-              'cache-hit total=${totalStopwatch.elapsedMilliseconds}ms artifact=${context.request.artifactId} available=false',
-            );
-            return null;
-          }
-          if (cachedRawImage != null) {
-            final image = await _decodeRawImage(cachedRawImage);
-            cache.cacheDifferenceImage(cacheKey, image);
-            totalStopwatch.stop();
-            DeveloperDiagnostics.logTiming(
-              'preview-diff:$requestId',
-              'cache-hit total=${totalStopwatch.elapsedMilliseconds}ms artifact=${context.request.artifactId} source=raw',
-            );
-            return PreviewDifferenceFrame(
-              image: image,
-              rawImage: cachedRawImage,
-            );
-          }
-          if (cachedImage != null) {
-            totalStopwatch.stop();
-            DeveloperDiagnostics.logTiming(
-              'preview-diff:$requestId',
-              'cache-hit total=${totalStopwatch.elapsedMilliseconds}ms artifact=${context.request.artifactId} image-only',
-            );
-            return null;
-          }
-        }
-
-        DeveloperDiagnostics.logTiming(
-          'preview-diff:$requestId',
-          'start artifact=${context.request.artifactId}',
-        );
-        final diffStopwatch = Stopwatch()..start();
-        final result = await ref
-            .read(slimgApiProvider)
-            .computePreviewDifferenceImage(request: context.request);
-        diffStopwatch.stop();
+  try {
+    final context = await ref.watch(
+      _currentPreviewArtifactContextProvider.future,
+    );
+    if (context == null) {
+      return null;
+    }
+    final requestedArtifactId = ref.watch(previewDifferenceRequestProvider);
+    if (requestedArtifactId != context.request.artifactId) {
+      return null;
+    }
+    final cacheKey = context.cacheKey;
+    if (cacheKey != null) {
+      final cachedImage = cache.getDifferenceImage(cacheKey);
+      final cachedRawImage = cache.getDifferenceRawImage(cacheKey);
+      if (cachedImage != null && cachedRawImage != null) {
         totalStopwatch.stop();
         DeveloperDiagnostics.logTiming(
           'preview-diff:$requestId',
-          'done diff=${diffStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms available=${result != null}',
+          'cache-hit total=${totalStopwatch.elapsedMilliseconds}ms artifact=${context.request.artifactId}',
         );
-        if (result == null) {
-          if (cacheKey != null) {
-            cache.cacheDifferenceUnavailable(cacheKey);
-          }
-          return null;
-        }
-        if (cacheKey != null) {
-          cache.cacheDifferenceRawImage(cacheKey, result);
-        }
-        final image = await _decodeRawImage(result);
-        if (cacheKey != null) {
-          cache.cacheDifferenceImage(cacheKey, image);
-        } else {
-          ref.onDispose(image.dispose);
-        }
         return PreviewDifferenceFrame(
-          image: image,
-          rawImage: result,
+          image: cachedImage,
+          rawImage: cachedRawImage,
         );
-      } on Object catch (error, stackTrace) {
-        DeveloperDiagnostics.logTimingError(
-          'preview-diff:$requestId',
-          error,
-          stackTrace,
-        );
-        rethrow;
       }
-    });
+      if (cache.isDifferenceUnavailable(cacheKey)) {
+        totalStopwatch.stop();
+        DeveloperDiagnostics.logTiming(
+          'preview-diff:$requestId',
+          'cache-hit total=${totalStopwatch.elapsedMilliseconds}ms artifact=${context.request.artifactId} available=false',
+        );
+        return null;
+      }
+      if (cachedRawImage != null) {
+        final image = await _decodeRawImage(cachedRawImage);
+        cache.cacheDifferenceImage(cacheKey, image);
+        totalStopwatch.stop();
+        DeveloperDiagnostics.logTiming(
+          'preview-diff:$requestId',
+          'cache-hit total=${totalStopwatch.elapsedMilliseconds}ms artifact=${context.request.artifactId} source=raw',
+        );
+        return PreviewDifferenceFrame(image: image, rawImage: cachedRawImage);
+      }
+      if (cachedImage != null) {
+        totalStopwatch.stop();
+        DeveloperDiagnostics.logTiming(
+          'preview-diff:$requestId',
+          'cache-hit total=${totalStopwatch.elapsedMilliseconds}ms artifact=${context.request.artifactId} image-only',
+        );
+        return null;
+      }
+    }
+
+    DeveloperDiagnostics.logTiming(
+      'preview-diff:$requestId',
+      'start artifact=${context.request.artifactId}',
+    );
+    final diffStopwatch = Stopwatch()..start();
+    final result = await ref
+        .read(slimgApiProvider)
+        .computePreviewDifferenceImage(request: context.request);
+    diffStopwatch.stop();
+    totalStopwatch.stop();
+    DeveloperDiagnostics.logTiming(
+      'preview-diff:$requestId',
+      'done diff=${diffStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms available=${result != null}',
+    );
+    if (result == null) {
+      if (cacheKey != null) {
+        cache.cacheDifferenceUnavailable(cacheKey);
+      }
+      return null;
+    }
+    if (cacheKey != null) {
+      cache.cacheDifferenceRawImage(cacheKey, result);
+    }
+    final image = await _decodeRawImage(result);
+    if (cacheKey != null) {
+      cache.cacheDifferenceImage(cacheKey, image);
+    } else {
+      ref.onDispose(image.dispose);
+    }
+    return PreviewDifferenceFrame(image: image, rawImage: result);
+  } on Object catch (error, stackTrace) {
+    DeveloperDiagnostics.logTimingError(
+      'preview-diff:$requestId',
+      error,
+      stackTrace,
+    );
+    rethrow;
+  }
+});
 
 Future<ui.Image> _decodeRawImage(RawImageResult result) {
   final completer = Completer<ui.Image>();
@@ -1225,13 +1252,19 @@ final currentPreviewPixelMatchProvider =
       });
 
       try {
-        final context = await ref.watch(_currentPreviewArtifactContextProvider.future);
+        final context = await ref.watch(
+          _currentPreviewArtifactContextProvider.future,
+        );
         if (context == null) {
           return null;
         }
         final cacheKey = context.cacheKey;
-        if (cacheKey != null && cache.hasMetric(cacheKey, _PreviewMetricKind.pixelMatch)) {
-          final result = cache.getMetric(cacheKey, _PreviewMetricKind.pixelMatch);
+        if (cacheKey != null &&
+            cache.hasMetric(cacheKey, _PreviewMetricKind.pixelMatch)) {
+          final result = cache.getMetric(
+            cacheKey,
+            _PreviewMetricKind.pixelMatch,
+          );
           totalStopwatch.stop();
           DeveloperDiagnostics.logTiming(
             'preview-metric:pixel-match:$requestId',
@@ -1259,7 +1292,11 @@ final currentPreviewPixelMatchProvider =
           elapsedMilliseconds: metricStopwatch.elapsedMilliseconds,
         );
         if (cacheKey != null) {
-          cache.cacheMetric(cacheKey, _PreviewMetricKind.pixelMatch, metricResult);
+          cache.cacheMetric(
+            cacheKey,
+            _PreviewMetricKind.pixelMatch,
+            metricResult,
+          );
         }
         return metricResult;
       } on Object catch (error, stackTrace) {
@@ -1272,65 +1309,69 @@ final currentPreviewPixelMatchProvider =
       }
     });
 
-final currentPreviewMsSsimProvider =
-    FutureProvider.autoDispose<PreviewMetricResult?>((ref) async {
-      final requestId = ++_previewMsSsimRequestSequence;
-      final totalStopwatch = Stopwatch()..start();
-      final cache = ref.read(_previewCacheControllerProvider);
-      ref.onDispose(() {
-        DeveloperDiagnostics.logTiming(
-          'preview-metric:ms-ssim:$requestId',
-          'disposed total=${totalStopwatch.elapsedMilliseconds}ms',
-        );
-      });
+final currentPreviewMsSsimProvider = FutureProvider.autoDispose<PreviewMetricResult?>((
+  ref,
+) async {
+  final requestId = ++_previewMsSsimRequestSequence;
+  final totalStopwatch = Stopwatch()..start();
+  final cache = ref.read(_previewCacheControllerProvider);
+  ref.onDispose(() {
+    DeveloperDiagnostics.logTiming(
+      'preview-metric:ms-ssim:$requestId',
+      'disposed total=${totalStopwatch.elapsedMilliseconds}ms',
+    );
+  });
 
-      try {
-        final context = await ref.watch(_currentPreviewArtifactContextProvider.future);
-        if (context == null) {
-          return null;
-        }
-        final cacheKey = context.cacheKey;
-        if (cacheKey != null && cache.hasMetric(cacheKey, _PreviewMetricKind.msSsim)) {
-          final result = cache.getMetric(cacheKey, _PreviewMetricKind.msSsim);
-          totalStopwatch.stop();
-          DeveloperDiagnostics.logTiming(
-            'preview-metric:ms-ssim:$requestId',
-            'cache-hit total=${totalStopwatch.elapsedMilliseconds}ms artifact=${context.request.artifactId} value=${result?.value}',
-          );
-          return result;
-        }
+  try {
+    final context = await ref.watch(
+      _currentPreviewArtifactContextProvider.future,
+    );
+    if (context == null) {
+      return null;
+    }
+    final cacheKey = context.cacheKey;
+    if (cacheKey != null &&
+        cache.hasMetric(cacheKey, _PreviewMetricKind.msSsim)) {
+      final result = cache.getMetric(cacheKey, _PreviewMetricKind.msSsim);
+      totalStopwatch.stop();
+      DeveloperDiagnostics.logTiming(
+        'preview-metric:ms-ssim:$requestId',
+        'cache-hit total=${totalStopwatch.elapsedMilliseconds}ms artifact=${context.request.artifactId} value=${result?.value}',
+      );
+      return result;
+    }
 
-        DeveloperDiagnostics.logTiming(
-          'preview-metric:ms-ssim:$requestId',
-          'start artifact=${context.request.artifactId}',
-        );
-        final metricStopwatch = Stopwatch()..start();
-        final result = await ref
-            .read(slimgApiProvider)
-            .computePreviewMsSsim(request: context.request);
-        metricStopwatch.stop();
-        totalStopwatch.stop();
-        DeveloperDiagnostics.logTiming(
-          'preview-metric:ms-ssim:$requestId',
-          'done metric=${metricStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms value=$result',
-        );
-        final metricResult = PreviewMetricResult(
-          value: result,
-          elapsedMilliseconds: metricStopwatch.elapsedMilliseconds,
-        );
-        if (cacheKey != null) {
-          cache.cacheMetric(cacheKey, _PreviewMetricKind.msSsim, metricResult);
-        }
-        return metricResult;
-      } on Object catch (error, stackTrace) {
-        DeveloperDiagnostics.logTimingError(
-          'preview-metric:ms-ssim:$requestId',
-          error,
-          stackTrace,
-        );
-        rethrow;
-      }
-    });
+    DeveloperDiagnostics.logTiming(
+      'preview-metric:ms-ssim:$requestId',
+      'start artifact=${context.request.artifactId}',
+    );
+    final metricStopwatch = Stopwatch()..start();
+    final result = await ref
+        .read(slimgApiProvider)
+        .computePreviewMsSsim(request: context.request);
+    metricStopwatch.stop();
+    totalStopwatch.stop();
+    DeveloperDiagnostics.logTiming(
+      'preview-metric:ms-ssim:$requestId',
+      'done metric=${metricStopwatch.elapsedMilliseconds}ms total=${totalStopwatch.elapsedMilliseconds}ms value=$result',
+    );
+    final metricResult = PreviewMetricResult(
+      value: result,
+      elapsedMilliseconds: metricStopwatch.elapsedMilliseconds,
+    );
+    if (cacheKey != null) {
+      cache.cacheMetric(cacheKey, _PreviewMetricKind.msSsim, metricResult);
+    }
+    return metricResult;
+  } on Object catch (error, stackTrace) {
+    DeveloperDiagnostics.logTimingError(
+      'preview-metric:ms-ssim:$requestId',
+      error,
+      stackTrace,
+    );
+    rethrow;
+  }
+});
 
 final currentPreviewSsimulacra2Provider =
     FutureProvider.autoDispose<PreviewMetricResult?>((ref) async {
@@ -1345,14 +1386,19 @@ final currentPreviewSsimulacra2Provider =
       });
 
       try {
-        final context = await ref.watch(_currentPreviewArtifactContextProvider.future);
+        final context = await ref.watch(
+          _currentPreviewArtifactContextProvider.future,
+        );
         if (context == null) {
           return null;
         }
         final cacheKey = context.cacheKey;
         if (cacheKey != null &&
             cache.hasMetric(cacheKey, _PreviewMetricKind.ssimulacra2)) {
-          final result = cache.getMetric(cacheKey, _PreviewMetricKind.ssimulacra2);
+          final result = cache.getMetric(
+            cacheKey,
+            _PreviewMetricKind.ssimulacra2,
+          );
           totalStopwatch.stop();
           DeveloperDiagnostics.logTiming(
             'preview-metric:ssimulacra2:$requestId',
@@ -1380,7 +1426,11 @@ final currentPreviewSsimulacra2Provider =
           elapsedMilliseconds: metricStopwatch.elapsedMilliseconds,
         );
         if (cacheKey != null) {
-          cache.cacheMetric(cacheKey, _PreviewMetricKind.ssimulacra2, metricResult);
+          cache.cacheMetric(
+            cacheKey,
+            _PreviewMetricKind.ssimulacra2,
+            metricResult,
+          );
         }
         return metricResult;
       } on Object catch (error, stackTrace) {
@@ -1515,10 +1565,7 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
     try {
       await ref.read(slimgApiProvider).cancelProcessFileBatchJob(jobId: jobId);
     } on Object catch (error) {
-      state = _idleState(
-        items: state.items,
-        globalError: error.toString(),
-      );
+      state = _idleState(items: state.items, globalError: error.toString());
     }
   }
 
@@ -1544,7 +1591,9 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
     final inputPaths = files.map((file) => file.path).toList(growable: false);
     final queuedItems = {
       for (final path in inputPaths)
-        path: const OptimizationItemState(status: OptimizationItemStatus.queued),
+        path: const OptimizationItemState(
+          status: OptimizationItemStatus.queued,
+        ),
     };
 
     try {
@@ -1585,10 +1634,7 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
       unawaited(_pollJob(handle.jobId));
     } on Object catch (error) {
       DeveloperDiagnostics.logTimingError('optimize-run', error);
-      state = _idleState(
-        items: queuedItems,
-        globalError: error.toString(),
-      );
+      state = _idleState(items: queuedItems, globalError: error.toString());
     }
   }
 
@@ -1630,10 +1676,7 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
 
         await _disposeJob(jobId);
         DeveloperDiagnostics.logTimingError('optimize-run', error);
-        state = _idleState(
-          items: state.items,
-          globalError: error.toString(),
-        );
+        state = _idleState(items: state.items, globalError: error.toString());
         _activeInputPaths = const <String>[];
         _keepSourceEntryPaths = const <String>{};
         _deleteSourceAfterSuccessPaths = const <String>{};
@@ -1654,12 +1697,14 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
           'result input=${item.inputPath} success=${item.success} error=${item.error} output=${item.result?.outputPath} didWrite=${item.result?.didWrite}',
         );
       }
-      await ref.read(fileOpenControllerProvider).applyProcessResults(
-        newResults,
-        keepSourceEntries: _keepSourceEntryPaths,
-        deleteSourcesAfterSuccess: _deleteSourceAfterSuccessPaths,
-        preserveModifiedTimes: _sourceModifiedTimes,
-      );
+      await ref
+          .read(fileOpenControllerProvider)
+          .applyProcessResults(
+            newResults,
+            keepSourceEntries: _keepSourceEntryPaths,
+            deleteSourcesAfterSuccess: _deleteSourceAfterSuccessPaths,
+            preserveModifiedTimes: _sourceModifiedTimes,
+          );
       if (state.jobId != jobId) {
         return;
       }
@@ -1683,7 +1728,9 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
   ) {
     final nextItems = <String, OptimizationItemState>{
       for (final path in _activeInputPaths)
-        path: const OptimizationItemState(status: OptimizationItemStatus.queued),
+        path: const OptimizationItemState(
+          status: OptimizationItemStatus.queued,
+        ),
     };
     final completedInputs = <String>{};
 
@@ -1734,10 +1781,7 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
     required Map<String, OptimizationItemState> items,
     String? globalError,
   }) {
-    return OptimizationRunState(
-      items: items,
-      globalError: globalError,
-    );
+    return OptimizationRunState(items: items, globalError: globalError);
   }
 
   Future<void> _disposeJob(String jobId) async {

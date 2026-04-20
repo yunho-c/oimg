@@ -1024,6 +1024,100 @@ void main() {
   );
 
   testWidgets(
+    'leaving the analyze chart restores the committed sample stats after hover',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final store = _FakeAppSettingsStore();
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      )..analyzeSampleDelay = const Duration(milliseconds: 20);
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(
+        _buildApp(controller: controller, slimg: slimg, store: store),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+      await tester.pumpAndSettle();
+
+      final chart = tester.widget<LineChart>(find.byType(LineChart));
+      final firstBar = chart.data.lineBarsData.first;
+      final committedSpot = firstBar.spots.first;
+      chart.data.lineTouchData.touchCallback?.call(
+        FlTapDownEvent(
+          TapDownDetails(
+            localPosition: Offset.zero,
+            kind: PointerDeviceKind.mouse,
+          ),
+        ),
+        LineTouchResponse(
+          touchLocation: Offset.zero,
+          touchChartCoordinate: Offset.zero,
+          lineBarSpots: [TouchLineBarSpot(firstBar, 0, committedSpot, 0)],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        _bottomStatValueText(tester, label: 'Optimized', value: '700 B'),
+        isNotNull,
+      );
+
+      final hoveredSpot = firstBar.spots.last;
+      chart.data.lineTouchData.touchCallback?.call(
+        FlPointerHoverEvent(const PointerHoverEvent(position: Offset.zero)),
+        LineTouchResponse(
+          touchLocation: Offset.zero,
+          touchChartCoordinate: Offset.zero,
+          lineBarSpots: [
+            TouchLineBarSpot(
+              firstBar,
+              0,
+              hoveredSpot,
+              firstBar.spots.length - 1,
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        _bottomStatValueText(tester, label: 'Optimized', value: '1.5 KB'),
+        isNotNull,
+      );
+
+      final chartRegion = tester.widget<MouseRegion>(
+        find.byKey(const ValueKey('analyze-chart-region')),
+      );
+      chartRegion.onExit?.call(const PointerExitEvent(position: Offset.zero));
+      await tester.pumpAndSettle();
+
+      expect(
+        _bottomStatValueText(tester, label: 'Optimized', value: '700 B'),
+        isNotNull,
+      );
+      expect(
+        _bottomStatValueText(tester, label: 'Similarity', value: '97.8%'),
+        isNotNull,
+      );
+
+      final settings = AppSettings.fromJsonString((await store.read())!);
+      expect(settings.quality, 100);
+    },
+  );
+
+  testWidgets(
     'analyze header shows live quality while running and hovered quality after completion',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1400, 1000));
