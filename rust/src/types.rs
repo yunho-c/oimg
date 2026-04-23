@@ -100,6 +100,7 @@ pub struct BatchJobSnapshot {
 pub struct AnalyzeSampleResult {
     pub quality: u8,
     pub temp_output_path: String,
+    pub encoded_bytes: Vec<u8>,
     pub format: String,
     pub width: u32,
     pub height: u32,

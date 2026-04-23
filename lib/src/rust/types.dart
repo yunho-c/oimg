@@ -96,6 +96,7 @@ class AnalyzeFileRequest {
 class AnalyzeSampleResult {
   final int quality;
   final String tempOutputPath;
+  final Uint8List encodedBytes;
   final String format;
   final int width;
   final int height;
@@ -108,6 +109,7 @@ class AnalyzeSampleResult {
   const AnalyzeSampleResult({
     required this.quality,
     required this.tempOutputPath,
+    required this.encodedBytes,
     required this.format,
     required this.width,
     required this.height,
@@ -122,6 +124,7 @@ class AnalyzeSampleResult {
   int get hashCode =>
       quality.hashCode ^
       tempOutputPath.hashCode ^
+      encodedBytes.hashCode ^
       format.hashCode ^
       width.hashCode ^
       height.hashCode ^
@@ -138,6 +141,7 @@ class AnalyzeSampleResult {
           runtimeType == other.runtimeType &&
           quality == other.quality &&
           tempOutputPath == other.tempOutputPath &&
+          encodedBytes == other.encodedBytes &&
           format == other.format &&
           width == other.width &&
           height == other.height &&

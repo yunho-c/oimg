@@ -909,7 +909,7 @@ final currentOptimizedDisplayProvider =
           width: selectedAnalyzeSample.width,
           height: selectedAnalyzeSample.height,
           sizeBytes: selectedAnalyzeSample.sizeBytes,
-          outputPath: selectedAnalyzeSample.tempOutputPath,
+          encodedBytes: selectedAnalyzeSample.encodedBytes,
         );
       }
 

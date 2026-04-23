@@ -1024,6 +1024,71 @@ void main() {
   );
 
   testWidgets(
+    'hovering another analyze sample after selection keeps the optimized preview renderable',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final store = _FakeAppSettingsStore();
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      )..analyzeSampleDelay = const Duration(milliseconds: 20);
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(
+        _buildApp(controller: controller, slimg: slimg, store: store),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+      await tester.pumpAndSettle();
+
+      final chart = tester.widget<LineChart>(find.byType(LineChart));
+      final firstBar = chart.data.lineBarsData.first;
+      final firstSpot = firstBar.spots.first;
+      final lastSpot = firstBar.spots.last;
+
+      chart.data.lineTouchData.touchCallback?.call(
+        FlTapDownEvent(
+          TapDownDetails(
+            localPosition: Offset.zero,
+            kind: PointerDeviceKind.mouse,
+          ),
+        ),
+        LineTouchResponse(
+          touchLocation: Offset.zero,
+          touchChartCoordinate: Offset.zero,
+          lineBarSpots: [TouchLineBarSpot(firstBar, 0, firstSpot, 0)],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      chart.data.lineTouchData.touchCallback?.call(
+        FlPointerHoverEvent(const PointerHoverEvent(position: Offset.zero)),
+        LineTouchResponse(
+          touchLocation: Offset.zero,
+          touchChartCoordinate: Offset.zero,
+          lineBarSpots: [
+            TouchLineBarSpot(firstBar, 0, lastSpot, firstBar.spots.length - 1),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Unable to load first.png.'), findsNothing);
+      expect(find.byType(LineChart), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'leaving the analyze chart restores the committed sample stats after hover',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1400, 1000));
@@ -4202,6 +4267,7 @@ class _FakeSlimgApi implements SlimgApi {
           AnalyzeSampleResult(
             quality: quality,
             tempOutputPath: '/tmp/analyze-$quality.jpeg',
+            encodedBytes: _previewBytes,
             format: 'jpeg',
             width: 48,
             height: 32,

@@ -13,9 +13,7 @@ use slimg_core::decode;
 use crate::codec::format_to_string;
 use crate::convert::run_preview_operation;
 use crate::error::{panic_message, Result, SlimgBridgeError};
-use crate::metrics::{
-    compute_ms_ssim, compute_pixel_match_percentage, compute_ssimulacra2_score,
-};
+use crate::metrics::{compute_ms_ssim, compute_pixel_match_percentage, compute_ssimulacra2_score};
 use crate::preview_artifacts::{preview_artifact_store, PreviewArtifact};
 use crate::types::{
     AnalyzeFileJobHandle, AnalyzeFileJobSnapshot, AnalyzeFileRequest, AnalyzeSampleResult,
@@ -195,6 +193,7 @@ fn run_analyze_job(record: &Arc<AnalyzeJobRecord>, request: AnalyzeFileRequest) 
         let result = AnalyzeSampleResult {
             quality: *quality,
             temp_output_path: temp_output_path.to_string_lossy().into_owned(),
+            encoded_bytes: output.data.clone(),
             format,
             width: output.width,
             height: output.height,

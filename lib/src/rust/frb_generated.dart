@@ -959,19 +959,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   AnalyzeSampleResult dco_decode_analyze_sample_result(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 10)
-      throw Exception('unexpected arr length: expect 10 but see ${arr.length}');
+    if (arr.length != 11)
+      throw Exception('unexpected arr length: expect 11 but see ${arr.length}');
     return AnalyzeSampleResult(
       quality: dco_decode_u_8(arr[0]),
       tempOutputPath: dco_decode_String(arr[1]),
-      format: dco_decode_String(arr[2]),
-      width: dco_decode_u_32(arr[3]),
-      height: dco_decode_u_32(arr[4]),
-      sizeBytes: dco_decode_u_64(arr[5]),
-      pixelMatch: dco_decode_opt_box_autoadd_f_64(arr[6]),
-      msSsim: dco_decode_opt_box_autoadd_f_64(arr[7]),
-      ssimulacra2: dco_decode_opt_box_autoadd_f_64(arr[8]),
-      artifactId: dco_decode_String(arr[9]),
+      encodedBytes: dco_decode_list_prim_u_8_strict(arr[2]),
+      format: dco_decode_String(arr[3]),
+      width: dco_decode_u_32(arr[4]),
+      height: dco_decode_u_32(arr[5]),
+      sizeBytes: dco_decode_u_64(arr[6]),
+      pixelMatch: dco_decode_opt_box_autoadd_f_64(arr[7]),
+      msSsim: dco_decode_opt_box_autoadd_f_64(arr[8]),
+      ssimulacra2: dco_decode_opt_box_autoadd_f_64(arr[9]),
+      artifactId: dco_decode_String(arr[10]),
     );
   }
 
@@ -1724,6 +1725,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_quality = sse_decode_u_8(deserializer);
     var var_tempOutputPath = sse_decode_String(deserializer);
+    var var_encodedBytes = sse_decode_list_prim_u_8_strict(deserializer);
     var var_format = sse_decode_String(deserializer);
     var var_width = sse_decode_u_32(deserializer);
     var var_height = sse_decode_u_32(deserializer);
@@ -1735,6 +1737,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return AnalyzeSampleResult(
       quality: var_quality,
       tempOutputPath: var_tempOutputPath,
+      encodedBytes: var_encodedBytes,
       format: var_format,
       width: var_width,
       height: var_height,
@@ -2626,6 +2629,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_u_8(self.quality, serializer);
     sse_encode_String(self.tempOutputPath, serializer);
+    sse_encode_list_prim_u_8_strict(self.encodedBytes, serializer);
     sse_encode_String(self.format, serializer);
     sse_encode_u_32(self.width, serializer);
     sse_encode_u_32(self.height, serializer);
