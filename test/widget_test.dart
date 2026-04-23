@@ -1374,6 +1374,78 @@ void main() {
   );
 
   testWidgets(
+    'selecting an analyze sample in difference mode keeps analyze artifacts alive',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final store = _FakeAppSettingsStore();
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.jpg': _metadata('jpeg', 2400)},
+      )..analyzeSampleDelay = const Duration(milliseconds: 20);
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.jpg'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(
+        _buildApp(controller: controller, slimg: slimg, store: store),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('preview-mode-Difference')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final chart = tester.widget<LineChart>(find.byType(LineChart));
+      final firstBar = chart.data.lineBarsData.first;
+      final firstSpot = firstBar.spots[3];
+      final lastSpot = firstBar.spots.last;
+
+      chart.data.lineTouchData.touchCallback?.call(
+        FlTapDownEvent(
+          TapDownDetails(
+            localPosition: Offset.zero,
+            kind: PointerDeviceKind.mouse,
+          ),
+        ),
+        LineTouchResponse(
+          touchLocation: Offset.zero,
+          touchChartCoordinate: Offset.zero,
+          lineBarSpots: [TouchLineBarSpot(firstBar, 0, firstSpot, 3)],
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(slimg.analyzeJobCount, 1);
+
+      chart.data.lineTouchData.touchCallback?.call(
+        FlPointerHoverEvent(const PointerHoverEvent(position: Offset.zero)),
+        LineTouchResponse(
+          touchLocation: Offset.zero,
+          touchChartCoordinate: Offset.zero,
+          lineBarSpots: [
+            TouchLineBarSpot(firstBar, 0, lastSpot, firstBar.spots.length - 1),
+          ],
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(slimg.analyzeJobCount, 1);
+      expect(find.text('Difference preview unavailable.'), findsNothing);
+    },
+  );
+
+  testWidgets(
     'retained async image preview keeps the previous frame while loading',
     (tester) async {
       final firstFrame = await _differenceFrame(
@@ -3948,6 +4020,8 @@ class _FakeSlimgApi implements SlimgApi {
   int _nextAnalyzeJobId = 0;
   final Map<String, _FakeBatchJob> _jobs = {};
   final Map<String, _FakeAnalyzeJob> _analyzeJobs = {};
+
+  int get analyzeJobCount => _analyzeJobs.length;
 
   static final Uint8List _previewBytes = base64Decode(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==',

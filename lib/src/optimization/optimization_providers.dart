@@ -653,23 +653,27 @@ final analyzeAvailabilityProvider = Provider.autoDispose<AnalyzeAvailability>((
 });
 
 final analyzeRunControllerProvider =
-    NotifierProvider.autoDispose<AnalyzeRunController, AnalyzeRunState>(
+    NotifierProvider<AnalyzeRunController, AnalyzeRunState>(
       AnalyzeRunController.new,
     );
 
 class AnalyzeRunController extends Notifier<AnalyzeRunState> {
   String? _activeJobId;
   bool _didBuild = false;
+  bool _didRegisterDispose = false;
 
   @override
   AnalyzeRunState build() {
     final availability = ref.watch(analyzeAvailabilityProvider);
-    ref.onDispose(() {
-      final jobId = _activeJobId;
-      if (jobId != null) {
-        unawaited(_disposeJob(jobId));
-      }
-    });
+    if (!_didRegisterDispose) {
+      _didRegisterDispose = true;
+      ref.onDispose(() {
+        final jobId = _activeJobId;
+        if (jobId != null) {
+          unawaited(_disposeJob(jobId));
+        }
+      });
+    }
     if (!_didBuild) {
       _didBuild = true;
       return AnalyzeRunState(
@@ -894,10 +898,9 @@ bool _isTerminalAnalyzeState(BatchJobState state) {
   };
 }
 
-final selectedAnalyzeSampleProvider =
-    Provider.autoDispose<AnalyzeSampleResult?>((ref) {
-      return ref.watch(analyzeRunControllerProvider).selectedSample;
-    });
+final selectedAnalyzeSampleProvider = Provider<AnalyzeSampleResult?>((ref) {
+  return ref.watch(analyzeRunControllerProvider).selectedSample;
+});
 
 final currentOptimizedDisplayProvider =
     Provider.autoDispose<OptimizedPreviewDisplay?>((ref) {

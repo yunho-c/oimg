@@ -44,6 +44,7 @@ const List<({double value, Color color})> _qualityMetricColorStops = [
   (value: 80, color: Color(0xFF34C759)),
   (value: 100, color: Color(0xFF0094D9)),
 ];
+
 const List<({double value, Color color})> _savingsMetricColorStops = [
   ..._qualityMetricColorStops,
   (value: 200, color: Color(0xFFA21BB7)),
@@ -1807,12 +1808,12 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final preview = ref.watch(currentPreviewProvider);
-    final differenceFrame = ref.watch(currentPreviewDifferenceFrameProvider);
     final analyzeState = ref.watch(analyzeRunControllerProvider);
     final analyzeAvailability = ref.watch(analyzeAvailabilityProvider);
     final analyzeController = ref.read(analyzeRunControllerProvider.notifier);
     final settings = ref.watch(appSettingsProvider).asData?.value;
     final optimizedLoading = preview.isLoading && !hasOptimizedPreview;
+    final differenceFrame = ref.watch(currentPreviewDifferenceFrameProvider);
     final differenceLoading =
         displayMode == PreviewDisplayMode.difference &&
         differenceFrame.isLoading;
