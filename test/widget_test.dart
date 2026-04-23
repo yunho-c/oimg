@@ -1325,12 +1325,53 @@ void main() {
     final container = ProviderScope.containerOf(
       tester.element(find.byType(MyApp)),
     );
-    expect(slimg.differenceCallCount, 2);
+    expect(slimg.differenceCallCount, greaterThanOrEqualTo(2));
     expect(
       container.read(currentPreviewDisplayModeProvider),
       PreviewDisplayMode.difference,
     );
   });
+
+  testWidgets(
+    'difference mode follows quality slider changes without reselecting the mode',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.jpg': _metadata('jpeg', 2400)},
+      );
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.jpg'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('preview-mode-Difference')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(slimg.differenceCallCount, 1);
+      expect(find.text('Difference preview unavailable.'), findsNothing);
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(MyApp)),
+      );
+      await container.read(appSettingsProvider.notifier).setQuality(55);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(
+        container.read(currentPreviewDisplayModeProvider),
+        PreviewDisplayMode.difference,
+      );
+      expect(slimg.differenceCallCount, greaterThan(1));
+      expect(find.text('Difference preview unavailable.'), findsNothing);
+    },
+  );
 
   testWidgets(
     'retained async image preview keeps the previous frame while loading',

@@ -1141,7 +1141,10 @@ final currentPreviewDifferenceFrameProvider = FutureProvider.autoDispose<Preview
       return null;
     }
     final requestedArtifactId = ref.watch(previewDifferenceRequestProvider);
-    if (requestedArtifactId != context.request.artifactId) {
+    final displayMode = ref.watch(currentPreviewDisplayModeProvider);
+    final isActiveDifferenceMode = displayMode == PreviewDisplayMode.difference;
+    if (!isActiveDifferenceMode &&
+        requestedArtifactId != context.request.artifactId) {
       return null;
     }
     final cacheKey = context.cacheKey;
