@@ -9,6 +9,7 @@ use slimg_core::{
     convert as core_convert, decode, CropMode, ExtendMode, FillColor, Format, PipelineOptions,
     ResizeMode,
 };
+use slimg_exec::{classify_format, HostResources, WorkloadClass};
 
 use crate::codec::format_to_string;
 use crate::error::{Result, SlimgBridgeError};
@@ -379,12 +380,13 @@ pub(crate) fn run_preview_operation(
         ImageOperation::Convert(options) => {
             let quality = validate_quality(options.quality)?;
             let target_format = crate::codec::parse_format(&options.target_format)?;
+            let encode_threads = encode_threads_for_format(target_format, threads);
             let result = core_convert(
                 image,
                 &PipelineOptions {
                     format: target_format,
                     quality,
-                    threads,
+                    threads: encode_threads,
                     resize: None,
                     crop: None,
                     extend: None,
@@ -396,19 +398,24 @@ pub(crate) fn run_preview_operation(
         ImageOperation::Optimize(options) => {
             let quality = validate_quality(options.quality)?;
             let codec = get_codec(source_format);
-            let encoded = codec.encode(image, &EncodeOptions { quality, threads })?;
+            let encoded = codec.encode(
+                image,
+                &EncodeOptions {
+                    quality,
+                    threads: encode_threads_for_format(source_format, threads),
+                },
+            )?;
             (encoded, source_format, image.width, image.height)
         }
         ImageOperation::Resize(options) => {
+            let target_format =
+                resolve_optional_target_format(options.target_format.as_deref(), source_format)?;
             let result = core_convert(
                 image,
                 &PipelineOptions {
-                    format: resolve_optional_target_format(
-                        options.target_format.as_deref(),
-                        source_format,
-                    )?,
+                    format: target_format,
                     quality: validate_quality(options.quality)?,
-                    threads,
+                    threads: encode_threads_for_format(target_format, threads),
                     resize: Some(map_resize_spec(&options.resize)?),
                     crop: None,
                     extend: None,
@@ -418,15 +425,14 @@ pub(crate) fn run_preview_operation(
             (result.data, result.format, result.width, result.height)
         }
         ImageOperation::Crop(options) => {
+            let target_format =
+                resolve_optional_target_format(options.target_format.as_deref(), source_format)?;
             let result = core_convert(
                 image,
                 &PipelineOptions {
-                    format: resolve_optional_target_format(
-                        options.target_format.as_deref(),
-                        source_format,
-                    )?,
+                    format: target_format,
                     quality: validate_quality(options.quality)?,
-                    threads,
+                    threads: encode_threads_for_format(target_format, threads),
                     resize: None,
                     crop: Some(map_crop_spec(&options.crop)?),
                     extend: None,
@@ -436,15 +442,14 @@ pub(crate) fn run_preview_operation(
             (result.data, result.format, result.width, result.height)
         }
         ImageOperation::Extend(options) => {
+            let target_format =
+                resolve_optional_target_format(options.target_format.as_deref(), source_format)?;
             let result = core_convert(
                 image,
                 &PipelineOptions {
-                    format: resolve_optional_target_format(
-                        options.target_format.as_deref(),
-                        source_format,
-                    )?,
+                    format: target_format,
                     quality: validate_quality(options.quality)?,
-                    threads,
+                    threads: encode_threads_for_format(target_format, threads),
                     resize: None,
                     crop: None,
                     extend: Some(map_extend_spec(&options.extend)?),
@@ -455,10 +460,10 @@ pub(crate) fn run_preview_operation(
         }
     };
 
-    let (preview_image, _) = decode(&output.0)?;
+    let preview_rgba_bytes = preview_rgba_bytes(&output.0, output.1)?;
     Ok(PreviewOperationOutput {
         data: output.0,
-        preview_rgba_bytes: preview_image.data,
+        preview_rgba_bytes,
         format: output.1,
         width: output.2,
         height: output.3,
@@ -478,7 +483,7 @@ fn convert_bytes(
         &PipelineOptions {
             format: target_format,
             quality,
-            threads,
+            threads: encode_threads_for_format(target_format, threads),
             resize: None,
             crop: None,
             extend: None,
@@ -508,7 +513,13 @@ fn optimize_bytes(
 
     let encode_start = Instant::now();
     let codec = get_codec(format);
-    let encoded = codec.encode(&image, &EncodeOptions { quality, threads })?;
+    let encoded = codec.encode(
+        &image,
+        &EncodeOptions {
+            quality,
+            threads: encode_threads_for_format(format, threads),
+        },
+    )?;
     let encode_elapsed = encode_start.elapsed();
 
     let should_write = !options.write_only_if_smaller || encoded.len() < data.len();
@@ -540,7 +551,8 @@ where
 {
     let (image, source_format) = decode(data)?;
     validate_quality(quality)?;
-    let options = build(source_format)?;
+    let mut options = build(source_format)?;
+    options.threads = encode_threads_for_format(options.format, options.threads);
     let result = core_convert(&image, &options)?;
     Ok(OperationOutput {
         data: result.data,
@@ -575,6 +587,27 @@ fn resolve_optional_target_format(value: Option<&str>, fallback: Format) -> Resu
     match value {
         Some(format) => crate::codec::parse_format(format),
         None => Ok(fallback),
+    }
+}
+
+fn encode_threads_for_format(format: Format, requested: Option<usize>) -> Option<usize> {
+    if requested.is_some() || classify_format(format) != WorkloadClass::InternallyThreaded {
+        return requested;
+    }
+
+    Some(HostResources::current().usable_cores.min(4).max(1))
+}
+
+fn preview_rgba_bytes(encoded: &[u8], format: Format) -> Result<Vec<u8>> {
+    match decode(encoded) {
+        Ok((preview_image, _)) => Ok(preview_image.data),
+        Err(slimg_core::Error::Decode(message))
+            if format == Format::Avif
+                && message.contains("AVIF decode support is temporarily unavailable") =>
+        {
+            Ok(Vec::new())
+        }
+        Err(error) => Err(error.into()),
     }
 }
 
@@ -771,6 +804,49 @@ mod tests {
 
         assert_eq!(result.format, "webp");
         assert!(!result.encoded_bytes.is_empty());
+    }
+
+    #[test]
+    fn process_bytes_converts_to_avif() {
+        let result = process_bytes(ProcessBytesRequest {
+            data: test_png_bytes(),
+            operation: ImageOperation::Convert(ConvertOptions {
+                target_format: "avif".to_string(),
+                quality: 80,
+            }),
+        })
+        .unwrap();
+
+        assert_eq!(result.format, "avif");
+        assert_eq!(&result.encoded_bytes[4..8], b"ftyp");
+    }
+
+    #[test]
+    fn avif_preview_tolerates_unavailable_native_decode() {
+        let image = test_image();
+        let output = run_preview_operation(
+            &image,
+            Format::Png,
+            &ImageOperation::Convert(ConvertOptions {
+                target_format: "avif".to_string(),
+                quality: 80,
+            }),
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(output.format, Format::Avif);
+        assert_eq!(&output.data[4..8], b"ftyp");
+        assert!(output.preview_rgba_bytes.is_empty());
+    }
+
+    #[test]
+    fn avif_uses_default_thread_budget_when_unspecified() {
+        let threads = encode_threads_for_format(Format::Avif, None).unwrap();
+
+        assert!((1..=4).contains(&threads));
+        assert_eq!(encode_threads_for_format(Format::Avif, Some(2)), Some(2));
+        assert_eq!(encode_threads_for_format(Format::Png, None), None);
     }
 
     #[test]
