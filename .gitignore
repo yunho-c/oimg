@@ -38,6 +38,7 @@ migrate_working_dir/
 /debian/gui/oimg.desktop
 /debian/gui/oimg.png
 /debian/packages/
+/debian/skeleton/opt/oimg/oimg-service
 
 # Symbolication related
 app.*.symbols

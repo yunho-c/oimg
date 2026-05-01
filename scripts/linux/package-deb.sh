@@ -93,31 +93,48 @@ patch_deb_control_depends() {
   rm -rf "$tmp_dir"
 }
 
+remove_python_caches() {
+  find "$repo_root/debian/skeleton" \
+    -type d -name __pycache__ -prune -exec rm -rf {} +
+  find "$repo_root/debian/skeleton" \
+    -type f -name '*.pyc' -delete
+}
+
 cd "$repo_root"
 
 require_file "$repo_root/pubspec.yaml" "run this script from the oimg checkout"
 require_file "$repo_root/debian/debian.yaml.in" "missing debian/debian.yaml.in"
 require_file "$repo_root/debian/gui/oimg.desktop.in" "missing debian/gui/oimg.desktop.in"
+require_file "$repo_root/debian/skeleton/usr/share/nautilus-python/extensions/oimg.py" \
+  "missing debian/skeleton/usr/share/nautilus-python/extensions/oimg.py"
 require_file "$repo_root/assets/icon/icon-256.png" "missing assets/icon/icon-256.png"
 
 version="$(awk '/^version:/ { print $2; exit }' pubspec.yaml)"
 [[ -n "$version" ]] || die "could not read version from pubspec.yaml"
 
-runtime_depends="libgtk-3-0, libstdc++6, libc6, libglib2.0-0, libx11-6, libblkid1, liblzma5"
+runtime_depends="libgtk-3-0, libstdc++6, libc6, libglib2.0-0, libx11-6, libblkid1, liblzma5, python3-nautilus"
 debian_arch="$(detect_debian_arch)"
 flutter_arch="$(flutter_arch_for_debian_arch "$debian_arch")"
 bundle_dir="$repo_root/build/linux/$flutter_arch/release/bundle"
 deb_path="$repo_root/debian/packages/oimg_${version}_${debian_arch}.deb"
+helper_path="$repo_root/rust/target/release/oimg-service"
 
 note "building OIMG Linux release bundle for $debian_arch ($flutter_arch)"
 "$repo_root/scripts/linux/build-linux.sh" --release "$@"
 
 require_file "$bundle_dir/oimg" "missing $bundle_dir/oimg after build"
 
+note "building OIMG service helper"
+cargo build --release --manifest-path "$repo_root/rust/Cargo.toml" --bin oimg-service
+require_file "$helper_path" "missing $helper_path after build"
+
 mkdir -p "$repo_root/debian/gui" "$repo_root/debian/packages"
 render_template "$repo_root/debian/debian.yaml.in" "$repo_root/debian/debian.yaml"
 cp "$repo_root/debian/gui/oimg.desktop.in" "$repo_root/debian/gui/oimg.desktop"
 cp "$repo_root/assets/icon/icon-256.png" "$repo_root/debian/gui/oimg.png"
+mkdir -p "$repo_root/debian/skeleton/opt/oimg"
+cp "$helper_path" "$repo_root/debian/skeleton/opt/oimg/oimg-service"
+remove_python_caches
 
 note "creating Debian package"
 "${dart_cmd[@]}" run flutter_to_debian build

@@ -50,3 +50,10 @@ gio mime image/png
 gio mime image/avif
 gio launch /usr/share/applications/oimg.desktop /path/to/image.png
 ```
+
+The Debian package also installs Nautilus context-menu actions for selected
+images. Restart Files after installing so Nautilus loads the extension:
+
+```bash
+nautilus -q
+```
