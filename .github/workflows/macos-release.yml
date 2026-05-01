@@ -1,0 +1,266 @@
+name: macOS Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build, for example v1.0.1"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build signed macOS DMG
+    runs-on: macos-14
+    timeout-minutes: 90
+
+    env:
+      APPLE_NOTARY_PROFILE: oimg-notary
+      APP_NAME: OIMG
+      DIST_DIR: ${{ github.workspace }}/oimg/dist/macos
+
+    steps:
+      - name: Resolve release tag
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            tag="${{ inputs.tag }}"
+          else
+            tag="${GITHUB_REF_NAME}"
+          fi
+
+          if [[ ! "$tag" =~ ^v[0-9]+[.][0-9]+[.][0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Release tag must look like v1.2.3, got: $tag" >&2
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate required secrets
+        shell: bash
+        env:
+          APPLE_ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+          APPLE_ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+          APPLE_ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+          APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGN_IDENTITY: ${{ secrets.APPLE_SIGN_IDENTITY }}
+          CI_REPO_TOKEN: ${{ secrets.CI_REPO_TOKEN }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in \
+            APPLE_ASC_API_KEY_P8 \
+            APPLE_ASC_ISSUER_ID \
+            APPLE_ASC_KEY_ID \
+            APPLE_CERTIFICATE_P12_BASE64 \
+            APPLE_CERTIFICATE_PASSWORD \
+            APPLE_SIGN_IDENTITY \
+            CI_REPO_TOKEN \
+            KEYCHAIN_PASSWORD; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing required secret: $name" >&2
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Checkout oimg
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+          path: oimg
+          fetch-depth: 0
+
+      - name: Checkout slimg
+        uses: actions/checkout@v4
+        with:
+          repository: yunho-c/slimg
+          ref: main
+          path: slimg
+          token: ${{ secrets.CI_REPO_TOKEN }}
+
+      - name: Checkout tjdistler-iqa-fork
+        uses: actions/checkout@v4
+        with:
+          repository: yunho-c/tjdistler-iqa-fork
+          ref: main
+          path: tjdistler-iqa-fork
+          token: ${{ secrets.CI_REPO_TOKEN }}
+
+      - name: Checkout irondash
+        uses: actions/checkout@v4
+        with:
+          repository: yunho-c/irondash
+          ref: main
+          path: irondash
+          token: ${{ secrets.CI_REPO_TOKEN }}
+
+      - name: Validate pubspec version
+        shell: bash
+        working-directory: oimg
+        run: |
+          set -euo pipefail
+          pubspec_version="$(awk '/^version:/ { split($2, parts, "+"); print parts[1]; exit }' pubspec.yaml)"
+          tag_version="${{ steps.release.outputs.version }}"
+
+          if [[ -z "$pubspec_version" ]]; then
+            echo "Could not read version from pubspec.yaml" >&2
+            exit 1
+          fi
+
+          if [[ "$pubspec_version" != "$tag_version" ]]; then
+            echo "Tag version ($tag_version) does not match pubspec.yaml ($pubspec_version)" >&2
+            exit 1
+          fi
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Flutter dependencies
+        shell: bash
+        working-directory: oimg
+        run: flutter pub get
+
+      - name: Run release checks
+        shell: bash
+        working-directory: oimg
+        run: |
+          set -euo pipefail
+          flutter analyze
+          flutter test test/settings test/file_open_controller_test.dart test/file_open_channel_test.dart test/optimization
+          env RUSTC_WRAPPER= CARGO_BUILD_RUSTC_WRAPPER= cargo test --manifest-path rust/Cargo.toml
+
+      - name: Import Developer ID certificate
+        shell: bash
+        env:
+          APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in APPLE_CERTIFICATE_P12_BASE64 APPLE_CERTIFICATE_PASSWORD KEYCHAIN_PASSWORD; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing required secret: $name" >&2
+              exit 1
+            fi
+          done
+
+          certificate_path="$RUNNER_TEMP/oimg-developer-id.p12"
+          keychain_path="$RUNNER_TEMP/oimg-signing.keychain-db"
+
+          printf '%s' "$APPLE_CERTIFICATE_P12_BASE64" | base64 -D > "$certificate_path"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security import "$certificate_path" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain_path"
+          security list-keychain -d user -s "$keychain_path"
+          security default-keychain -s "$keychain_path"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$keychain_path"
+
+      - name: Configure notarization profile
+        shell: bash
+        env:
+          APPLE_ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+          APPLE_ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+          APPLE_ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+        run: |
+          set -euo pipefail
+          for name in APPLE_ASC_API_KEY_P8 APPLE_ASC_ISSUER_ID APPLE_ASC_KEY_ID; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing required secret: $name" >&2
+              exit 1
+            fi
+          done
+
+          private_keys_dir="$RUNNER_TEMP/private_keys"
+          key_path="$private_keys_dir/AuthKey_${APPLE_ASC_KEY_ID}.p8"
+          mkdir -p "$private_keys_dir"
+          printf '%s\n' "$APPLE_ASC_API_KEY_P8" > "$key_path"
+          chmod 600 "$key_path"
+
+          xcrun notarytool store-credentials "$APPLE_NOTARY_PROFILE" \
+            --key "$key_path" \
+            --key-id "$APPLE_ASC_KEY_ID" \
+            --issuer "$APPLE_ASC_ISSUER_ID"
+
+      - name: Build signed and notarized DMG
+        shell: bash
+        working-directory: oimg
+        env:
+          APPLE_SIGN_IDENTITY: ${{ secrets.APPLE_SIGN_IDENTITY }}
+          APPLE_NOTARY_PROFILE: ${{ env.APPLE_NOTARY_PROFILE }}
+          APP_NAME: ${{ env.APP_NAME }}
+          DIST_DIR: ${{ env.DIST_DIR }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${APPLE_SIGN_IDENTITY:-}" ]]; then
+            echo "Missing required secret: APPLE_SIGN_IDENTITY" >&2
+            exit 1
+          fi
+          ./scripts/macos/release-dmg.sh --notarize
+
+      - name: Verify signed artifacts
+        shell: bash
+        working-directory: oimg
+        run: |
+          set -euo pipefail
+          app_path="build/macos/Build/Products/Release/OIMG.app"
+          dmg_path="$(find "$DIST_DIR" -maxdepth 1 -type f -name '*.dmg' | sort | tail -n 1)"
+
+          if [[ ! -d "$app_path" ]]; then
+            echo "Expected app bundle not found: $app_path" >&2
+            exit 1
+          fi
+          if [[ -z "$dmg_path" || ! -f "$dmg_path" ]]; then
+            echo "Expected DMG not found in $DIST_DIR" >&2
+            exit 1
+          fi
+
+          codesign --verify --deep --strict --verbose=2 "$app_path"
+          xcrun stapler validate "$dmg_path"
+          spctl -a -vv -t open --context context:primary-signature "$dmg_path"
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OIMG-${{ steps.release.outputs.version }}-macos-dmg
+          path: oimg/dist/macos/*.dmg
+          if-no-files-found: error
+
+      - name: Create draft GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.release.outputs.tag }}"
+          dmg_path="$(find "$DIST_DIR" -maxdepth 1 -type f -name '*.dmg' | sort | tail -n 1)"
+
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" \
+              --repo "$GITHUB_REPOSITORY" \
+              --draft \
+              --title "OIMG $tag" \
+              --notes "macOS release candidate for $tag."
+          fi
+
+          gh release upload "$tag" "$dmg_path" \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
