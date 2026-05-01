@@ -183,6 +183,9 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
         timingLogsEnabled: developerModeEnabled
             ? settings.timingLogsEnabled
             : false,
+        macOsCaptionButtonsEnabled: developerModeEnabled
+            ? settings.macOsCaptionButtonsEnabled
+            : false,
       ),
     );
   }
@@ -199,6 +202,16 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     await _update(
       (settings) =>
           settings.copyWith(previewPathHeaderEnabled: previewPathHeaderEnabled),
+    );
+  }
+
+  Future<void> setMacOsCaptionButtonsEnabled(
+    bool macOsCaptionButtonsEnabled,
+  ) async {
+    await _update(
+      (settings) => settings.copyWith(
+        macOsCaptionButtonsEnabled: macOsCaptionButtonsEnabled,
+      ),
     );
   }
 
