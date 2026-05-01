@@ -74,6 +74,7 @@ class AppSettings {
     this.themePreference = AppThemePreference.system,
     required this.developerModeEnabled,
     required this.timingLogsEnabled,
+    this.macOsCaptionButtonsEnabled = false,
     this.differentLocationPath,
     this.previewPathHeaderEnabled = false,
   });
@@ -100,6 +101,7 @@ class AppSettings {
   final AppThemePreference themePreference;
   final bool developerModeEnabled;
   final bool timingLogsEnabled;
+  final bool macOsCaptionButtonsEnabled;
   final bool previewPathHeaderEnabled;
 
   static const defaults = AppSettings(
@@ -124,6 +126,7 @@ class AppSettings {
     themePreference: AppThemePreference.system,
     developerModeEnabled: false,
     timingLogsEnabled: false,
+    macOsCaptionButtonsEnabled: false,
     previewPathHeaderEnabled: false,
   );
 
@@ -193,6 +196,7 @@ class AppSettings {
     AppThemePreference? themePreference,
     bool? developerModeEnabled,
     bool? timingLogsEnabled,
+    bool? macOsCaptionButtonsEnabled,
     bool? previewPathHeaderEnabled,
   }) {
     return AppSettings(
@@ -226,11 +230,12 @@ class AppSettings {
           differenceTooltipShowsCoordinates ??
           this.differenceTooltipShowsCoordinates,
       differenceTooltipUsesSwatches:
-          differenceTooltipUsesSwatches ??
-          this.differenceTooltipUsesSwatches,
+          differenceTooltipUsesSwatches ?? this.differenceTooltipUsesSwatches,
       themePreference: themePreference ?? this.themePreference,
       developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,
       timingLogsEnabled: timingLogsEnabled ?? this.timingLogsEnabled,
+      macOsCaptionButtonsEnabled:
+          macOsCaptionButtonsEnabled ?? this.macOsCaptionButtonsEnabled,
       previewPathHeaderEnabled:
           previewPathHeaderEnabled ?? this.previewPathHeaderEnabled,
     );
@@ -260,6 +265,7 @@ class AppSettings {
       'themePreference': themePreference.name,
       'developerModeEnabled': developerModeEnabled,
       'timingLogsEnabled': timingLogsEnabled,
+      'macOsCaptionButtonsEnabled': macOsCaptionButtonsEnabled,
       'previewPathHeaderEnabled': previewPathHeaderEnabled,
     };
   }
@@ -336,6 +342,9 @@ class AppSettings {
           defaults.developerModeEnabled,
       timingLogsEnabled:
           json['timingLogsEnabled'] as bool? ?? defaults.timingLogsEnabled,
+      macOsCaptionButtonsEnabled:
+          json['macOsCaptionButtonsEnabled'] as bool? ??
+          defaults.macOsCaptionButtonsEnabled,
       previewPathHeaderEnabled:
           json['previewPathHeaderEnabled'] as bool? ??
           defaults.previewPathHeaderEnabled,
@@ -364,11 +373,11 @@ class AppSettings {
         other.fileSizeColorsEnabled == fileSizeColorsEnabled &&
         other.differenceTooltipShowsCoordinates ==
             differenceTooltipShowsCoordinates &&
-        other.differenceTooltipUsesSwatches ==
-            differenceTooltipUsesSwatches &&
+        other.differenceTooltipUsesSwatches == differenceTooltipUsesSwatches &&
         other.themePreference == themePreference &&
         other.developerModeEnabled == developerModeEnabled &&
         other.timingLogsEnabled == timingLogsEnabled &&
+        other.macOsCaptionButtonsEnabled == macOsCaptionButtonsEnabled &&
         other.previewPathHeaderEnabled == previewPathHeaderEnabled;
   }
 
@@ -396,6 +405,7 @@ class AppSettings {
     themePreference,
     developerModeEnabled,
     timingLogsEnabled,
+    macOsCaptionButtonsEnabled,
     previewPathHeaderEnabled,
   ]);
 }

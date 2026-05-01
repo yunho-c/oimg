@@ -947,6 +947,7 @@ impl SseDecode for crate::types::AnalyzeSampleResult {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_quality = <u8>::sse_decode(deserializer);
         let mut var_tempOutputPath = <String>::sse_decode(deserializer);
+        let mut var_encodedBytes = <Vec<u8>>::sse_decode(deserializer);
         let mut var_format = <String>::sse_decode(deserializer);
         let mut var_width = <u32>::sse_decode(deserializer);
         let mut var_height = <u32>::sse_decode(deserializer);
@@ -958,6 +959,7 @@ impl SseDecode for crate::types::AnalyzeSampleResult {
         return crate::types::AnalyzeSampleResult {
             quality: var_quality,
             temp_output_path: var_tempOutputPath,
+            encoded_bytes: var_encodedBytes,
             format: var_format,
             width: var_width,
             height: var_height,
@@ -1914,6 +1916,7 @@ impl flutter_rust_bridge::IntoDart for crate::types::AnalyzeSampleResult {
         [
             self.quality.into_into_dart().into_dart(),
             self.temp_output_path.into_into_dart().into_dart(),
+            self.encoded_bytes.into_into_dart().into_dart(),
             self.format.into_into_dart().into_dart(),
             self.width.into_into_dart().into_dart(),
             self.height.into_into_dart().into_dart(),
@@ -2632,6 +2635,7 @@ impl SseEncode for crate::types::AnalyzeSampleResult {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <u8>::sse_encode(self.quality, serializer);
         <String>::sse_encode(self.temp_output_path, serializer);
+        <Vec<u8>>::sse_encode(self.encoded_bytes, serializer);
         <String>::sse_encode(self.format, serializer);
         <u32>::sse_encode(self.width, serializer);
         <u32>::sse_encode(self.height, serializer);

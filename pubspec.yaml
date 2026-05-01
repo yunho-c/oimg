@@ -64,7 +64,7 @@ dev_dependencies:
 
 dependency_overrides:
   irondash_engine_context:
-    path: /Users/yunhocho/GitHub/irondash/engine_context/dart
+    path: ../irondash/engine_context/dart
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

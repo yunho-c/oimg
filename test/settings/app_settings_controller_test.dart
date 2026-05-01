@@ -59,6 +59,7 @@ void main() {
       await notifier.setThemePreference(AppThemePreference.dark);
       await notifier.setDeveloperModeEnabled(true);
       await notifier.setTimingLogsEnabled(true);
+      await notifier.setMacOsCaptionButtonsEnabled(true);
 
       final settings = container.read(appSettingsProvider).requireValue;
       expect(
@@ -86,6 +87,7 @@ void main() {
           themePreference: AppThemePreference.dark,
           developerModeEnabled: true,
           timingLogsEnabled: true,
+          macOsCaptionButtonsEnabled: true,
         ),
       );
       expect(await store.read(), settings.toJsonString());

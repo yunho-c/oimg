@@ -34,18 +34,6 @@ done
 # Platform name (macosx, iphoneos, iphonesimulator)
 export CARGOKIT_DARWIN_PLATFORM_NAME=$PLATFORM_NAME
 
-# slimg-core enables AVIF decode through dav1d-sys. Prefer a Homebrew-installed
-# dav1d for local macOS Debug builds so Xcode can build without an extra source
-# toolchain. Keep source builds for non-Debug builds to avoid shipping a runtime
-# dependency on a Homebrew dylib.
-if [ "$CARGOKIT_DARWIN_PLATFORM_NAME" = "macosx" ]; then
-  if [ "$CONFIGURATION" = "Debug" ] && pkg-config --exists dav1d; then
-    unset SYSTEM_DEPS_DAV1D_BUILD_INTERNAL
-  else
-    export SYSTEM_DEPS_DAV1D_BUILD_INTERNAL=${SYSTEM_DEPS_DAV1D_BUILD_INTERNAL:-always}
-  fi
-fi
-
 # Arctive architectures (arm64, armv7, x86_64), space separated.
 export CARGOKIT_DARWIN_ARCHS=$ARCHS
 

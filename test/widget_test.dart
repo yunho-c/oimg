@@ -181,10 +181,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
-      expect(
-        find.text('Original image is smaller.'),
-        findsOneWidget,
-      );
+      expect(find.text('Original image is smaller.'), findsOneWidget);
     },
   );
 
@@ -208,10 +205,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
-      expect(
-        find.text('Original image is smaller.'),
-        findsNothing,
-      );
+      expect(find.text('Original image is smaller.'), findsNothing);
     },
   );
 
@@ -236,10 +230,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
-      expect(
-        find.text('Original image is smaller.'),
-        findsNothing,
-      );
+      expect(find.text('Original image is smaller.'), findsNothing);
 
       await tester.pump(const Duration(seconds: 5));
       await tester.pumpAndSettle();
@@ -269,10 +260,7 @@ void main() {
       await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
       await tester.pumpAndSettle();
 
-      expect(
-        find.text('Original image is smaller.'),
-        findsNothing,
-      );
+      expect(find.text('Original image is smaller.'), findsNothing);
     },
   );
 
@@ -853,18 +841,9 @@ void main() {
     expect(chart.data.titlesData.bottomTitles.sideTitles.interval, 600);
     expect(chart.data.extraLinesData.verticalLines, hasLength(1));
     expect(chart.data.extraLinesData.verticalLines.first.x, 2400);
-    expect(
-      chart.data.rangeAnnotations.verticalRangeAnnotations,
-      hasLength(1),
-    );
-    expect(
-      chart.data.rangeAnnotations.verticalRangeAnnotations.first.x1,
-      2400,
-    );
-    expect(
-      chart.data.rangeAnnotations.verticalRangeAnnotations.first.x2,
-      2520,
-    );
+    expect(chart.data.rangeAnnotations.verticalRangeAnnotations, hasLength(1));
+    expect(chart.data.rangeAnnotations.verticalRangeAnnotations.first.x1, 2400);
+    expect(chart.data.rangeAnnotations.verticalRangeAnnotations.first.x2, 2520);
   });
 
   testWidgets(
@@ -899,7 +878,12 @@ void main() {
       final firstBar = chart.data.lineBarsData.first;
       final firstSpot = firstBar.spots.first;
       chart.data.lineTouchData.touchCallback?.call(
-        FlTapDownEvent(TapDownDetails(localPosition: Offset.zero)),
+        FlTapDownEvent(
+          TapDownDetails(
+            localPosition: Offset.zero,
+            kind: PointerDeviceKind.mouse,
+          ),
+        ),
         LineTouchResponse(
           touchLocation: Offset.zero,
           touchChartCoordinate: Offset.zero,
@@ -911,6 +895,79 @@ void main() {
       final settings = AppSettings.fromJsonString((await store.read())!);
       expect(settings.quality, 100);
       expect(find.byType(LineChart), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'selecting an analyze chart point keeps selected sample metrics visible while preview reloads',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final store = _FakeAppSettingsStore();
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      )..analyzeSampleDelay = const Duration(milliseconds: 20);
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(
+        _buildApp(controller: controller, slimg: slimg, store: store),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+      await tester.pumpAndSettle();
+
+      final pixelMatchCallsBeforeSelection = slimg.pixelMatchCallCount;
+      final msSsimCallsBeforeSelection = slimg.msSsimCallCount;
+      final ssimulacra2CallsBeforeSelection = slimg.ssimulacra2CallCount;
+
+      slimg.pixelMatchDelay = const Duration(seconds: 5);
+      slimg.msSsimDelay = const Duration(seconds: 5);
+      slimg.ssimulacra2Delay = const Duration(seconds: 5);
+
+      final chart = tester.widget<LineChart>(find.byType(LineChart));
+      final firstBar = chart.data.lineBarsData.first;
+      final firstSpot = firstBar.spots.first;
+      chart.data.lineTouchData.touchCallback?.call(
+        FlTapDownEvent(
+          TapDownDetails(
+            localPosition: Offset.zero,
+            kind: PointerDeviceKind.mouse,
+          ),
+        ),
+        LineTouchResponse(
+          touchLocation: Offset.zero,
+          touchChartCoordinate: Offset.zero,
+          lineBarSpots: [TouchLineBarSpot(firstBar, 0, firstSpot, 0)],
+        ),
+      );
+      await tester.pump();
+
+      final settings = AppSettings.fromJsonString((await store.read())!);
+      expect(settings.quality, 100);
+      expect(find.byType(LineChart), findsOneWidget);
+      expect(find.text('100%'), findsOneWidget);
+      expect(find.text('0.950'), findsOneWidget);
+      expect(find.text('98.3'), findsOneWidget);
+      expect(
+        _bottomStatValueText(tester, label: 'Similarity', value: '97.8%'),
+        isNotNull,
+      );
+      expect(slimg.pixelMatchCallCount, pixelMatchCallsBeforeSelection);
+      expect(slimg.msSsimCallCount, msSsimCallsBeforeSelection);
+      expect(slimg.ssimulacra2CallCount, ssimulacra2CallsBeforeSelection);
+
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
     },
   );
 
@@ -942,16 +999,70 @@ void main() {
       await tester.pump(const Duration(milliseconds: 260));
       await tester.pumpAndSettle();
 
+      final chart = tester.widget<LineChart>(find.byType(LineChart));
+      final firstBar = chart.data.lineBarsData.first;
+      final lastSpot = firstBar.spots.last;
+      chart.data.lineTouchData.touchCallback?.call(
+        FlPointerHoverEvent(const PointerHoverEvent(position: Offset.zero)),
+        LineTouchResponse(
+          touchLocation: Offset.zero,
+          touchChartCoordinate: Offset.zero,
+          lineBarSpots: [
+            TouchLineBarSpot(firstBar, 0, lastSpot, firstBar.spots.length - 1),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(await store.read(), isNull);
       expect(
-        _bottomStatValueText(tester, label: 'Optimized', value: '1.2 KB'),
+        _bottomStatValueText(tester, label: 'Optimized', value: '1.5 KB'),
         isNotNull,
       );
+      expect(find.byType(LineChart), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'hovering another analyze sample after selection keeps the optimized preview renderable',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final store = _FakeAppSettingsStore();
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      )..analyzeSampleDelay = const Duration(milliseconds: 20);
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(
+        _buildApp(controller: controller, slimg: slimg, store: store),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+      await tester.pumpAndSettle();
 
       final chart = tester.widget<LineChart>(find.byType(LineChart));
       final firstBar = chart.data.lineBarsData.first;
       final firstSpot = firstBar.spots.first;
+      final lastSpot = firstBar.spots.last;
+
       chart.data.lineTouchData.touchCallback?.call(
-        FlPointerHoverEvent(const PointerHoverEvent(position: Offset.zero)),
+        FlTapDownEvent(
+          TapDownDetails(
+            localPosition: Offset.zero,
+            kind: PointerDeviceKind.mouse,
+          ),
+        ),
         LineTouchResponse(
           touchLocation: Offset.zero,
           touchChartCoordinate: Offset.zero,
@@ -960,12 +1071,114 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(await store.read(), isNull);
+      chart.data.lineTouchData.touchCallback?.call(
+        FlPointerHoverEvent(const PointerHoverEvent(position: Offset.zero)),
+        LineTouchResponse(
+          touchLocation: Offset.zero,
+          touchChartCoordinate: Offset.zero,
+          lineBarSpots: [
+            TouchLineBarSpot(firstBar, 0, lastSpot, firstBar.spots.length - 1),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Unable to load first.png.'), findsNothing);
+      expect(find.byType(LineChart), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'leaving the analyze chart restores the committed sample stats after hover',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final store = _FakeAppSettingsStore();
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      )..analyzeSampleDelay = const Duration(milliseconds: 20);
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(
+        _buildApp(controller: controller, slimg: slimg, store: store),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+      await tester.pumpAndSettle();
+
+      final chart = tester.widget<LineChart>(find.byType(LineChart));
+      final firstBar = chart.data.lineBarsData.first;
+      final committedSpot = firstBar.spots.first;
+      chart.data.lineTouchData.touchCallback?.call(
+        FlTapDownEvent(
+          TapDownDetails(
+            localPosition: Offset.zero,
+            kind: PointerDeviceKind.mouse,
+          ),
+        ),
+        LineTouchResponse(
+          touchLocation: Offset.zero,
+          touchChartCoordinate: Offset.zero,
+          lineBarSpots: [TouchLineBarSpot(firstBar, 0, committedSpot, 0)],
+        ),
+      );
+      await tester.pumpAndSettle();
+
       expect(
         _bottomStatValueText(tester, label: 'Optimized', value: '700 B'),
         isNotNull,
       );
-      expect(find.byType(LineChart), findsOneWidget);
+
+      final hoveredSpot = firstBar.spots.last;
+      chart.data.lineTouchData.touchCallback?.call(
+        FlPointerHoverEvent(const PointerHoverEvent(position: Offset.zero)),
+        LineTouchResponse(
+          touchLocation: Offset.zero,
+          touchChartCoordinate: Offset.zero,
+          lineBarSpots: [
+            TouchLineBarSpot(
+              firstBar,
+              0,
+              hoveredSpot,
+              firstBar.spots.length - 1,
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        _bottomStatValueText(tester, label: 'Optimized', value: '1.5 KB'),
+        isNotNull,
+      );
+
+      final chartRegion = tester.widget<MouseRegion>(
+        find.byKey(const ValueKey('analyze-chart-region')),
+      );
+      chartRegion.onExit?.call(const PointerExitEvent(position: Offset.zero));
+      await tester.pumpAndSettle();
+
+      expect(
+        _bottomStatValueText(tester, label: 'Optimized', value: '700 B'),
+        isNotNull,
+      );
+      expect(
+        _bottomStatValueText(tester, label: 'Similarity', value: '97.8%'),
+        isNotNull,
+      );
+
+      final settings = AppSettings.fromJsonString((await store.read())!);
+      expect(settings.quality, 100);
     },
   );
 
@@ -1039,7 +1252,9 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 180));
 
-      final container = ProviderScope.containerOf(tester.element(find.byType(MyApp)));
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(MyApp)),
+      );
       final analyzeState = container.read(analyzeRunControllerProvider);
       final selectedSample = container.read(selectedAnalyzeSampleProvider);
       final optimizedDisplay = container.read(currentOptimizedDisplayProvider);
@@ -1054,63 +1269,179 @@ void main() {
         isNotNull,
       );
 
-      await container.read(analyzeRunControllerProvider.notifier).cancelAnalyze();
+      await container
+          .read(analyzeRunControllerProvider.notifier)
+          .cancelAnalyze();
       await tester.pump();
       await tester.pumpAndSettle();
     },
   );
 
+  testWidgets('hovering an analyze chart point preserves difference mode', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+    )..analyzeSampleDelay = const Duration(milliseconds: 20);
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.tap(find.byKey(const ValueKey('preview-mode-Difference')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(slimg.differenceCallCount, 1);
+
+    await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 260));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final chart = tester.widget<LineChart>(find.byType(LineChart));
+    final firstBar = chart.data.lineBarsData.first;
+    final firstSpot = firstBar.spots.first;
+    chart.data.lineTouchData.touchCallback?.call(
+      FlPointerHoverEvent(const PointerHoverEvent(position: Offset.zero)),
+      LineTouchResponse(
+        touchLocation: Offset.zero,
+        touchChartCoordinate: Offset.zero,
+        lineBarSpots: [TouchLineBarSpot(firstBar, 0, firstSpot, 0)],
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(MyApp)),
+    );
+    expect(slimg.differenceCallCount, greaterThanOrEqualTo(2));
+    expect(
+      container.read(currentPreviewDisplayModeProvider),
+      PreviewDisplayMode.difference,
+    );
+  });
+
   testWidgets(
-    'hovering an analyze chart point preserves difference mode',
+    'difference mode follows quality slider changes without reselecting the mode',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1400, 1000));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
       final slimg = _FakeSlimgApi(
-        inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
-      )..analyzeSampleDelay = const Duration(milliseconds: 20);
+        inspectResults: {'/tmp/first.jpg': _metadata('jpeg', 2400)},
+      );
       final controller = FileOpenController(
         channel: _FakeFileOpenChannel(),
         slimg: slimg,
-        initialPaths: const ['/tmp/first.png'],
+        initialPaths: const ['/tmp/first.jpg'],
       );
       await controller.initialize();
 
       await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('preview-mode-Difference')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(slimg.differenceCallCount, 1);
+      expect(find.text('Difference preview unavailable.'), findsNothing);
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(MyApp)),
+      );
+      await container.read(appSettingsProvider.notifier).setQuality(55);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(
+        container.read(currentPreviewDisplayModeProvider),
+        PreviewDisplayMode.difference,
+      );
+      expect(slimg.differenceCallCount, greaterThan(1));
+      expect(find.text('Difference preview unavailable.'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'selecting an analyze sample in difference mode keeps analyze artifacts alive',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final store = _FakeAppSettingsStore();
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.jpg': _metadata('jpeg', 2400)},
+      )..analyzeSampleDelay = const Duration(milliseconds: 20);
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.jpg'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(
+        _buildApp(controller: controller, slimg: slimg, store: store),
+      );
+      await tester.pumpAndSettle();
 
       await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 260));
-      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('preview-mode-Difference')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
 
       final chart = tester.widget<LineChart>(find.byType(LineChart));
       final firstBar = chart.data.lineBarsData.first;
-      final firstSpot = firstBar.spots.first;
+      final firstSpot = firstBar.spots[3];
+      final lastSpot = firstBar.spots.last;
+
+      chart.data.lineTouchData.touchCallback?.call(
+        FlTapDownEvent(
+          TapDownDetails(
+            localPosition: Offset.zero,
+            kind: PointerDeviceKind.mouse,
+          ),
+        ),
+        LineTouchResponse(
+          touchLocation: Offset.zero,
+          touchChartCoordinate: Offset.zero,
+          lineBarSpots: [TouchLineBarSpot(firstBar, 0, firstSpot, 3)],
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(slimg.analyzeJobCount, 1);
+
       chart.data.lineTouchData.touchCallback?.call(
         FlPointerHoverEvent(const PointerHoverEvent(position: Offset.zero)),
         LineTouchResponse(
           touchLocation: Offset.zero,
           touchChartCoordinate: Offset.zero,
-          lineBarSpots: [TouchLineBarSpot(firstBar, 0, firstSpot, 0)],
+          lineBarSpots: [
+            TouchLineBarSpot(firstBar, 0, lastSpot, firstBar.spots.length - 1),
+          ],
         ),
       );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
-      final container = ProviderScope.containerOf(tester.element(find.byType(MyApp)));
-      expect(slimg.differenceCallCount, 2);
-      expect(
-        container.read(currentPreviewDisplayModeProvider),
-        PreviewDisplayMode.difference,
-      );
+      expect(slimg.analyzeJobCount, 1);
+      expect(find.text('Difference preview unavailable.'), findsNothing);
     },
   );
 
@@ -1152,8 +1483,14 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.byKey(const ValueKey('difference-preview-ready')), findsOneWidget);
-      expect(find.byKey(const ValueKey('difference-preview-loading')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('difference-preview-ready')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('difference-preview-loading')),
+        findsNothing,
+      );
 
       await tester.pumpWidget(
         _buildDifferencePreviewHost(
@@ -1169,8 +1506,14 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.byKey(const ValueKey('difference-preview-ready')), findsOneWidget);
-      expect(find.byKey(const ValueKey('difference-preview-loading')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('difference-preview-ready')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('difference-preview-loading')),
+        findsNothing,
+      );
     },
   );
 
@@ -1191,54 +1534,75 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('difference-preview-stats-card')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('difference-preview-stats-card')),
+        findsNothing,
+      );
     },
   );
 
-  testWidgets(
-    'difference preview shows deterministic error stats',
-    (tester) async {
-      final frame = await _differenceFrame(
-        width: 5,
-        height: 4,
-        rgbaBytes: _rgbaBytesFromGrayscaleMeans(<int>[
-          0, 0, 0, 0, 0,
-          30, 30, 30, 30, 30,
-          60, 60, 60, 60, 60,
-          120, 120, 120, 240, 255,
-        ]),
-      );
-      addTearDown(frame.image.dispose);
+  testWidgets('difference preview shows deterministic error stats', (
+    tester,
+  ) async {
+    final frame = await _differenceFrame(
+      width: 5,
+      height: 4,
+      rgbaBytes: _rgbaBytesFromGrayscaleMeans(<int>[
+        0,
+        0,
+        0,
+        0,
+        0,
+        30,
+        30,
+        30,
+        30,
+        30,
+        60,
+        60,
+        60,
+        60,
+        60,
+        120,
+        120,
+        120,
+        240,
+        255,
+      ]),
+    );
+    addTearDown(frame.image.dispose);
 
-      await tester.pumpWidget(
-        _buildDifferencePreviewHost(
-          child: Center(
-            child: SizedBox(
-              width: 200,
-              height: 200,
-              child: DifferencePreview(
-                retentionScopeKey: 'first',
-                frame: AsyncData<PreviewDifferenceFrame?>(frame),
-                fileName: 'first.png',
-                showCoordinates: true,
-                useRgbSwatches: false,
-                unavailableMessage: 'Difference preview unavailable.',
-              ),
+    await tester.pumpWidget(
+      _buildDifferencePreviewHost(
+        child: Center(
+          child: SizedBox(
+            width: 200,
+            height: 200,
+            child: DifferencePreview(
+              retentionScopeKey: 'first',
+              frame: AsyncData<PreviewDifferenceFrame?>(frame),
+              fileName: 'first.png',
+              showCoordinates: true,
+              useRgbSwatches: false,
+              unavailableMessage: 'Difference preview unavailable.',
             ),
           ),
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('difference-preview-stats-card')), findsOneWidget);
-      expect(find.text('Mean'), findsOneWidget);
-      expect(find.text('Top 10%'), findsOneWidget);
-      expect(find.text('Top 1%'), findsOneWidget);
-      expect(find.text('65.3'), findsOneWidget);
-      expect(find.text('247.5'), findsOneWidget);
-      expect(find.text('255.0'), findsOneWidget);
-    },
-  );
+    expect(
+      find.byKey(const ValueKey('difference-preview-stats-card')),
+      findsOneWidget,
+    );
+    expect(find.text('Mean'), findsOneWidget);
+    expect(find.text('Top 10%'), findsOneWidget);
+    expect(find.text('Top 1%'), findsOneWidget);
+    expect(find.text('65.3'), findsOneWidget);
+    expect(find.text('247.5'), findsOneWidget);
+    expect(find.text('255.0'), findsOneWidget);
+  });
 
   testWidgets(
     'difference preview keeps the error stats card visible during retained loading',
@@ -1274,7 +1638,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('difference-preview-stats-card')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('difference-preview-stats-card')),
+        findsOneWidget,
+      );
       expect(find.text('63.8'), findsOneWidget);
 
       await tester.pumpWidget(
@@ -1282,7 +1649,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('difference-preview-stats-card')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('difference-preview-stats-card')),
+        findsOneWidget,
+      );
       expect(find.text('63.8'), findsOneWidget);
     },
   );
@@ -1391,7 +1761,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 999));
 
-      expect(find.byKey(const ValueKey('difference-preview-tooltip')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('difference-preview-tooltip')),
+        findsNothing,
+      );
 
       await tester.pump(const Duration(milliseconds: 1));
 
@@ -1401,100 +1774,102 @@ void main() {
       await mouse.moveTo(center + const Offset(10, 0));
       await tester.pump();
 
-      expect(find.byKey(const ValueKey('difference-preview-tooltip')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('difference-preview-tooltip')),
+        findsOneWidget,
+      );
     },
   );
 
-  testWidgets(
-    'difference preview context menu can hide tooltip coordinates',
-    (tester) async {
-      final frame = await _differenceFrame(
+  testWidgets('difference preview context menu can hide tooltip coordinates', (
+    tester,
+  ) async {
+    final frame = await _differenceFrame(
+      width: 4,
+      height: 4,
+      rgbaBytes: _rgbaBytesForSinglePixel(
         width: 4,
         height: 4,
-        rgbaBytes: _rgbaBytesForSinglePixel(
-          width: 4,
-          height: 4,
-          pixelX: 2,
-          pixelY: 2,
-          red: 12,
-          green: 34,
-          blue: 56,
-        ),
-      );
-      addTearDown(frame.image.dispose);
+        pixelX: 2,
+        pixelY: 2,
+        red: 12,
+        green: 34,
+        blue: 56,
+      ),
+    );
+    addTearDown(frame.image.dispose);
 
-      var showCoordinates = true;
-      var useRgbSwatches = false;
+    var showCoordinates = true;
+    var useRgbSwatches = false;
 
-      await tester.pumpWidget(
-        StatefulBuilder(
-          builder: (context, setState) {
-            return _buildDifferencePreviewHost(
-              child: Center(
-                child: SizedBox(
-                  width: 200,
-                  height: 200,
-                  child: DifferencePreview(
-                    retentionScopeKey: 'first',
-                    frame: AsyncData<PreviewDifferenceFrame?>(frame),
-                    fileName: 'first.png',
-                    showCoordinates: showCoordinates,
-                    useRgbSwatches: useRgbSwatches,
-                    onShowCoordinatesChanged: (value) {
-                      setState(() {
-                        showCoordinates = value;
-                      });
-                    },
-                    onUseRgbSwatchesChanged: (value) {
-                      setState(() {
-                        useRgbSwatches = value;
-                      });
-                    },
-                    unavailableMessage: 'Difference preview unavailable.',
-                  ),
+    await tester.pumpWidget(
+      StatefulBuilder(
+        builder: (context, setState) {
+          return _buildDifferencePreviewHost(
+            child: Center(
+              child: SizedBox(
+                width: 200,
+                height: 200,
+                child: DifferencePreview(
+                  retentionScopeKey: 'first',
+                  frame: AsyncData<PreviewDifferenceFrame?>(frame),
+                  fileName: 'first.png',
+                  showCoordinates: showCoordinates,
+                  useRgbSwatches: useRgbSwatches,
+                  onShowCoordinatesChanged: (value) {
+                    setState(() {
+                      showCoordinates = value;
+                    });
+                  },
+                  onUseRgbSwatchesChanged: (value) {
+                    setState(() {
+                      useRgbSwatches = value;
+                    });
+                  },
+                  unavailableMessage: 'Difference preview unavailable.',
                 ),
               ),
-            );
-          },
-        ),
-      );
-      await tester.pump();
+            ),
+          );
+        },
+      ),
+    );
+    await tester.pump();
 
-      final region = find.byKey(const ValueKey('difference-preview-region'));
-      final center = tester.getCenter(region);
-      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-      addTearDown(mouse.removePointer);
-      await mouse.addPointer(location: center);
-      await mouse.moveTo(center);
-      await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
+    final region = find.byKey(const ValueKey('difference-preview-region'));
+    final center = tester.getCenter(region);
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: center);
+    await mouse.moveTo(center);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
 
-      expect(find.text('x 2, y 2'), findsOneWidget);
-      expect(find.text('R  12 G  34 B  56'), findsOneWidget);
+    expect(find.text('x 2, y 2'), findsOneWidget);
+    expect(find.text('R  12 G  34 B  56'), findsOneWidget);
 
-      await tester.tap(region, buttons: kSecondaryButton);
-      await tester.pumpAndSettle();
+    await tester.tap(region, buttons: kSecondaryButton);
+    await tester.pumpAndSettle();
 
-      expect(find.text('Show coordinates'), findsOneWidget);
+    expect(find.text('Show coordinates'), findsOneWidget);
 
-      await tester.tap(
-        find.byKey(const ValueKey('difference-tooltip-coordinates-toggle')),
-      );
-      await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('difference-tooltip-coordinates-toggle')),
+    );
+    await tester.pumpAndSettle();
 
-      expect(showCoordinates, isFalse);
+    expect(showCoordinates, isFalse);
 
-      await tester.tapAt(const Offset(5, 5));
-      await tester.pumpAndSettle();
+    await tester.tapAt(const Offset(5, 5));
+    await tester.pumpAndSettle();
 
-      await mouse.moveTo(center + const Offset(1, 0));
-      await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
+    await mouse.moveTo(center + const Offset(1, 0));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
 
-      expect(find.text('R  12 G  34 B  56'), findsOneWidget);
-      expect(find.textContaining('x 2, y 2'), findsNothing);
-    },
-  );
+    expect(find.text('R  12 G  34 B  56'), findsOneWidget);
+    expect(find.textContaining('x 2, y 2'), findsNothing);
+  });
 
   testWidgets(
     'difference preview context menu can use swatches for RGB labels',
@@ -1650,7 +2025,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
-      expect(find.byKey(const ValueKey('difference-preview-tooltip')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('difference-preview-tooltip')),
+        findsNothing,
+      );
 
       await mouse.moveTo(center);
       await tester.pump();
@@ -1662,7 +2040,10 @@ void main() {
       await tester.drag(region, const Offset(20, 20));
       await tester.pump();
 
-      expect(find.byKey(const ValueKey('difference-preview-tooltip')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('difference-preview-tooltip')),
+        findsNothing,
+      );
     },
   );
 
@@ -1739,8 +2120,14 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.byKey(const ValueKey('difference-preview-ready')), findsOneWidget);
-      expect(find.byKey(const ValueKey('difference-preview-tooltip')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('difference-preview-ready')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('difference-preview-tooltip')),
+        findsNothing,
+      );
 
       await tester.pumpWidget(
         buildPreview(AsyncData<PreviewDifferenceFrame?>(secondFrame)),
@@ -1777,10 +2164,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
-      expect(
-        find.text('Original image is smaller.'),
-        findsNothing,
-      );
+      expect(find.text('Original image is smaller.'), findsNothing);
 
       await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
       await tester.pump();
@@ -1796,21 +2180,13 @@ void main() {
           touchLocation: Offset.zero,
           touchChartCoordinate: Offset.zero,
           lineBarSpots: [
-            TouchLineBarSpot(
-              firstBar,
-              firstBar.spots.length - 1,
-              lastSpot,
-              0,
-            ),
+            TouchLineBarSpot(firstBar, firstBar.spots.length - 1, lastSpot, 0),
           ],
         ),
       );
       await tester.pumpAndSettle();
 
-      expect(
-        find.text('Original image is smaller.'),
-        findsOneWidget,
-      );
+      expect(find.text('Original image is smaller.'), findsOneWidget);
     },
   );
 
@@ -2660,43 +3036,42 @@ void main() {
     expect(find.text('third.optimized.jpeg'), findsNothing);
   });
 
-  testWidgets(
-    'optimize button briefly shows success state after completion',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1400, 1000));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets('optimize button briefly shows success state after completion', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      final slimg = _FakeSlimgApi(
-        inspectResults: {
-          '/tmp/first.png': _metadata('png', 2400),
-          '/tmp/second.jpg': _metadata('jpeg', 1800),
-        },
-      );
-      final controller = FileOpenController(
-        channel: _FakeFileOpenChannel(),
-        slimg: slimg,
-        initialPaths: const ['/tmp/first.png', '/tmp/second.jpg'],
-      );
-      await controller.initialize();
+    final slimg = _FakeSlimgApi(
+      inspectResults: {
+        '/tmp/first.png': _metadata('png', 2400),
+        '/tmp/second.jpg': _metadata('jpeg', 1800),
+      },
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png', '/tmp/second.jpg'],
+    );
+    await controller.initialize();
 
-      await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
 
-      await tester.tap(find.text('Optimize'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 250));
+    await tester.tap(find.text('Optimize'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
 
-      expect(find.text('Success!'), findsOneWidget);
-      expect(find.text('Optimize'), findsNothing);
+    expect(find.text('Success!'), findsOneWidget);
+    expect(find.text('Optimize'), findsNothing);
 
-      await tester.pump(const Duration(milliseconds: 1000));
-      await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 1000));
+    await tester.pumpAndSettle();
 
-      expect(find.text('Success!'), findsNothing);
-      expect(find.text('Optimize'), findsOneWidget);
-    },
-  );
+    expect(find.text('Success!'), findsNothing);
+    expect(find.text('Optimize'), findsOneWidget);
+  });
 
   testWidgets('developer dialog toggles persisted timing logs', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
@@ -2728,15 +3103,31 @@ void main() {
     await tester.tap(find.byType(Switch).last);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(Checkbox));
+    await tester.tap(
+      find.ancestor(
+        of: find.text('Timing logs'),
+        matching: find.byType(Checkbox),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.ancestor(
+        of: find.text('Caption buttons on macOS'),
+        matching: find.byType(Checkbox),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(slimg.lastTimingLogsEnabled, isTrue);
     expect(store.value, contains('"developerModeEnabled":true'));
     expect(store.value, contains('"timingLogsEnabled":true'));
+    expect(store.value, contains('"macOsCaptionButtonsEnabled":true'));
   });
 
-  testWidgets('title bar keeps developer left of home and settings', (tester) async {
+  testWidgets('title bar keeps developer left of home and settings', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -2767,7 +3158,9 @@ void main() {
     expect(homePosition.dx, lessThan(settingsPosition.dx));
   });
 
-  testWidgets('title bar hides the home button on the empty state', (tester) async {
+  testWidgets('title bar hides the home button on the empty state', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -2782,7 +3175,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('title-bar-home-button')), findsNothing);
-    expect(find.byKey(const ValueKey('title-bar-settings-button')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('title-bar-settings-button')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('title bar developer button still opens the developer dialog', (
@@ -2810,7 +3206,9 @@ void main() {
     expect(find.text('Developer'), findsOneWidget);
   });
 
-  testWidgets('title bar home button returns to the empty state', (tester) async {
+  testWidgets('title bar home button returns to the empty state', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -3443,6 +3841,47 @@ void main() {
     expect(metricText.style?.color, isNot(equals(initialMetricColor)));
   });
 
+  testWidgets('quality metrics show colored legend dots', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/source.png': _metadata('png', 2400)},
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/source.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpAndSettle();
+
+    final pixelMatchDot = tester.widget<Container>(
+      find.byKey(const ValueKey('metric-legend-dot-Pixel Match')),
+    );
+    final msSsimDot = tester.widget<Container>(
+      find.byKey(const ValueKey('metric-legend-dot-MS-SSIM')),
+    );
+    final ssimulacra2Dot = tester.widget<Container>(
+      find.byKey(const ValueKey('metric-legend-dot-SSIMULACRA 2')),
+    );
+
+    expect(
+      (pixelMatchDot.decoration! as BoxDecoration).color,
+      const Color(0xFF2563EB),
+    );
+    expect(
+      (msSsimDot.decoration! as BoxDecoration).color,
+      const Color(0xFFD97706),
+    );
+    expect(
+      (ssimulacra2Dot.decoration! as BoxDecoration).color,
+      const Color(0xFF16A34A),
+    );
+  });
+
   testWidgets('folder collage supports show-in-file-manager context menu', (
     tester,
   ) async {
@@ -3559,9 +3998,7 @@ Widget _buildApp({
 
 Widget _buildDifferencePreviewHost({required Widget child}) {
   return ProviderScope(
-    child: ShadcnApp(
-      home: Scaffold(child: child),
-    ),
+    child: ShadcnApp(home: Scaffold(child: child)),
   );
 }
 
@@ -3797,6 +4234,8 @@ class _FakeSlimgApi implements SlimgApi {
   int _nextAnalyzeJobId = 0;
   final Map<String, _FakeBatchJob> _jobs = {};
   final Map<String, _FakeAnalyzeJob> _analyzeJobs = {};
+
+  int get analyzeJobCount => _analyzeJobs.length;
 
   static final Uint8List _previewBytes = base64Decode(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==',
@@ -4157,6 +4596,7 @@ class _FakeSlimgApi implements SlimgApi {
           AnalyzeSampleResult(
             quality: quality,
             tempOutputPath: '/tmp/analyze-$quality.jpeg',
+            encodedBytes: _previewBytes,
             format: 'jpeg',
             width: 48,
             height: 32,

@@ -44,6 +44,7 @@ const List<({double value, Color color})> _qualityMetricColorStops = [
   (value: 80, color: Color(0xFF34C759)),
   (value: 100, color: Color(0xFF0094D9)),
 ];
+
 const List<({double value, Color color})> _savingsMetricColorStops = [
   ..._qualityMetricColorStops,
   (value: 200, color: Color(0xFFA21BB7)),
@@ -110,6 +111,16 @@ Future<void> _configureWindow() async {
       await windowManager.focus();
     }),
   );
+}
+
+bool _shouldShowTitleBarCaptionButtons(AppSettings? settings) {
+  if (Platform.isWindows || Platform.isLinux) {
+    return true;
+  }
+
+  return Platform.isMacOS &&
+      settings?.developerModeEnabled == true &&
+      settings?.macOsCaptionButtonsEnabled == true;
 }
 
 class MyApp extends ConsumerWidget {
@@ -242,6 +253,8 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(fileOpenControllerProvider);
+    final appSettings = ref.watch(appSettingsProvider).asData?.value;
+    final showCaptionButtons = _shouldShowTitleBarCaptionButtons(appSettings);
     final title =
         controller.currentDisplayTitle ?? 'Open images from your desktop';
 
@@ -284,6 +297,10 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
                     ],
                     const SizedBox(width: 6),
                     const _TitleBarSettingsButton(),
+                    if (showCaptionButtons) ...[
+                      const SizedBox(width: 6),
+                      const _TitleBarCaptionControls(),
+                    ],
                   ],
                 ),
               ),
@@ -869,7 +886,8 @@ class _ImageStage extends ConsumerWidget {
                             frame: differenceFrame,
                             fileName: fileName,
                             showCoordinates:
-                                appSettings?.differenceTooltipShowsCoordinates ??
+                                appSettings
+                                    ?.differenceTooltipShowsCoordinates ??
                                 true,
                             useRgbSwatches:
                                 appSettings?.differenceTooltipUsesSwatches ??
@@ -1097,8 +1115,7 @@ class _DifferenceTooltipSample {
   String get greenLabel => green.toString().padLeft(3);
   String get blueLabel => blue.toString().padLeft(3);
 
-  String get _rgbLabel =>
-      'R $redLabel G $greenLabel B $blueLabel';
+  String get _rgbLabel => 'R $redLabel G $greenLabel B $blueLabel';
 
   String label({required bool showCoordinates}) {
     if (!showCoordinates) {
@@ -1305,10 +1322,7 @@ class _DifferencePreviewState extends ConsumerState<DifferencePreview> {
       viewportSize.width / imageSize.width,
       viewportSize.height / imageSize.height,
     );
-    final fittedSize = Size(
-      imageSize.width * scale,
-      imageSize.height * scale,
-    );
+    final fittedSize = Size(imageSize.width * scale, imageSize.height * scale);
     final left = (viewportSize.width - fittedSize.width) / 2;
     final top = (viewportSize.height - fittedSize.height) / 2;
     return Rect.fromLTWH(left, top, fittedSize.width, fittedSize.height);
@@ -1418,10 +1432,7 @@ class _DifferencePreviewState extends ConsumerState<DifferencePreview> {
               ),
             ],
           )
-        : Text(
-            tooltip._rgbLabel,
-            style: numberStyle,
-          );
+        : Text(tooltip._rgbLabel, style: numberStyle);
 
     if (!widget.showCoordinates) {
       return KeyedSubtree(
@@ -1476,10 +1487,7 @@ class _DifferencePreviewState extends ConsumerState<DifferencePreview> {
   }) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final viewportSize = Size(
-          constraints.maxWidth,
-          constraints.maxHeight,
-        );
+        final viewportSize = Size(constraints.maxWidth, constraints.maxHeight);
         final imageRect = _containedImageRect(
           viewportSize,
           Size(rawImage.width.toDouble(), rawImage.height.toDouble()),
@@ -1521,7 +1529,9 @@ class _DifferencePreviewState extends ConsumerState<DifferencePreview> {
               child: ContextMenu(
                 items: [
                   MenuCheckbox(
-                    key: const ValueKey('difference-tooltip-coordinates-toggle'),
+                    key: const ValueKey(
+                      'difference-tooltip-coordinates-toggle',
+                    ),
                     value: widget.showCoordinates,
                     autoClose: false,
                     onChanged: widget.onShowCoordinatesChanged == null
@@ -1567,10 +1577,7 @@ class _DifferencePreviewState extends ConsumerState<DifferencePreview> {
                           child: SizedBox(
                             width: imageRect.width,
                             height: imageRect.height,
-                            child: RawImage(
-                              image: image,
-                              fit: BoxFit.fill,
-                            ),
+                            child: RawImage(image: image, fit: BoxFit.fill),
                           ),
                         ),
                       ),
@@ -1611,9 +1618,7 @@ class _DifferencePreviewState extends ConsumerState<DifferencePreview> {
     return frame.when(
       data: (resolvedFrame) {
         if (resolvedFrame == null) {
-          return _PreviewUnavailable(
-            message: widget.unavailableMessage,
-          );
+          return _PreviewUnavailable(message: widget.unavailableMessage);
         }
         return KeyedSubtree(
           key: const ValueKey('difference-preview-ready'),
@@ -1638,9 +1643,7 @@ class _DifferencePreviewState extends ConsumerState<DifferencePreview> {
           child: CircularProgressIndicator(),
         );
       },
-      error: (_, _) => _PreviewUnavailable(
-        message: widget.unavailableMessage,
-      ),
+      error: (_, _) => _PreviewUnavailable(message: widget.unavailableMessage),
     );
   }
 }
@@ -1885,14 +1888,15 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final preview = ref.watch(currentPreviewProvider);
-    final differenceFrame = ref.watch(currentPreviewDifferenceFrameProvider);
     final analyzeState = ref.watch(analyzeRunControllerProvider);
     final analyzeAvailability = ref.watch(analyzeAvailabilityProvider);
     final analyzeController = ref.read(analyzeRunControllerProvider.notifier);
     final settings = ref.watch(appSettingsProvider).asData?.value;
     final optimizedLoading = preview.isLoading && !hasOptimizedPreview;
+    final differenceFrame = ref.watch(currentPreviewDifferenceFrameProvider);
     final differenceLoading =
-        displayMode == PreviewDisplayMode.difference && differenceFrame.isLoading;
+        displayMode == PreviewDisplayMode.difference &&
+        differenceFrame.isLoading;
     final analyzeTooltip =
         !analyzeAvailability.isEnabled &&
             settings != null &&
@@ -2240,7 +2244,9 @@ class _SettingsSidebar extends ConsumerWidget {
     }) {
       final transparencyWarning = _transparencyWarningText(
         settings: settings,
-        file: fileController.isFolderSelected ? null : fileController.currentFile,
+        file: fileController.isFolderSelected
+            ? null
+            : fileController.currentFile,
       );
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2357,7 +2363,8 @@ class _SettingsSidebar extends ConsumerWidget {
               builder: (context, constraints) {
                 final foldBottomSectionsIntoScroll =
                     showAnalyzePanel &&
-                    constraints.maxHeight < _settingsBottomSectionsFoldThreshold;
+                    constraints.maxHeight <
+                        _settingsBottomSectionsFoldThreshold;
 
                 return Padding(
                   padding: const EdgeInsets.all(12),
@@ -2662,9 +2669,7 @@ class _HoverValueSliderState extends State<_HoverValueSlider> {
                     child: AnimatedSlide(
                       duration: _showDuration,
                       curve: Curves.easeOutCubic,
-                      offset: showLabel
-                          ? Offset.zero
-                          : const Offset(0, -0.12),
+                      offset: showLabel ? Offset.zero : const Offset(0, -0.12),
                       child: AnimatedOpacity(
                         key: const ValueKey('quality-slider-hover-opacity'),
                         duration: _showDuration,
@@ -3375,9 +3380,9 @@ class _AnalyzePanel extends ConsumerWidget {
                       originalSizeBytes: state.isRunning
                           ? null
                           : currentFile?.metadata.fileSize?.toDouble(),
-                      selectedArtifactId: state.selectedArtifactId,
-                      onSelectSample: (sample) {
-                        controller.selectSample(sample);
+                      selectedArtifactId: state.activeArtifactId,
+                      onHoverSample: (sample) {
+                        controller.hoverSample(sample);
                         if (currentFilePath != null) {
                           ref
                               .read(previewDisplaySelectionProvider.notifier)
@@ -3392,12 +3397,35 @@ class _AnalyzePanel extends ConsumerWidget {
                               .requestForArtifact(sample.artifactId);
                         }
                       },
-                      onCommitSampleQuality: (sample) {
+                      onCommitSample: (sample) {
+                        controller.selectSample(sample);
+                        if (currentFilePath != null) {
+                          ref
+                              .read(previewDisplaySelectionProvider.notifier)
+                              .select(
+                                filePath: currentFilePath,
+                                mode: displayMode,
+                              );
+                        }
+                        if (displayMode == PreviewDisplayMode.difference) {
+                          ref
+                              .read(previewDifferenceRequestProvider.notifier)
+                              .requestForArtifact(sample.artifactId);
+                        }
                         unawaited(
                           ref
                               .read(appSettingsProvider.notifier)
                               .setQuality(sample.quality),
                         );
+                      },
+                      onExitChart: () {
+                        final activeSample = controller.clearHoveredSample();
+                        if (displayMode == PreviewDisplayMode.difference &&
+                            activeSample != null) {
+                          ref
+                              .read(previewDifferenceRequestProvider.notifier)
+                              .requestForArtifact(activeSample.artifactId);
+                        }
                       },
                     ),
             ),
@@ -3412,41 +3440,67 @@ class _AnalyzePanel extends ConsumerWidget {
   }
 }
 
-class _AnalyzeChart extends StatelessWidget {
+class _AnalyzeChart extends StatefulWidget {
   const _AnalyzeChart({
     required this.samples,
     required this.originalSizeBytes,
     required this.selectedArtifactId,
-    required this.onSelectSample,
-    required this.onCommitSampleQuality,
+    required this.onHoverSample,
+    required this.onCommitSample,
+    required this.onExitChart,
   });
 
   final List<AnalyzeSampleResult> samples;
   final double? originalSizeBytes;
   final String? selectedArtifactId;
-  final ValueChanged<AnalyzeSampleResult> onSelectSample;
-  final ValueChanged<AnalyzeSampleResult> onCommitSampleQuality;
+  final ValueChanged<AnalyzeSampleResult> onHoverSample;
+  final ValueChanged<AnalyzeSampleResult> onCommitSample;
+  final VoidCallback onExitChart;
+
+  @override
+  State<_AnalyzeChart> createState() => _AnalyzeChartState();
+}
+
+class _AnalyzeChartState extends State<_AnalyzeChart>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _selectionPulseController;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectionPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+      value: 1,
+    );
+  }
+
+  @override
+  void dispose() {
+    _selectionPulseController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final pixelMatchPoints = _metricPoints(
-      samples,
+      widget.samples,
       (sample) => sample.pixelMatch,
     );
     final msSsimPoints = _metricPoints(
-      samples,
+      widget.samples,
       (sample) => sample.msSsim == null ? null : sample.msSsim! * 100,
     );
     final ssimulacra2Points = _metricPoints(
-      samples,
+      widget.samples,
       (sample) => sample.ssimulacra2,
     );
-    final dataMaxX = samples.fold<double>(
+    final dataMaxX = widget.samples.fold<double>(
       0,
       (current, sample) => math.max(current, sample.sizeBytes.toDouble()),
     );
-    final originalMarkerX = originalSizeBytes;
+    final originalMarkerX = widget.originalSizeBytes;
     final visibleMaxX = math.max(dataMaxX, originalMarkerX ?? 0);
     final chartMaxX = visibleMaxX <= 0 ? 1.0 : visibleMaxX * 1.05;
     final xAxisInterval = visibleMaxX <= 0 ? 1.0 : visibleMaxX / 4;
@@ -3455,117 +3509,134 @@ class _AnalyzeChart extends StatelessWidget {
       alpha: 0.08,
     );
 
-    return LineChart(
-      LineChartData(
-        minY: 0,
-        maxY: 100,
-        minX: 0,
-        maxX: chartMaxX,
-        gridData: FlGridData(
-          drawVerticalLine: true,
-          horizontalInterval: 20,
-          verticalInterval: xAxisInterval,
-          getDrawingHorizontalLine: (value) =>
-              FlLine(color: theme.colorScheme.border, strokeWidth: 1),
-          getDrawingVerticalLine: (value) => FlLine(
-            color: theme.colorScheme.border.withValues(alpha: 0.6),
-            strokeWidth: 1,
-          ),
-        ),
-        titlesData: FlTitlesData(
-          topTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          rightTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 30,
-              interval: 20,
-              getTitlesWidget: (value, meta) =>
-                  Text(value.toInt().toString()).xSmall().muted(),
-            ),
-          ),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 18,
-              interval: xAxisInterval,
-              getTitlesWidget: (value, meta) {
-                if (dataMaxX > 0 && value > dataMaxX + 0.5) {
-                  return const SizedBox.shrink();
-                }
-                return Text(_formatBytes(value.round())).xSmall().muted();
-              },
-            ),
-          ),
-        ),
-        borderData: FlBorderData(
-          show: true,
-          border: Border.all(color: theme.colorScheme.border),
-        ),
-        rangeAnnotations: RangeAnnotations(
-          verticalRangeAnnotations: [
-            if (originalMarkerX != null && originalMarkerX < chartMaxX)
-              VerticalRangeAnnotation(
-                x1: originalMarkerX,
-                x2: chartMaxX,
-                color: originalSizeOverlayColor,
+    return MouseRegion(
+      key: const ValueKey('analyze-chart-region'),
+      onExit: (_) => widget.onExitChart(),
+      child: AnimatedBuilder(
+        animation: _selectionPulseController,
+        builder: (context, child) {
+          final selectedPulse = math
+              .sin(_selectionPulseController.value * math.pi)
+              .clamp(0.0, 1.0);
+          return LineChart(
+            LineChartData(
+              minY: 0,
+              maxY: 100,
+              minX: 0,
+              maxX: chartMaxX,
+              gridData: FlGridData(
+                drawVerticalLine: true,
+                horizontalInterval: 20,
+                verticalInterval: xAxisInterval,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: theme.colorScheme.border, strokeWidth: 1),
+                getDrawingVerticalLine: (value) => FlLine(
+                  color: theme.colorScheme.border.withValues(alpha: 0.6),
+                  strokeWidth: 1,
+                ),
               ),
-          ],
-        ),
-        extraLinesData: ExtraLinesData(
-          extraLinesOnTop: true,
-          verticalLines: [
-            if (originalMarkerX != null)
-              VerticalLine(
-                x: originalMarkerX,
-                color: originalSizeLineColor,
-                strokeWidth: 1.5,
-                dashArray: [3, 4],
+              titlesData: FlTitlesData(
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 30,
+                    interval: 20,
+                    getTitlesWidget: (value, meta) =>
+                        Text(value.toInt().toString()).xSmall().muted(),
+                  ),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 18,
+                    interval: xAxisInterval,
+                    getTitlesWidget: (value, meta) {
+                      if (dataMaxX > 0 && value > dataMaxX + 0.5) {
+                        return const SizedBox.shrink();
+                      }
+                      return Text(_formatBytes(value.round())).xSmall().muted();
+                    },
+                  ),
+                ),
               ),
-          ],
-        ),
-        lineTouchData: LineTouchData(
-          handleBuiltInTouches: false,
-          touchCallback: (event, response) {
-            final touchedSpots = response?.lineBarSpots;
-            if (touchedSpots == null ||
-                touchedSpots.isEmpty ||
-                !_isAnalyzeSelectionEvent(event)) {
-              return;
-            }
-            final touched = touchedSpots.first;
-            final point = switch (touched.barIndex) {
-              0 => pixelMatchPoints[touched.spotIndex],
-              1 => msSsimPoints[touched.spotIndex],
-              _ => ssimulacra2Points[touched.spotIndex],
-            };
-            onSelectSample(point.sample);
-            if (_isAnalyzeCommitEvent(event)) {
-              onCommitSampleQuality(point.sample);
-            }
-          },
-        ),
-        lineBarsData: [
-          _buildAnalyzeLine(
-            points: pixelMatchPoints,
-            color: const Color(0xFF2563EB),
-            selectedArtifactId: selectedArtifactId,
-          ),
-          _buildAnalyzeLine(
-            points: msSsimPoints,
-            color: const Color(0xFFD97706),
-            selectedArtifactId: selectedArtifactId,
-          ),
-          _buildAnalyzeLine(
-            points: ssimulacra2Points,
-            color: const Color(0xFF16A34A),
-            selectedArtifactId: selectedArtifactId,
-          ),
-        ],
+              borderData: FlBorderData(
+                show: true,
+                border: Border.all(color: theme.colorScheme.border),
+              ),
+              rangeAnnotations: RangeAnnotations(
+                verticalRangeAnnotations: [
+                  if (originalMarkerX != null && originalMarkerX < chartMaxX)
+                    VerticalRangeAnnotation(
+                      x1: originalMarkerX,
+                      x2: chartMaxX,
+                      color: originalSizeOverlayColor,
+                    ),
+                ],
+              ),
+              extraLinesData: ExtraLinesData(
+                extraLinesOnTop: true,
+                verticalLines: [
+                  if (originalMarkerX != null)
+                    VerticalLine(
+                      x: originalMarkerX,
+                      color: originalSizeLineColor,
+                      strokeWidth: 1.5,
+                      dashArray: [3, 4],
+                    ),
+                ],
+              ),
+              lineTouchData: LineTouchData(
+                handleBuiltInTouches: false,
+                touchCallback: (event, response) {
+                  final touchedSpots = response?.lineBarSpots;
+                  if (touchedSpots == null ||
+                      touchedSpots.isEmpty ||
+                      !_isAnalyzeSelectionEvent(event)) {
+                    return;
+                  }
+                  final touched = touchedSpots.first;
+                  final point = switch (touched.barIndex) {
+                    0 => pixelMatchPoints[touched.spotIndex],
+                    1 => msSsimPoints[touched.spotIndex],
+                    _ => ssimulacra2Points[touched.spotIndex],
+                  };
+                  if (_isAnalyzeCommitEvent(event)) {
+                    _selectionPulseController.forward(from: 0);
+                    widget.onCommitSample(point.sample);
+                  } else if (event is FlPointerHoverEvent) {
+                    widget.onHoverSample(point.sample);
+                  }
+                },
+              ),
+              lineBarsData: [
+                _buildAnalyzeLine(
+                  points: pixelMatchPoints,
+                  color: _analyzeMetricColorForLabel('Pixel Match'),
+                  selectedArtifactId: widget.selectedArtifactId,
+                  selectedPulse: selectedPulse,
+                ),
+                _buildAnalyzeLine(
+                  points: msSsimPoints,
+                  color: _analyzeMetricColorForLabel('MS-SSIM'),
+                  selectedArtifactId: widget.selectedArtifactId,
+                  selectedPulse: selectedPulse,
+                ),
+                _buildAnalyzeLine(
+                  points: ssimulacra2Points,
+                  color: _analyzeMetricColorForLabel('SSIMULACRA 2'),
+                  selectedArtifactId: widget.selectedArtifactId,
+                  selectedPulse: selectedPulse,
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -3597,6 +3668,7 @@ LineChartBarData _buildAnalyzeLine({
   required List<_AnalyzeMetricPoint> points,
   required Color color,
   required String? selectedArtifactId,
+  required double selectedPulse,
 }) {
   return LineChartBarData(
     spots: points.map((point) => point.spot).toList(growable: false),
@@ -3610,7 +3682,7 @@ LineChartBarData _buildAnalyzeLine({
             selectedArtifactId != null &&
             points[index].sample.artifactId == selectedArtifactId;
         return FlDotCirclePainter(
-          radius: selected ? 4 : 2.5,
+          radius: selected ? 4 + (2.25 * selectedPulse) : 2.5,
           color: color,
           strokeWidth: selected ? 2 : 0,
           strokeColor: Colors.white,
@@ -3743,6 +3815,121 @@ class _TitleBarHomeButton extends StatelessWidget {
   }
 }
 
+class _TitleBarCaptionControls extends StatelessWidget {
+  const _TitleBarCaptionControls();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      key: const ValueKey('title-bar-caption-controls'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _TitleBarCaptionButton(
+          key: const ValueKey('title-bar-minimize-button'),
+          label: 'Minimize',
+          icon: LucideIcons.minus,
+          onPressed: () {
+            unawaited(windowManager.minimize());
+          },
+        ),
+        _TitleBarCaptionButton(
+          key: const ValueKey('title-bar-maximize-button'),
+          label: 'Maximize',
+          icon: LucideIcons.square,
+          onPressed: () {
+            unawaited(_toggleMaximizeWindow());
+          },
+        ),
+        _TitleBarCaptionButton(
+          key: const ValueKey('title-bar-close-button'),
+          label: 'Close',
+          icon: LucideIcons.x,
+          isClose: true,
+          onPressed: () {
+            unawaited(windowManager.close());
+          },
+        ),
+      ],
+    );
+  }
+}
+
+Future<void> _toggleMaximizeWindow() async {
+  if (await windowManager.isMaximized()) {
+    await windowManager.unmaximize();
+  } else {
+    await windowManager.maximize();
+  }
+}
+
+class _TitleBarCaptionButton extends StatefulWidget {
+  const _TitleBarCaptionButton({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    this.isClose = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+  final bool isClose;
+
+  @override
+  State<_TitleBarCaptionButton> createState() => _TitleBarCaptionButtonState();
+}
+
+class _TitleBarCaptionButtonState extends State<_TitleBarCaptionButton> {
+  bool _hovered = false;
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final active = _hovered || _pressed;
+    final closeActive = widget.isClose && active;
+    final backgroundColor = closeActive
+        ? const Color(0xffC42B1C).withValues(alpha: _pressed ? 0.88 : 1)
+        : active
+        ? theme.colorScheme.muted.withValues(alpha: _pressed ? 0.55 : 0.7)
+        : Colors.transparent;
+    final iconColor = closeActive
+        ? Colors.white
+        : theme.colorScheme.mutedForeground.withValues(alpha: 0.72);
+
+    return Tooltip(
+      waitDuration: const Duration(milliseconds: 250),
+      showDuration: const Duration(milliseconds: 120),
+      tooltip: (context) => TooltipContainer(child: Text(widget.label)),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() {
+          _hovered = false;
+          _pressed = false;
+        }),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (_) => setState(() => _pressed = true),
+          onTapCancel: () => setState(() => _pressed = false),
+          onTapUp: (_) => setState(() => _pressed = false),
+          onTap: widget.onPressed,
+          child: SizedBox(
+            width: 28,
+            height: _titleBarHeight,
+            child: DecoratedBox(
+              decoration: BoxDecoration(color: backgroundColor),
+              child: Center(
+                child: Icon(widget.icon, size: 10, color: iconColor),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _DeveloperSettingsDialog extends ConsumerWidget {
   const _DeveloperSettingsDialog();
 
@@ -3842,6 +4029,27 @@ class _DeveloperSettingsDialog extends ConsumerWidget {
                           ),
                         ),
                       ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _DeveloperSection(
+                    title: 'Window',
+                    child: Checkbox(
+                      state: settings.macOsCaptionButtonsEnabled
+                          ? CheckboxState.checked
+                          : CheckboxState.unchecked,
+                      onChanged: settings.developerModeEnabled
+                          ? (value) {
+                              notifier.setMacOsCaptionButtonsEnabled(
+                                value == CheckboxState.checked,
+                              );
+                            }
+                          : null,
+                      trailing: Expanded(
+                        child: Text(
+                          'Caption buttons on macOS',
+                        ).small().medium(),
+                      ),
                     ),
                   ),
                 ],
@@ -4054,9 +4262,15 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
     final runController = ref.read(optimizationRunControllerProvider.notifier);
     final selectedAnalyzeSample = ref.watch(selectedAnalyzeSampleProvider);
     final optimizedDisplay = ref.watch(currentOptimizedDisplayProvider);
-    final pixelMatchMetric = ref.watch(currentPreviewPixelMatchProvider);
-    final msSsimMetric = ref.watch(currentPreviewMsSsimProvider);
-    final ssimulacra2Metric = ref.watch(currentPreviewSsimulacra2Provider);
+    final pixelMatchMetric = selectedAnalyzeSample == null
+        ? ref.watch(currentPreviewPixelMatchProvider)
+        : const AsyncData<PreviewMetricResult?>(null);
+    final msSsimMetric = selectedAnalyzeSample == null
+        ? ref.watch(currentPreviewMsSsimProvider)
+        : const AsyncData<PreviewMetricResult?>(null);
+    final ssimulacra2Metric = selectedAnalyzeSample == null
+        ? ref.watch(currentPreviewSsimulacra2Provider)
+        : const AsyncData<PreviewMetricResult?>(null);
     final optimizedPreviewSizeWarning = _optimizedPreviewSizeWarningText(
       controller: controller,
       file: currentFile,
@@ -4137,7 +4351,8 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (optimizedPreviewSizeWarning case final warning?) ...[
+                        if (optimizedPreviewSizeWarning
+                            case final warning?) ...[
                           _SettingsWarningBlock(
                             icon: LucideIcons.triangleAlert,
                             message: warning,
@@ -4158,11 +4373,10 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
                               return FadeTransition(
                                 opacity: curved,
                                 child: SlideTransition(
-                                  position:
-                                      Tween<Offset>(
-                                        begin: const Offset(0, 0.03),
-                                        end: Offset.zero,
-                                      ).animate(curved),
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0, 0.03),
+                                    end: Offset.zero,
+                                  ).animate(curved),
                                   child: child,
                                 ),
                               );
@@ -4666,14 +4880,41 @@ class _BottomQualitySection extends ConsumerWidget {
     final theme = Theme.of(context);
     final settings = ref.watch(appSettingsProvider).asData?.value;
     final previewState = ref.watch(currentPreviewProvider);
+    final selectedAnalyzeSample = ref.watch(selectedAnalyzeSampleProvider);
     final previewPendingBeforeMetrics =
-        previewState.isLoading && previewState.asData?.value == null;
+        selectedAnalyzeSample == null &&
+        previewState.isLoading &&
+        previewState.asData?.value == null;
     final colorCodingEnabled = settings?.qualityMetricColorsEnabled ?? false;
     final rows = isFolderSelected
         ? const <_BottomMetricRowState>[
             _BottomMetricRowState.text(label: 'Pixel Match', value: 'N/A'),
             _BottomMetricRowState.text(label: 'MS-SSIM', value: 'N/A'),
             _BottomMetricRowState.text(label: 'SSIMULACRA 2', value: 'N/A'),
+          ]
+        : selectedAnalyzeSample != null
+        ? <_BottomMetricRowState>[
+            _metricRowStateFromAnalyzeSample(
+              label: 'Pixel Match',
+              value: selectedAnalyzeSample.pixelMatch,
+              formatter: _formatNullableMetricPercent,
+              scoreMapper: (value) => value?.clamp(0, 100).toDouble(),
+            ),
+            _metricRowStateFromAnalyzeSample(
+              label: 'MS-SSIM',
+              value: selectedAnalyzeSample.msSsim,
+              formatter: (value) =>
+                  _formatNullableMetric(value, trimIfOne: true),
+              scoreMapper: (value) =>
+                  value == null ? null : (value * 100).clamp(0, 100).toDouble(),
+            ),
+            _metricRowStateFromAnalyzeSample(
+              label: 'SSIMULACRA 2',
+              value: selectedAnalyzeSample.ssimulacra2,
+              formatter: (value) =>
+                  _formatNullableMetric(value, digits: 1, trimIfHundred: true),
+              scoreMapper: (value) => value?.clamp(0, 100).toDouble(),
+            ),
           ]
         : <_BottomMetricRowState>[
             _metricRowState(
@@ -4798,6 +5039,19 @@ class _BottomQualitySection extends ConsumerWidget {
   }
 }
 
+_BottomMetricRowState _metricRowStateFromAnalyzeSample({
+  required String label,
+  required double? value,
+  required String Function(double? value) formatter,
+  required double? Function(double? value) scoreMapper,
+}) {
+  return _BottomMetricRowState.text(
+    label: label,
+    value: formatter(value),
+    qualityScore: scoreMapper(value),
+  );
+}
+
 _BottomMetricRowState _metricRowState({
   required String label,
   required AsyncValue<PreviewMetricResult?> metric,
@@ -4856,6 +5110,19 @@ class _BottomMetricRowState {
 
 enum _BottomMetricRowDisplayState { loading, text }
 
+const _pixelMatchAnalyzeColor = Color(0xFF2563EB);
+const _msSsimAnalyzeColor = Color(0xFFD97706);
+const _ssimulacra2AnalyzeColor = Color(0xFF16A34A);
+
+Color _analyzeMetricColorForLabel(String label) {
+  return switch (label) {
+    'Pixel Match' => _pixelMatchAnalyzeColor,
+    'MS-SSIM' => _msSsimAnalyzeColor,
+    'SSIMULACRA 2' => _ssimulacra2AnalyzeColor,
+    _ => const Color(0xFF94A3B8),
+  };
+}
+
 class _BottomMetricRow extends StatelessWidget {
   const _BottomMetricRow({required this.row, required this.colorCodingEnabled});
 
@@ -4865,7 +5132,22 @@ class _BottomMetricRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final labelWidget = Text(row.label).xSmall().medium().muted();
+    final labelWidget = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          key: ValueKey('metric-legend-dot-${row.label}'),
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _analyzeMetricColorForLabel(row.label),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Flexible(child: Text(row.label).xSmall().medium().muted()),
+      ],
+    );
     final help = _metricHelpFor(row.label);
     final valueColor = colorCodingEnabled && row.qualityScore != null
         ? _qualityMetricColor(row.qualityScore!)
@@ -5166,6 +5448,7 @@ class _BottomSummaryViewModel {
         ? _formatMetricTimingTooltip(preview.elapsedMilliseconds)
         : null;
     final similarityStat = _deriveSimilarityStat(
+      analyzeSample: analyzeSample,
       pixelMatchMetric: pixelMatchMetric,
       msSsimMetric: msSsimMetric,
       ssimulacra2Metric: ssimulacra2Metric,
@@ -5350,10 +5633,33 @@ class _DerivedSimilarityStat {
 }
 
 _DerivedSimilarityStat _deriveSimilarityStat({
+  AnalyzeSampleResult? analyzeSample,
   required AsyncValue<PreviewMetricResult?> pixelMatchMetric,
   required AsyncValue<PreviewMetricResult?> msSsimMetric,
   required AsyncValue<PreviewMetricResult?> ssimulacra2Metric,
 }) {
+  if (analyzeSample != null) {
+    final normalizedValues = <double>[
+      if (analyzeSample.pixelMatch case final pixelMatch?)
+        pixelMatch.clamp(0, 100).toDouble(),
+      if (analyzeSample.msSsim case final msSsim?)
+        (msSsim * 100).clamp(0, 100).toDouble(),
+      if (analyzeSample.ssimulacra2 case final ssimulacra2?)
+        ssimulacra2.clamp(0, 100).toDouble(),
+    ];
+
+    if (normalizedValues.isNotEmpty) {
+      final average =
+          normalizedValues.reduce((sum, value) => sum + value) /
+          normalizedValues.length;
+      return _DerivedSimilarityStat(
+        value: _formatSimilarityPercentValue(average),
+        loading: false,
+        score: average,
+      );
+    }
+  }
+
   final normalizedValues = <double>[
     ..._normalizedSimilarityValues(
       pixelMatchMetric,
@@ -5626,7 +5932,7 @@ bool _isAnalyzeSelectionEvent(FlTouchEvent event) {
 }
 
 bool _isAnalyzeCommitEvent(FlTouchEvent event) {
-  return event is FlTapDownEvent || event is FlTapUpEvent;
+  return event is FlTapDownEvent;
 }
 
 bool _isTerminalStatus(OptimizationItemStatus status) {
