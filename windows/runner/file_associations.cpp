@@ -68,7 +68,7 @@ bool EnsureFileAssociations() {
   }
 
   const std::wstring open_command =
-      L"\"" + executable_path + L"\" \"%*\"";
+      L"\"" + executable_path + L"\" \"%1\"";
   const std::wstring default_icon = executable_path + L",0";
   const std::wstring applications_key =
       L"Software\\Classes\\Applications\\" + std::wstring(kExecutableName);
