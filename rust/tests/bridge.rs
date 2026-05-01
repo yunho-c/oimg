@@ -148,7 +148,7 @@ fn preview_file_crops_without_writing() {
 }
 
 #[test]
-fn preview_file_converts_to_avif_without_native_decode() {
+fn preview_file_converts_to_avif_with_metrics() {
     let dir = tempdir().unwrap();
     let input_path = dir.path().join("source.png");
     fs::write(&input_path, png_bytes()).unwrap();
@@ -164,13 +164,12 @@ fn preview_file_converts_to_avif_without_native_decode() {
 
     assert_eq!(preview.format, "avif");
     assert_eq!(&preview.encoded_bytes[4..8], b"ftyp");
-    assert_eq!(
-        bridge::compute_preview_pixel_match_percentage(PreviewArtifactRequest {
-            artifact_id: preview.artifact_id.clone(),
-        })
-        .unwrap(),
-        None
-    );
+    let pixel_match = bridge::compute_preview_pixel_match_percentage(PreviewArtifactRequest {
+        artifact_id: preview.artifact_id.clone(),
+    })
+    .unwrap()
+    .expect("expected AVIF preview metric");
+    assert!((0.0..=100.0).contains(&pixel_match));
     bridge::dispose_preview_artifact(preview.artifact_id).unwrap();
 }
 

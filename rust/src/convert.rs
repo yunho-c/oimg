@@ -460,7 +460,7 @@ pub(crate) fn run_preview_operation(
         }
     };
 
-    let preview_rgba_bytes = preview_rgba_bytes(&output.0, output.1)?;
+    let preview_rgba_bytes = preview_rgba_bytes(&output.0)?;
     Ok(PreviewOperationOutput {
         data: output.0,
         preview_rgba_bytes,
@@ -598,15 +598,9 @@ fn encode_threads_for_format(format: Format, requested: Option<usize>) -> Option
     Some(HostResources::current().usable_cores.min(4).max(1))
 }
 
-fn preview_rgba_bytes(encoded: &[u8], format: Format) -> Result<Vec<u8>> {
+fn preview_rgba_bytes(encoded: &[u8]) -> Result<Vec<u8>> {
     match decode(encoded) {
         Ok((preview_image, _)) => Ok(preview_image.data),
-        Err(slimg_core::Error::Decode(message))
-            if format == Format::Avif
-                && message.contains("AVIF decode support is temporarily unavailable") =>
-        {
-            Ok(Vec::new())
-        }
         Err(error) => Err(error.into()),
     }
 }
@@ -822,7 +816,7 @@ mod tests {
     }
 
     #[test]
-    fn avif_preview_tolerates_unavailable_native_decode() {
+    fn avif_preview_includes_decoded_rgba() {
         let image = test_image();
         let output = run_preview_operation(
             &image,
@@ -837,7 +831,32 @@ mod tests {
 
         assert_eq!(output.format, Format::Avif);
         assert_eq!(&output.data[4..8], b"ftyp");
-        assert!(output.preview_rgba_bytes.is_empty());
+        assert_eq!(
+            output.preview_rgba_bytes.len(),
+            (output.width * output.height * 4) as usize
+        );
+    }
+
+    #[test]
+    fn avif_preview_accepts_zero_quality() {
+        let image = test_image();
+        let output = run_preview_operation(
+            &image,
+            Format::Png,
+            &ImageOperation::Convert(ConvertOptions {
+                target_format: "avif".to_string(),
+                quality: 0,
+            }),
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(output.format, Format::Avif);
+        assert_eq!(&output.data[4..8], b"ftyp");
+        assert_eq!(
+            output.preview_rgba_bytes.len(),
+            (output.width * output.height * 4) as usize
+        );
     }
 
     #[test]
