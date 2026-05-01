@@ -105,15 +105,10 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final root = await Directory.systemTemp.createTemp('oimg-empty-state');
-    addTearDown(() async {
-      await root.delete(recursive: true);
-    });
-    final image = File('${root.path}/inside.png')..writeAsBytesSync([1, 2, 3]);
-
-    final channel = _FakeFileOpenChannel()..pickFolderResult = [root.path];
+    const path = '/tmp/oimg-empty-state/inside.png';
+    final channel = _FakeFileOpenChannel()..pickFolderResult = [path];
     final slimg = _FakeSlimgApi(
-      inspectResults: {image.path: _metadata('png', 2400)},
+      inspectResults: {path: _metadata('png', 2400)},
     );
     final controller = FileOpenController(channel: channel, slimg: slimg);
     await controller.initialize();
@@ -1456,32 +1451,28 @@ void main() {
       addTearDown(firstFrame.image.dispose);
 
       await tester.pumpWidget(
-        ShadcnApp(
-          home: Scaffold(
-            child: DifferencePreview(
-              retentionScopeKey: 'first',
-              frame: const AsyncData<PreviewDifferenceFrame?>(null),
-              fileName: 'first.png',
-              showCoordinates: true,
-              useRgbSwatches: false,
-              unavailableMessage: 'Difference preview unavailable.',
-            ),
+        _buildDifferencePreviewHost(
+          child: const DifferencePreview(
+            retentionScopeKey: 'first',
+            frame: AsyncData<PreviewDifferenceFrame?>(null),
+            fileName: 'first.png',
+            showCoordinates: true,
+            useRgbSwatches: false,
+            unavailableMessage: 'Difference preview unavailable.',
           ),
         ),
       );
       await tester.pump();
 
       await tester.pumpWidget(
-        ShadcnApp(
-          home: Scaffold(
-            child: DifferencePreview(
-              retentionScopeKey: 'first',
-              frame: AsyncData<PreviewDifferenceFrame?>(firstFrame),
-              fileName: 'first.png',
-              showCoordinates: true,
-              useRgbSwatches: false,
-              unavailableMessage: 'Difference preview unavailable.',
-            ),
+        _buildDifferencePreviewHost(
+          child: DifferencePreview(
+            retentionScopeKey: 'first',
+            frame: AsyncData<PreviewDifferenceFrame?>(firstFrame),
+            fileName: 'first.png',
+            showCoordinates: true,
+            useRgbSwatches: false,
+            unavailableMessage: 'Difference preview unavailable.',
           ),
         ),
       );
@@ -1497,16 +1488,14 @@ void main() {
       );
 
       await tester.pumpWidget(
-        const ShadcnApp(
-          home: Scaffold(
-            child: DifferencePreview(
-              retentionScopeKey: 'first',
-              frame: AsyncLoading<PreviewDifferenceFrame?>(),
-              fileName: 'first.png',
-              showCoordinates: true,
-              useRgbSwatches: false,
-              unavailableMessage: 'Difference preview unavailable.',
-            ),
+        _buildDifferencePreviewHost(
+          child: const DifferencePreview(
+            retentionScopeKey: 'first',
+            frame: AsyncLoading<PreviewDifferenceFrame?>(),
+            fileName: 'first.png',
+            showCoordinates: true,
+            useRgbSwatches: false,
+            unavailableMessage: 'Difference preview unavailable.',
           ),
         ),
       );
@@ -1520,6 +1509,203 @@ void main() {
         find.byKey(const ValueKey('difference-preview-loading')),
         findsNothing,
       );
+    },
+  );
+
+  testWidgets(
+    'difference preview hides the error stats card when no frame is available',
+    (tester) async {
+      await tester.pumpWidget(
+        _buildDifferencePreviewHost(
+          child: const DifferencePreview(
+            retentionScopeKey: 'first',
+            frame: AsyncData<PreviewDifferenceFrame?>(null),
+            fileName: 'first.png',
+            showCoordinates: true,
+            useRgbSwatches: false,
+            unavailableMessage: 'Difference preview unavailable.',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('difference-preview-stats-card')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets('difference preview shows deterministic error stats', (
+    tester,
+  ) async {
+    final frame = await _differenceFrame(
+      width: 5,
+      height: 4,
+      rgbaBytes: _rgbaBytesFromGrayscaleMeans(<int>[
+        0,
+        0,
+        0,
+        0,
+        0,
+        30,
+        30,
+        30,
+        30,
+        30,
+        60,
+        60,
+        60,
+        60,
+        60,
+        120,
+        120,
+        120,
+        240,
+        255,
+      ]),
+    );
+    addTearDown(frame.image.dispose);
+
+    await tester.pumpWidget(
+      _buildDifferencePreviewHost(
+        child: Center(
+          child: SizedBox(
+            width: 200,
+            height: 200,
+            child: DifferencePreview(
+              retentionScopeKey: 'first',
+              frame: AsyncData<PreviewDifferenceFrame?>(frame),
+              fileName: 'first.png',
+              showCoordinates: true,
+              useRgbSwatches: false,
+              unavailableMessage: 'Difference preview unavailable.',
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('difference-preview-stats-card')),
+      findsOneWidget,
+    );
+    expect(find.text('Mean'), findsOneWidget);
+    expect(find.text('Top 10%'), findsOneWidget);
+    expect(find.text('Top 1%'), findsOneWidget);
+    expect(find.text('65.3'), findsOneWidget);
+    expect(find.text('247.5'), findsOneWidget);
+    expect(find.text('255.0'), findsOneWidget);
+  });
+
+  testWidgets(
+    'difference preview keeps the error stats card visible during retained loading',
+    (tester) async {
+      final firstFrame = await _differenceFrame(
+        width: 2,
+        height: 2,
+        rgbaBytes: _rgbaBytesFromGrayscaleMeans(<int>[0, 0, 0, 255]),
+      );
+      addTearDown(firstFrame.image.dispose);
+
+      Widget buildPreview(AsyncValue<PreviewDifferenceFrame?> frameValue) {
+        return _buildDifferencePreviewHost(
+          child: Center(
+            child: SizedBox(
+              width: 200,
+              height: 200,
+              child: DifferencePreview(
+                retentionScopeKey: 'first',
+                frame: frameValue,
+                fileName: 'first.png',
+                showCoordinates: true,
+                useRgbSwatches: false,
+                unavailableMessage: 'Difference preview unavailable.',
+              ),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(
+        buildPreview(AsyncData<PreviewDifferenceFrame?>(firstFrame)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('difference-preview-stats-card')),
+        findsOneWidget,
+      );
+      expect(find.text('63.8'), findsOneWidget);
+
+      await tester.pumpWidget(
+        buildPreview(const AsyncLoading<PreviewDifferenceFrame?>()),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('difference-preview-stats-card')),
+        findsOneWidget,
+      );
+      expect(find.text('63.8'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'difference preview updates the error stats card after a retained frame swap',
+    (tester) async {
+      final firstFrame = await _differenceFrame(
+        width: 2,
+        height: 2,
+        rgbaBytes: _rgbaBytesFromGrayscaleMeans(<int>[0, 0, 0, 255]),
+      );
+      final secondFrame = await _differenceFrame(
+        width: 2,
+        height: 2,
+        rgbaBytes: _rgbaBytesFromGrayscaleMeans(<int>[255, 255, 255, 255]),
+      );
+      addTearDown(firstFrame.image.dispose);
+      addTearDown(secondFrame.image.dispose);
+
+      Widget buildPreview(AsyncValue<PreviewDifferenceFrame?> frameValue) {
+        return _buildDifferencePreviewHost(
+          child: Center(
+            child: SizedBox(
+              width: 200,
+              height: 200,
+              child: DifferencePreview(
+                retentionScopeKey: 'first',
+                frame: frameValue,
+                fileName: 'first.png',
+                showCoordinates: true,
+                useRgbSwatches: false,
+                unavailableMessage: 'Difference preview unavailable.',
+              ),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(
+        buildPreview(AsyncData<PreviewDifferenceFrame?>(firstFrame)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('63.8'), findsOneWidget);
+
+      await tester.pumpWidget(
+        buildPreview(const AsyncLoading<PreviewDifferenceFrame?>()),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('63.8'), findsOneWidget);
+
+      await tester.pumpWidget(
+        buildPreview(AsyncData<PreviewDifferenceFrame?>(secondFrame)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('255.0'), findsNWidgets(3));
+      expect(find.text('63.8'), findsNothing);
     },
   );
 
@@ -1542,20 +1728,18 @@ void main() {
       addTearDown(frame.image.dispose);
 
       await tester.pumpWidget(
-        ShadcnApp(
-          home: Scaffold(
-            child: Center(
-              child: SizedBox(
-                width: 200,
-                height: 200,
-                child: DifferencePreview(
-                  retentionScopeKey: 'first',
-                  frame: AsyncData<PreviewDifferenceFrame?>(frame),
-                  fileName: 'first.png',
-                  showCoordinates: true,
-                  useRgbSwatches: false,
-                  unavailableMessage: 'Difference preview unavailable.',
-                ),
+        _buildDifferencePreviewHost(
+          child: Center(
+            child: SizedBox(
+              width: 200,
+              height: 200,
+              child: DifferencePreview(
+                retentionScopeKey: 'first',
+                frame: AsyncData<PreviewDifferenceFrame?>(frame),
+                fileName: 'first.png',
+                showCoordinates: true,
+                useRgbSwatches: false,
+                unavailableMessage: 'Difference preview unavailable.',
               ),
             ),
           ),
@@ -1616,30 +1800,28 @@ void main() {
     await tester.pumpWidget(
       StatefulBuilder(
         builder: (context, setState) {
-          return ShadcnApp(
-            home: Scaffold(
-              child: Center(
-                child: SizedBox(
-                  width: 200,
-                  height: 200,
-                  child: DifferencePreview(
-                    retentionScopeKey: 'first',
-                    frame: AsyncData<PreviewDifferenceFrame?>(frame),
-                    fileName: 'first.png',
-                    showCoordinates: showCoordinates,
-                    useRgbSwatches: useRgbSwatches,
-                    onShowCoordinatesChanged: (value) {
-                      setState(() {
-                        showCoordinates = value;
-                      });
-                    },
-                    onUseRgbSwatchesChanged: (value) {
-                      setState(() {
-                        useRgbSwatches = value;
-                      });
-                    },
-                    unavailableMessage: 'Difference preview unavailable.',
-                  ),
+          return _buildDifferencePreviewHost(
+            child: Center(
+              child: SizedBox(
+                width: 200,
+                height: 200,
+                child: DifferencePreview(
+                  retentionScopeKey: 'first',
+                  frame: AsyncData<PreviewDifferenceFrame?>(frame),
+                  fileName: 'first.png',
+                  showCoordinates: showCoordinates,
+                  useRgbSwatches: useRgbSwatches,
+                  onShowCoordinatesChanged: (value) {
+                    setState(() {
+                      showCoordinates = value;
+                    });
+                  },
+                  onUseRgbSwatchesChanged: (value) {
+                    setState(() {
+                      useRgbSwatches = value;
+                    });
+                  },
+                  unavailableMessage: 'Difference preview unavailable.',
                 ),
               ),
             ),
@@ -1708,30 +1890,28 @@ void main() {
       await tester.pumpWidget(
         StatefulBuilder(
           builder: (context, setState) {
-            return ShadcnApp(
-              home: Scaffold(
-                child: Center(
-                  child: SizedBox(
-                    width: 200,
-                    height: 200,
-                    child: DifferencePreview(
-                      retentionScopeKey: 'first',
-                      frame: AsyncData<PreviewDifferenceFrame?>(frame),
-                      fileName: 'first.png',
-                      showCoordinates: showCoordinates,
-                      useRgbSwatches: useRgbSwatches,
-                      onShowCoordinatesChanged: (value) {
-                        setState(() {
-                          showCoordinates = value;
-                        });
-                      },
-                      onUseRgbSwatchesChanged: (value) {
-                        setState(() {
-                          useRgbSwatches = value;
-                        });
-                      },
-                      unavailableMessage: 'Difference preview unavailable.',
-                    ),
+            return _buildDifferencePreviewHost(
+              child: Center(
+                child: SizedBox(
+                  width: 200,
+                  height: 200,
+                  child: DifferencePreview(
+                    retentionScopeKey: 'first',
+                    frame: AsyncData<PreviewDifferenceFrame?>(frame),
+                    fileName: 'first.png',
+                    showCoordinates: showCoordinates,
+                    useRgbSwatches: useRgbSwatches,
+                    onShowCoordinatesChanged: (value) {
+                      setState(() {
+                        showCoordinates = value;
+                      });
+                    },
+                    onUseRgbSwatchesChanged: (value) {
+                      setState(() {
+                        useRgbSwatches = value;
+                      });
+                    },
+                    unavailableMessage: 'Difference preview unavailable.',
                   ),
                 ),
               ),
@@ -1811,20 +1991,18 @@ void main() {
       addTearDown(frame.image.dispose);
 
       await tester.pumpWidget(
-        ShadcnApp(
-          home: Scaffold(
-            child: Center(
-              child: SizedBox(
-                width: 200,
-                height: 200,
-                child: DifferencePreview(
-                  retentionScopeKey: 'first',
-                  frame: AsyncData<PreviewDifferenceFrame?>(frame),
-                  fileName: 'first.png',
-                  showCoordinates: true,
-                  useRgbSwatches: false,
-                  unavailableMessage: 'Difference preview unavailable.',
-                ),
+        _buildDifferencePreviewHost(
+          child: Center(
+            child: SizedBox(
+              width: 200,
+              height: 200,
+              child: DifferencePreview(
+                retentionScopeKey: 'first',
+                frame: AsyncData<PreviewDifferenceFrame?>(frame),
+                fileName: 'first.png',
+                showCoordinates: true,
+                useRgbSwatches: false,
+                unavailableMessage: 'Difference preview unavailable.',
               ),
             ),
           ),
@@ -1897,20 +2075,18 @@ void main() {
       addTearDown(secondFrame.image.dispose);
 
       Widget buildPreview(AsyncValue<PreviewDifferenceFrame?> frameValue) {
-        return ShadcnApp(
-          home: Scaffold(
-            child: Center(
-              child: SizedBox(
-                width: 200,
-                height: 200,
-                child: DifferencePreview(
-                  retentionScopeKey: 'first',
-                  frame: frameValue,
-                  fileName: 'first.png',
-                  showCoordinates: true,
-                  useRgbSwatches: false,
-                  unavailableMessage: 'Difference preview unavailable.',
-                ),
+        return _buildDifferencePreviewHost(
+          child: Center(
+            child: SizedBox(
+              width: 200,
+              height: 200,
+              child: DifferencePreview(
+                retentionScopeKey: 'first',
+                frame: frameValue,
+                fileName: 'first.png',
+                showCoordinates: true,
+                useRgbSwatches: false,
+                unavailableMessage: 'Difference preview unavailable.',
               ),
             ),
           ),
@@ -3815,6 +3991,12 @@ Widget _buildApp({
   );
 }
 
+Widget _buildDifferencePreviewHost({required Widget child}) {
+  return ProviderScope(
+    child: ShadcnApp(home: Scaffold(child: child)),
+  );
+}
+
 Future<PreviewDifferenceFrame> _differenceFrame({
   required int width,
   required int height,
@@ -3853,6 +4035,19 @@ Uint8List _rgbaBytesForSinglePixel({
   bytes[index + 1] = green;
   bytes[index + 2] = blue;
   bytes[index + 3] = 255;
+  return bytes;
+}
+
+Uint8List _rgbaBytesFromGrayscaleMeans(List<int> values) {
+  final bytes = Uint8List(values.length * 4);
+  for (var i = 0; i < values.length; i++) {
+    final value = values[i];
+    final byteIndex = i * 4;
+    bytes[byteIndex] = value;
+    bytes[byteIndex + 1] = value;
+    bytes[byteIndex + 2] = value;
+    bytes[byteIndex + 3] = 255;
+  }
   return bytes;
 }
 

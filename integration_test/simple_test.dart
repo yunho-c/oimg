@@ -53,6 +53,9 @@ class _NoopFileOpenChannel implements FileOpenChannel {
 
   @override
   Future<List<String>> pickFolder() async => const <String>[];
+
+  @override
+  Future<void> showInFileManager(String path) async {}
 }
 
 class _FakeSlimgApi implements SlimgApi {
