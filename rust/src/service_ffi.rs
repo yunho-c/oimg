@@ -5,7 +5,7 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
-use slimg_core::{decode, codec::get_codec, EncodeOptions, Format, ImageData};
+use slimg_core::{codec::get_codec, decode, EncodeOptions, Format, ImageData};
 
 use crate::codec::parse_format;
 use crate::error::{panic_message, Result, SlimgBridgeError};
@@ -81,23 +81,9 @@ struct CompressionServiceItem {
 
 #[no_mangle]
 pub extern "C" fn oimg_service_run_request(request_json: *const c_char) -> *mut c_char {
-    let response = catch_unwind(AssertUnwindSafe(|| run_request_json(request_json)))
-        .unwrap_or_else(|payload| CompressionServiceResponse {
-            success_count: 0,
-            failure_count: 1,
-            items: vec![CompressionServiceItem {
-                input_path: String::new(),
-                output_path: None,
-                error: Some(format!("internal error: {}", panic_message(payload))),
-            }],
-        });
-
-    match serde_json::to_string(&response)
-        .ok()
-        .and_then(|json| CString::new(json).ok())
-    {
-        Some(value) => value.into_raw(),
-        None => CString::new(
+    match CString::new(run_request_json_from_ptr(request_json)) {
+        Ok(value) => value.into_raw(),
+        Err(_) => CString::new(
             r#"{"success_count":0,"failure_count":1,"items":[{"input_path":"","output_path":null,"error":"internal error: failed to serialize service response"}]}"#,
         )
         .expect("valid fallback JSON")
@@ -116,16 +102,44 @@ pub extern "C" fn oimg_service_free_string(value: *mut c_char) {
     }
 }
 
-fn run_request_json(request_json: *const c_char) -> CompressionServiceResponse {
+pub fn run_request_json(request_json: &str) -> String {
+    let response =
+        catch_unwind(AssertUnwindSafe(|| run_request(request_json))).unwrap_or_else(|payload| {
+            CompressionServiceResponse {
+                success_count: 0,
+                failure_count: 1,
+                items: vec![CompressionServiceItem {
+                    input_path: String::new(),
+                    output_path: None,
+                    error: Some(format!("internal error: {}", panic_message(payload))),
+                }],
+            }
+        });
+
+    serde_json::to_string(&response).unwrap_or_else(|_| {
+        r#"{"success_count":0,"failure_count":1,"items":[{"input_path":"","output_path":null,"error":"internal error: failed to serialize service response"}]}"#
+            .to_string()
+    })
+}
+
+fn run_request_json_from_ptr(request_json: *const c_char) -> String {
     if request_json.is_null() {
-        return invalid_response("request JSON must not be null");
+        return serde_json::to_string(&invalid_response("request JSON must not be null"))
+            .expect("valid service response");
     }
 
     let request_json = match unsafe { CStr::from_ptr(request_json) }.to_str() {
         Ok(value) => value,
-        Err(_) => return invalid_response("request JSON must be valid UTF-8"),
+        Err(_) => {
+            return serde_json::to_string(&invalid_response("request JSON must be valid UTF-8"))
+                .expect("valid service response");
+        }
     };
 
+    run_request_json(request_json)
+}
+
+fn run_request(request_json: &str) -> CompressionServiceResponse {
     let request = match serde_json::from_str::<CompressionServiceRequest>(request_json) {
         Ok(value) => value,
         Err(error) => {
@@ -177,9 +191,7 @@ fn process_request(request: CompressionServiceRequest) -> Result<Vec<BatchItemRe
     }
 }
 
-fn build_batch_request(
-    request: CompressionServiceRequest,
-) -> Result<ProcessFileBatchRequest> {
+fn build_batch_request(request: CompressionServiceRequest) -> Result<ProcessFileBatchRequest> {
     let CompressionServiceRequest {
         action,
         paths,
@@ -291,9 +303,9 @@ fn process_save_as_path(
             None,
         ),
         CompressionAction::SaveAsJpg => process_save_as_jpg(input_path, &output_path, settings),
-        CompressionAction::Compress | CompressionAction::CompressKeepOriginal => Err(
-            SlimgBridgeError::invalid_request("unsupported save action"),
-        ),
+        CompressionAction::Compress | CompressionAction::CompressKeepOriginal => {
+            Err(SlimgBridgeError::invalid_request("unsupported save action"))
+        }
     }
 }
 

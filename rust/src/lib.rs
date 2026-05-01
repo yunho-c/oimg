@@ -11,5 +11,5 @@ mod fs;
 mod metrics;
 mod preview;
 mod preview_artifacts;
-mod service_ffi;
+pub mod service_ffi;
 mod types;
