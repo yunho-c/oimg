@@ -59,6 +59,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   build_runner: ^2.7.1
   freezed: ^3.2.3
+  flutter_to_debian: ^2.0.2
   integration_test:
     sdk: flutter
 
