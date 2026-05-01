@@ -105,15 +105,10 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final root = await Directory.systemTemp.createTemp('oimg-empty-state');
-    addTearDown(() async {
-      await root.delete(recursive: true);
-    });
-    final image = File('${root.path}/inside.png')..writeAsBytesSync([1, 2, 3]);
-
-    final channel = _FakeFileOpenChannel()..pickFolderResult = [root.path];
+    const path = '/tmp/oimg-empty-state/inside.png';
+    final channel = _FakeFileOpenChannel()..pickFolderResult = [path];
     final slimg = _FakeSlimgApi(
-      inspectResults: {image.path: _metadata('png', 2400)},
+      inspectResults: {path: _metadata('png', 2400)},
     );
     final controller = FileOpenController(channel: channel, slimg: slimg);
     await controller.initialize();
