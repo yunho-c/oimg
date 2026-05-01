@@ -113,6 +113,16 @@ Future<void> _configureWindow() async {
   );
 }
 
+bool _shouldShowTitleBarCaptionButtons(AppSettings? settings) {
+  if (Platform.isWindows || Platform.isLinux) {
+    return true;
+  }
+
+  return Platform.isMacOS &&
+      settings?.developerModeEnabled == true &&
+      settings?.macOsCaptionButtonsEnabled == true;
+}
+
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
@@ -243,6 +253,8 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(fileOpenControllerProvider);
+    final appSettings = ref.watch(appSettingsProvider).asData?.value;
+    final showCaptionButtons = _shouldShowTitleBarCaptionButtons(appSettings);
     final title =
         controller.currentDisplayTitle ?? 'Open images from your desktop';
 
@@ -285,6 +297,10 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
                     ],
                     const SizedBox(width: 6),
                     const _TitleBarSettingsButton(),
+                    if (showCaptionButtons) ...[
+                      const SizedBox(width: 6),
+                      const _TitleBarCaptionControls(),
+                    ],
                   ],
                 ),
               ),
@@ -3735,6 +3751,121 @@ class _TitleBarHomeButton extends StatelessWidget {
   }
 }
 
+class _TitleBarCaptionControls extends StatelessWidget {
+  const _TitleBarCaptionControls();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      key: const ValueKey('title-bar-caption-controls'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _TitleBarCaptionButton(
+          key: const ValueKey('title-bar-minimize-button'),
+          label: 'Minimize',
+          icon: LucideIcons.minus,
+          onPressed: () {
+            unawaited(windowManager.minimize());
+          },
+        ),
+        _TitleBarCaptionButton(
+          key: const ValueKey('title-bar-maximize-button'),
+          label: 'Maximize',
+          icon: LucideIcons.square,
+          onPressed: () {
+            unawaited(_toggleMaximizeWindow());
+          },
+        ),
+        _TitleBarCaptionButton(
+          key: const ValueKey('title-bar-close-button'),
+          label: 'Close',
+          icon: LucideIcons.x,
+          isClose: true,
+          onPressed: () {
+            unawaited(windowManager.close());
+          },
+        ),
+      ],
+    );
+  }
+}
+
+Future<void> _toggleMaximizeWindow() async {
+  if (await windowManager.isMaximized()) {
+    await windowManager.unmaximize();
+  } else {
+    await windowManager.maximize();
+  }
+}
+
+class _TitleBarCaptionButton extends StatefulWidget {
+  const _TitleBarCaptionButton({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    this.isClose = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+  final bool isClose;
+
+  @override
+  State<_TitleBarCaptionButton> createState() => _TitleBarCaptionButtonState();
+}
+
+class _TitleBarCaptionButtonState extends State<_TitleBarCaptionButton> {
+  bool _hovered = false;
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final active = _hovered || _pressed;
+    final closeActive = widget.isClose && active;
+    final backgroundColor = closeActive
+        ? const Color(0xffC42B1C).withValues(alpha: _pressed ? 0.88 : 1)
+        : active
+        ? theme.colorScheme.muted.withValues(alpha: _pressed ? 0.55 : 0.7)
+        : Colors.transparent;
+    final iconColor = closeActive
+        ? Colors.white
+        : theme.colorScheme.mutedForeground.withValues(alpha: 0.72);
+
+    return Tooltip(
+      waitDuration: const Duration(milliseconds: 250),
+      showDuration: const Duration(milliseconds: 120),
+      tooltip: (context) => TooltipContainer(child: Text(widget.label)),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() {
+          _hovered = false;
+          _pressed = false;
+        }),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (_) => setState(() => _pressed = true),
+          onTapCancel: () => setState(() => _pressed = false),
+          onTapUp: (_) => setState(() => _pressed = false),
+          onTap: widget.onPressed,
+          child: SizedBox(
+            width: 28,
+            height: _titleBarHeight,
+            child: DecoratedBox(
+              decoration: BoxDecoration(color: backgroundColor),
+              child: Center(
+                child: Icon(widget.icon, size: 10, color: iconColor),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _DeveloperSettingsDialog extends ConsumerWidget {
   const _DeveloperSettingsDialog();
 
@@ -3834,6 +3965,27 @@ class _DeveloperSettingsDialog extends ConsumerWidget {
                           ),
                         ),
                       ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _DeveloperSection(
+                    title: 'Window',
+                    child: Checkbox(
+                      state: settings.macOsCaptionButtonsEnabled
+                          ? CheckboxState.checked
+                          : CheckboxState.unchecked,
+                      onChanged: settings.developerModeEnabled
+                          ? (value) {
+                              notifier.setMacOsCaptionButtonsEnabled(
+                                value == CheckboxState.checked,
+                              );
+                            }
+                          : null,
+                      trailing: Expanded(
+                        child: Text(
+                          'Caption buttons on macOS',
+                        ).small().medium(),
+                      ),
                     ),
                   ),
                 ],

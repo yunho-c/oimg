@@ -2922,12 +2922,26 @@ void main() {
     await tester.tap(find.byType(Switch).last);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(Checkbox));
+    await tester.tap(
+      find.ancestor(
+        of: find.text('Timing logs'),
+        matching: find.byType(Checkbox),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.ancestor(
+        of: find.text('Caption buttons on macOS'),
+        matching: find.byType(Checkbox),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(slimg.lastTimingLogsEnabled, isTrue);
     expect(store.value, contains('"developerModeEnabled":true'));
     expect(store.value, contains('"timingLogsEnabled":true'));
+    expect(store.value, contains('"macOsCaptionButtonsEnabled":true'));
   });
 
   testWidgets('title bar keeps developer left of home and settings', (
