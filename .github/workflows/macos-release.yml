@@ -82,6 +82,17 @@ jobs:
           path: oimg
           fetch-depth: 0
 
+      - name: Validate tag is on main
+        shell: bash
+        working-directory: oimg
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "Release tag ${{ steps.release.outputs.tag }} must point to a commit reachable from origin/main." >&2
+            exit 1
+          fi
+
       - name: Checkout slimg
         uses: actions/checkout@v4
         with:
