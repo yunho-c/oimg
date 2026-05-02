@@ -2,9 +2,6 @@ name: Windows Release
 
 on:
   push:
-    # Temporary CI test trigger. Remove before merging this workflow.
-    branches:
-      - build/windows
     tags:
       - "v*"
   workflow_dispatch:
@@ -35,14 +32,8 @@ jobs:
           $ErrorActionPreference = "Stop"
           if ("${{ github.event_name }}" -eq "workflow_dispatch") {
             $tag = "${{ inputs.tag }}"
-            $checkoutRef = $tag
-          } elseif ($env:GITHUB_REF_TYPE -eq "branch") {
-            # Temporary CI test path for build/windows branch pushes.
-            $tag = "v0.1.0"
-            $checkoutRef = $env:GITHUB_SHA
           } else {
             $tag = $env:GITHUB_REF_NAME
-            $checkoutRef = $tag
           }
 
           if ($tag -notmatch '^v[0-9]+[.][0-9]+[.][0-9]+([-.][0-9A-Za-z.-]+)?$') {
@@ -50,7 +41,6 @@ jobs:
           }
 
           "tag=$tag" >> $env:GITHUB_OUTPUT
-          "checkout_ref=$checkoutRef" >> $env:GITHUB_OUTPUT
           "version=$($tag.Substring(1))" >> $env:GITHUB_OUTPUT
 
       - name: Validate required secrets
@@ -66,23 +56,21 @@ jobs:
       - name: Checkout oimg
         uses: actions/checkout@v6
         with:
-          ref: ${{ steps.release.outputs.checkout_ref }}
+          ref: ${{ steps.release.outputs.tag }}
           path: oimg
           fetch-depth: 0
 
-      # Temporarily disabled while testing this workflow from a branch.
-      # Re-enable before using this workflow for a real release.
-      # - name: Validate tag is on main
-      #   shell: pwsh
-      #   working-directory: oimg
-      #   run: |
-      #     $ErrorActionPreference = "Stop"
-      #     git fetch origin main
-      #     $PSNativeCommandUseErrorActionPreference = $false
-      #     git merge-base --is-ancestor HEAD origin/main
-      #     if ($LASTEXITCODE -ne 0) {
-      #       throw "Release tag ${{ steps.release.outputs.tag }} must point to a commit reachable from origin/main."
-      #     }
+      - name: Validate tag is on main
+        shell: pwsh
+        working-directory: oimg
+        run: |
+          $ErrorActionPreference = "Stop"
+          git fetch origin main
+          $PSNativeCommandUseErrorActionPreference = $false
+          git merge-base --is-ancestor HEAD origin/main
+          if ($LASTEXITCODE -ne 0) {
+            throw "Release tag ${{ steps.release.outputs.tag }} must point to a commit reachable from origin/main."
+          }
 
       - name: Checkout slimg
         uses: actions/checkout@v6
