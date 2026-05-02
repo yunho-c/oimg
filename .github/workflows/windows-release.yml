@@ -35,11 +35,14 @@ jobs:
           $ErrorActionPreference = "Stop"
           if ("${{ github.event_name }}" -eq "workflow_dispatch") {
             $tag = "${{ inputs.tag }}"
+            $checkoutRef = $tag
           } elseif ($env:GITHUB_REF_TYPE -eq "branch") {
             # Temporary CI test path for build/windows branch pushes.
             $tag = "v0.1.0"
+            $checkoutRef = $env:GITHUB_SHA
           } else {
             $tag = $env:GITHUB_REF_NAME
+            $checkoutRef = $tag
           }
 
           if ($tag -notmatch '^v[0-9]+[.][0-9]+[.][0-9]+([-.][0-9A-Za-z.-]+)?$') {
@@ -47,6 +50,7 @@ jobs:
           }
 
           "tag=$tag" >> $env:GITHUB_OUTPUT
+          "checkout_ref=$checkoutRef" >> $env:GITHUB_OUTPUT
           "version=$($tag.Substring(1))" >> $env:GITHUB_OUTPUT
 
       - name: Validate required secrets
@@ -60,9 +64,9 @@ jobs:
           }
 
       - name: Checkout oimg
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
-          ref: ${{ steps.release.outputs.tag }}
+          ref: ${{ steps.release.outputs.checkout_ref }}
           path: oimg
           fetch-depth: 0
 
@@ -81,7 +85,7 @@ jobs:
       #     }
 
       - name: Checkout slimg
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: yunho-c/slimg
           ref: feat/zenavif
@@ -90,7 +94,7 @@ jobs:
           submodules: recursive
 
       - name: Checkout tjdistler-iqa-fork
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: yunho-c/tjdistler-iqa-fork
           ref: perf/simd-gaussian-vertical
@@ -98,7 +102,7 @@ jobs:
           token: ${{ secrets.CI_REPO_TOKEN }}
 
       - name: Checkout irondash
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: yunho-c/irondash
           ref: fix/macos-engine-context-race
@@ -131,6 +135,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
           rustup toolchain install stable-x86_64-pc-windows-msvc --force-non-host
           rustup target add x86_64-pc-windows-msvc --toolchain stable-x86_64-pc-windows-msvc
 
@@ -138,6 +143,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
           choco install nasm llvm -y --no-progress
           "C:\Program Files\NASM" >> $env:GITHUB_PATH
           "C:\Program Files\LLVM\bin" >> $env:GITHUB_PATH
@@ -147,6 +153,7 @@ jobs:
         working-directory: oimg
         run: |
           $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
           flutter pub get
           dart pub get --directory rust_builder/cargokit/build_tool
 
@@ -155,6 +162,7 @@ jobs:
         working-directory: oimg
         run: |
           $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
           flutter analyze
           flutter test test/settings test/file_open_controller_test.dart test/file_open_channel_test.dart test/optimization
           $env:RUSTC_WRAPPER = ""
@@ -166,6 +174,7 @@ jobs:
         working-directory: oimg
         run: |
           $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
           powershell -ExecutionPolicy Bypass -File scripts/windows/build_windows.ps1 -Command build -Mode release
 
       - name: Package Windows ZIP
@@ -206,7 +215,7 @@ jobs:
           }
 
       - name: Upload Windows artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: OIMG-${{ steps.release.outputs.version }}-windows-x64
           path: |
