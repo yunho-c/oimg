@@ -10,3 +10,15 @@ The Linux build currently has two desktop entry templates:
 This duplication exists because `flutter_to_debian` appends its own `Exec=/opt/oimg/oimg ...` and `TryExec=...` lines when building the final package. Including `Exec=` in the Debian template produces duplicate `Exec` keys and fails `desktop-file-validate`.
 
 Follow-up: make `scripts/linux/package-deb.sh` derive the generated Debian desktop entry from `linux/oimg.desktop.in`, stripping or replacing only the fields that `flutter_to_debian` must own. Keep `linux/oimg.desktop.in` as the single source of truth for shared metadata such as name, MIME types, categories, and startup class.
+
+## Windows release signing
+
+The Windows release workflow currently produces unsigned ZIP artifacts.
+
+Follow-up: add Authenticode signing before packaging once a Windows code-signing certificate is available in CI. The workflow should sign `oimg.exe` and bundled DLLs, verify the signatures, then package the signed release directory.
+
+## Release dependency pinning
+
+The macOS and Windows release workflows currently checkout sibling repositories from the branches used by this app.
+
+Follow-up: pin `slimg`, `tjdistler-iqa-fork`, and `irondash` to release tags or commit SHAs before publishing stable releases, so release rebuilds do not silently pick up branch changes.

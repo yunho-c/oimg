@@ -68,11 +68,29 @@ macOS verification checklist:
 - Check that macOS does not show a signing or notarization warning.
 - Open an image and run a basic optimization.
 
+## Current Platform: Windows
+
+The Windows release workflow builds an unsigned x64 ZIP.
+
+Windows artifact:
+
+- `OIMG-<version>-windows-x64.zip`
+
+Windows verification checklist:
+
+- Download the ZIP from the draft release.
+- Extract the ZIP on Windows.
+- Launch `oimg.exe`.
+- Expect Windows SmartScreen warnings while the app is unsigned.
+- Open an image from OIMG.
+- Use Windows Open with on an image file.
+- Run a basic optimization.
+
 ## Future Platforms
 
-Windows and Linux Debian packaging are not part of the current release workflow yet.
+Linux Debian packaging is not part of the current release workflow yet.
 
-When they are added, extend this file with:
+When it is added, extend this file with:
 
 - Artifact name and extension.
 - Required signing or packaging credentials.
