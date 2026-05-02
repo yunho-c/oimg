@@ -28,3 +28,32 @@ Check the Rust crate directly:
 ```bash
 cargo check --manifest-path rust/Cargo.toml
 ```
+
+## Linux Debian package
+
+Build a local `.deb` for install testing:
+
+```bash
+scripts/linux/package-deb.sh
+```
+
+Install the generated package:
+
+```bash
+sudo dpkg -i debian/packages/*.deb
+```
+
+Check GNOME image association metadata after installing:
+
+```bash
+gio mime image/png
+gio mime image/avif
+gio launch /usr/share/applications/oimg.desktop /path/to/image.png
+```
+
+The Debian package also installs Nautilus context-menu actions for selected
+images. Restart Files after installing so Nautilus loads the extension:
+
+```bash
+nautilus -q
+```

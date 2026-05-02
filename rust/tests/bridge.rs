@@ -148,6 +148,32 @@ fn preview_file_crops_without_writing() {
 }
 
 #[test]
+fn preview_file_converts_to_avif_with_metrics() {
+    let dir = tempdir().unwrap();
+    let input_path = dir.path().join("source.png");
+    fs::write(&input_path, png_bytes()).unwrap();
+
+    let preview = bridge::preview_file(PreviewFileRequest {
+        input_path: input_path.to_string_lossy().into_owned(),
+        operation: ImageOperation::Convert(ConvertOptions {
+            target_format: "avif".to_string(),
+            quality: 80,
+        }),
+    })
+    .unwrap();
+
+    assert_eq!(preview.format, "avif");
+    assert_eq!(&preview.encoded_bytes[4..8], b"ftyp");
+    let pixel_match = bridge::compute_preview_pixel_match_percentage(PreviewArtifactRequest {
+        artifact_id: preview.artifact_id.clone(),
+    })
+    .unwrap()
+    .expect("expected AVIF preview metric");
+    assert!((0.0..=100.0).contains(&pixel_match));
+    bridge::dispose_preview_artifact(preview.artifact_id).unwrap();
+}
+
+#[test]
 fn preview_metric_rpcs_return_values_for_same_dimension_preview() {
     let dir = tempdir().unwrap();
     let input_path = dir.path().join("source.png");
