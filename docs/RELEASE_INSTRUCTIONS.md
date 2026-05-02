@@ -68,13 +68,41 @@ macOS verification checklist:
 - Check that macOS does not show a signing or notarization warning.
 - Open an image and run a basic optimization.
 
+## Current Platform: Linux Debian
+
+The Linux Debian release workflow should build, validate, and upload an unsigned `amd64` `.deb`.
+
+Linux verification checklist:
+
+- Download the `.deb` from the draft release.
+- Install it on Debian/Ubuntu/Pop!_OS:
+
+  ```bash
+  sudo dpkg -i oimg_*_amd64.deb
+  sudo apt install -f
+  ```
+
+- Launch OIMG.
+- Check image Open With metadata:
+
+  ```bash
+  gio mime image/png
+  gio mime image/avif
+  ```
+
+- If testing Nautilus integration, restart Files and verify the context menu:
+
+  ```bash
+  nautilus -q
+  ```
+
+- Right-click a supported image in Nautilus and test:
+  - `Compress image`
+  - `Compress image (lossless)`
+- Open an image and run a basic optimization in the app.
+
 ## Future Platforms
 
-Windows and Linux Debian packaging are not part of the current release workflow yet.
+Windows packaging is not part of the current release workflow yet.
 
-When they are added, extend this file with:
-
-- Artifact name and extension.
-- Required signing or packaging credentials.
-- Target OS version assumptions.
-- Manual smoke-test steps.
+When it is added, extend this file with artifact naming, credentials, target OS assumptions, and manual smoke-test steps.
