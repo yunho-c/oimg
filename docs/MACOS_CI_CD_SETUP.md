@@ -121,6 +121,6 @@ Before publishing the draft:
 
 ## Notes
 
-- The workflow currently checks out sibling repos from their `main` branches.
+- The workflow currently checks out sibling repos from the branches used by this app: `slimg` from `feat/zenavif`, `tjdistler-iqa-fork` from `perf/simd-gaussian-vertical`, and `irondash` from `fix/macos-engine-context-race`.
 - For more reproducible releases, later pin those sibling checkouts to tags or commit SHAs.
 - The workflow uses GitHub-hosted `macos-14`; update that runner deliberately when changing Xcode/macOS build environments.
