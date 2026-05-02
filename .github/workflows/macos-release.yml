@@ -147,7 +147,10 @@ jobs:
       - name: Install Flutter dependencies
         shell: bash
         working-directory: oimg
-        run: flutter pub get
+        run: |
+          set -euo pipefail
+          flutter pub get
+          dart pub get --directory rust_builder/cargokit/build_tool
 
       - name: Run release checks
         shell: bash
