@@ -2,6 +2,9 @@ name: Windows Release
 
 on:
   push:
+    # Temporary CI test trigger. Remove before merging this workflow.
+    branches:
+      - build/windows
     tags:
       - "v*"
   workflow_dispatch:
@@ -32,6 +35,9 @@ jobs:
           $ErrorActionPreference = "Stop"
           if ("${{ github.event_name }}" -eq "workflow_dispatch") {
             $tag = "${{ inputs.tag }}"
+          } elseif ($env:GITHUB_REF_TYPE -eq "branch") {
+            # Temporary CI test path for build/windows branch pushes.
+            $tag = "v0.1.0"
           } else {
             $tag = $env:GITHUB_REF_NAME
           }
@@ -209,6 +215,7 @@ jobs:
           if-no-files-found: error
 
       - name: Create draft GitHub Release
+        if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
