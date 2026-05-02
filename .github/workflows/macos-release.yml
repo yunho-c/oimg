@@ -145,6 +145,14 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install native build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v nasm >/dev/null 2>&1; then
+            brew install nasm
+          fi
+
       - name: Install Flutter dependencies
         shell: bash
         working-directory: oimg
