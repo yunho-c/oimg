@@ -1,6 +1,8 @@
 /// This is copied from Cargokit (which is the official way to use it currently)
 /// Details: https://fzyzcjy.github.io/flutter_rust_bridge/manual/integrate/builtin
 
+import 'dart:io';
+
 import 'package:collection/collection.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
@@ -133,7 +135,15 @@ class RustBuilder {
   CargoBuildOptions? get _buildOptions =>
       environment.crateOptions.cargo[environment.configuration];
 
-  String get _toolchain => _buildOptions?.toolchain.name ?? 'stable';
+  String get _toolchain {
+    final toolchain = _buildOptions?.toolchain.name ?? 'stable';
+    if (toolchain == 'stable' &&
+        Platform.isWindows &&
+        target.rust == 'x86_64-pc-windows-msvc') {
+      return 'stable-x86_64-pc-windows-msvc';
+    }
+    return toolchain;
+  }
 
   /// Returns the path of directory containing build artifacts.
   Future<String> build() async {
@@ -146,6 +156,7 @@ class RustBuilder {
         _toolchain,
         'cargo',
         'build',
+        ..._cargoBuildArgs,
         ...extraArgs,
         '--manifest-path',
         manifestPath,
@@ -158,6 +169,7 @@ class RustBuilder {
         environment.targetTempDir,
       ],
       environment: await _buildEnvironment(),
+      includeParentEnvironment: target.android != null,
     );
     return path.join(
       environment.targetTempDir,
@@ -166,9 +178,25 @@ class RustBuilder {
     );
   }
 
+  List<String> get _cargoBuildArgs {
+    if (Platform.isWindows && target.rust == 'x86_64-pc-windows-msvc') {
+      return const ['-j1'];
+    }
+    return const [];
+  }
+
   Future<Map<String, String>> _buildEnvironment() async {
     if (target.android == null) {
-      return {};
+      final env = _sanitizedDesktopEnvironment();
+      final windowsToolDirectories = _windowsToolDirectories();
+      if (windowsToolDirectories.isNotEmpty) {
+        env['Path'] = '${windowsToolDirectories.join(';')};${env['Path'] ?? ''}';
+      }
+      final libclangDirectory = _windowsLibclangDirectory();
+      if (libclangDirectory != null) {
+        env.putIfAbsent('LIBCLANG_PATH', () => libclangDirectory);
+      }
+      return env;
     } else {
       final sdkPath = environment.androidSdkPath;
       final ndkVersion = environment.androidNdkVersion;
@@ -194,5 +222,54 @@ class RustBuilder {
       }
       return env.buildEnvironment();
     }
+  }
+
+  Map<String, String> _sanitizedDesktopEnvironment() {
+    final env = <String, String>{};
+    for (final entry in Platform.environment.entries) {
+      if (Platform.isWindows && entry.key.toLowerCase() == 'path') {
+        env['Path'] = entry.value;
+        continue;
+      }
+      env[entry.key] = entry.value;
+    }
+    return env;
+  }
+
+  List<String> _windowsToolDirectories() {
+    if (!Platform.isWindows) {
+      return const <String>[];
+    }
+    const candidates = <({String directory, String executable})>[
+      (directory: r'C:\Program Files\NASM', executable: 'nasm.exe'),
+      (
+        directory:
+            r'C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin',
+        executable: 'cmake.exe',
+      ),
+      (directory: r'C:\Program Files\LLVM\bin', executable: 'libclang.dll'),
+    ];
+    return [
+      for (final candidate in candidates)
+        if (File(path.join(candidate.directory, candidate.executable))
+            .existsSync())
+          candidate.directory,
+    ];
+  }
+
+  String? _windowsLibclangDirectory() {
+    if (!Platform.isWindows) {
+      return null;
+    }
+    const candidates = <String>[
+      r'C:\Program Files\LLVM\bin',
+      r'C:\Program Files (x86)\LLVM\bin',
+    ];
+    for (final candidate in candidates) {
+      if (File(path.join(candidate, 'libclang.dll')).existsSync()) {
+        return candidate;
+      }
+    }
+    return null;
   }
 }

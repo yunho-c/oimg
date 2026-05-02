@@ -2,9 +2,9 @@
 
 ### Summary
 
-For now, we are tentatively dropping native AVIF decode support from the Rust image stack used by OIMG.
+AVIF decode support has been restored in the Rust image stack used by OIMG through `zenavif`.
 
-This is a temporary decision to unblock macOS universal/profile builds. We should revisit it later and decide whether to restore native AVIF decode with a cleaner dependency/setup story.
+The restored path avoids the deprecated `image`/`dav1d-sys` decode dependency that blocked macOS universal/profile builds.
 
 ### Triggering Issue
 
@@ -21,43 +21,25 @@ The observed failure is:
 
 The build log also indicates a deeper problem: the `dav1d` Meson build is detecting the host as `aarch64` and compiling arm64 sources even during the `x86_64-apple-darwin` target build. That means this is not just a one-line `pkg-config` environment issue; it is also an architecture/cross-build configuration issue.
 
-### Current Dependency Path
+### Previous Dependency Path
 
-At the time of writing, the relevant path is:
+The removed dependency path was:
 
 - `slimg-core` enables `image` with `features = ["avif-native"]`
 - `slimg-core` AVIF decode uses `image::load_from_memory_with_format(..., ImageFormat::Avif)`
 - `image`'s `avif-native` feature pulls in `mp4parse` and `dav1d`
 - `dav1d` pulls in `dav1d-sys`
 
-### Why We Are Dropping It For Now
+### Replacement Direction
 
-Solving this properly would likely require one of:
+`slimg-core` now decodes AVIF via `zenavif`, then converts the decoded pixels into the 8-bit RGBA `ImageData` representation expected by OIMG.
 
-- a robust Meson cross-build configuration for `x86_64-apple-darwin`
-- target-specific compiler and `pkg-config` configuration for `dav1d-sys`
-- patching or forking `dav1d-sys`
+This means AVIF previews should include decoded RGBA bytes, so preview metrics and difference images can run for AVIF outputs instead of treating native decode as unavailable.
 
-That is heavier and more brittle than we want right now for OIMG.
+### Build Impact
 
-### Temporary Direction
-
-The near-term plan is:
-
-- remove the `image` crate's `avif-native` dependency path from `slimg-core`
-- accept that native AVIF decode support is temporarily unavailable
-- keep the rest of the image pipeline/build working cleanly
-
-### Revisit Options
-
-When we return to this, the main options are:
-
-1. Restore AVIF decode with a different decoder path that does not rely on `dav1d-sys`.
-2. Keep using `dav1d`, but patch the build story so universal macOS builds work reliably.
-3. Make native AVIF decode conditional by target/platform/build mode.
+The OIMG macOS build no longer needs the old `dav1d-sys` environment workaround for local Debug builds. Any future AVIF decode build issue should be investigated through the `zenavif` dependency path first, not by restoring the old `dav1d-sys` setup.
 
 ### Recommendation For Future Revisit
 
-Prefer a code-side dependency simplification over a fragile environment workaround.
-
-If we can restore AVIF decode without depending on `dav1d-sys` for universal macOS builds, that is likely the cleanest long-term solution.
+Keep AVIF decode on a code-side dependency path that avoids fragile target-specific environment setup for universal macOS builds.
