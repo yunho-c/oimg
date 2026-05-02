@@ -100,6 +100,7 @@ jobs:
           ref: feat/zenavif
           path: slimg
           token: ${{ secrets.CI_REPO_TOKEN }}
+          submodules: recursive
 
       - name: Checkout tjdistler-iqa-fork
         uses: actions/checkout@v4
