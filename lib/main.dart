@@ -6455,25 +6455,32 @@ class _EmptyState extends ConsumerWidget {
                                   ? CrossAxisAlignment.end
                                   : CrossAxisAlignment.start,
                               children: [
-                                PrimaryButton(
-                                  key: const ValueKey(
-                                    'empty-state-browse-button',
-                                  ),
-                                  size: ButtonSize.large,
-                                  density: ButtonDensity.normal,
-                                  onPressed: () =>
-                                      _showBrowseMenu(context, ref),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: const [
-                                      Icon(LucideIcons.folderSearch, size: 18),
-                                      SizedBox(width: 10),
-                                      Text(
-                                        'Open images',
-                                        textScaler: TextScaler.linear(0.7),
+                                Builder(
+                                  builder: (buttonContext) {
+                                    return PrimaryButton(
+                                      key: const ValueKey(
+                                        'empty-state-browse-button',
                                       ),
-                                    ],
-                                  ),
+                                      size: ButtonSize.large,
+                                      density: ButtonDensity.normal,
+                                      onPressed: () =>
+                                          _showBrowseMenu(buttonContext, ref),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: const [
+                                          Icon(
+                                            LucideIcons.folderSearch,
+                                            size: 18,
+                                          ),
+                                          SizedBox(width: 10),
+                                          Text(
+                                            'Open images',
+                                            textScaler: TextScaler.linear(0.7),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
