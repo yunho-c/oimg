@@ -4193,6 +4193,9 @@ class _BottomSidebar extends ConsumerStatefulWidget {
 
 class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
   Timer? _optimizeSuccessTimer;
+  Timer? _optimizeProgressTimer;
+  DateTime? _optimizeProgressStartedAt;
+  Duration _optimizeProgressElapsed = Duration.zero;
   bool _showOptimizeSuccess = false;
 
   @override
@@ -4207,6 +4210,7 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
   @override
   void dispose() {
     _optimizeSuccessTimer?.cancel();
+    _stopOptimizeProgressTimer();
     super.dispose();
   }
 
@@ -4216,7 +4220,14 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
   ) {
     if (next.isRunning || next.jobState == BatchJobState.cancelRequested) {
       _clearOptimizeSuccess();
+      if (previous?.isRunning != true) {
+        _startOptimizeProgressTimer();
+      }
       return;
+    }
+
+    if (previous?.isRunning == true) {
+      _stopOptimizeProgressTimer();
     }
 
     if (next.jobState == BatchJobState.completed &&
@@ -4229,6 +4240,28 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
         next.jobState == BatchJobState.canceled) {
       _clearOptimizeSuccess();
     }
+  }
+
+  void _startOptimizeProgressTimer() {
+    _optimizeProgressTimer?.cancel();
+    _optimizeProgressStartedAt = DateTime.now();
+    _optimizeProgressElapsed = Duration.zero;
+    _optimizeProgressTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final startedAt = _optimizeProgressStartedAt;
+      if (!mounted || startedAt == null) {
+        return;
+      }
+      setState(() {
+        _optimizeProgressElapsed = DateTime.now().difference(startedAt);
+      });
+    });
+  }
+
+  void _stopOptimizeProgressTimer() {
+    _optimizeProgressTimer?.cancel();
+    _optimizeProgressTimer = null;
+    _optimizeProgressStartedAt = null;
+    _optimizeProgressElapsed = Duration.zero;
   }
 
   void _showOptimizeSuccessState() {
@@ -4483,7 +4516,36 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
                             minHeight: 6,
                             borderRadius: theme.borderRadiusLg,
                           ),
-                          if (analyzeState.isRunning &&
+                          if (runState.isRunning &&
+                              runState.totalCount > 0) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Text(
+                                  '${runState.completedCount}/${runState.totalCount}',
+                                  key: const ValueKey(
+                                    'optimize-progress-count',
+                                  ),
+                                  style: TextStyle(
+                                    color: theme.colorScheme.mutedForeground,
+                                  ),
+                                ).xSmall(),
+                                const Spacer(),
+                                Text(
+                                  _formatOptimizeProgressTime(
+                                    elapsed: _optimizeProgressElapsed,
+                                    completedCount: runState.completedCount,
+                                    totalCount: runState.totalCount,
+                                  ),
+                                  key: const ValueKey('optimize-progress-time'),
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.mutedForeground,
+                                  ),
+                                ).xSmall(),
+                              ],
+                            ),
+                          ] else if (analyzeState.isRunning &&
                               analyzeState.totalCount > 0) ...[
                             const SizedBox(height: 4),
                             Align(
@@ -6001,6 +6063,31 @@ String _formatMetricTimingTooltip(int elapsedMilliseconds) {
   }
 
   return '$elapsedMilliseconds ms';
+}
+
+String _formatOptimizeProgressTime({
+  required Duration elapsed,
+  required int completedCount,
+  required int totalCount,
+}) {
+  final estimate = completedCount > 0 && totalCount > 0
+      ? Duration(
+          milliseconds: (elapsed.inMilliseconds * totalCount / completedCount)
+              .round(),
+        )
+      : null;
+  return '${_formatProgressDuration(elapsed)}/${estimate == null ? '--:--' : _formatProgressDuration(estimate)}';
+}
+
+String _formatProgressDuration(Duration duration) {
+  final totalSeconds = duration.inSeconds;
+  final hours = totalSeconds ~/ 3600;
+  final minutes = (totalSeconds % 3600) ~/ 60;
+  final seconds = totalSeconds % 60;
+  if (hours > 0) {
+    return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+  return '$minutes:${seconds.toString().padLeft(2, '0')}';
 }
 
 String _formatMegapixels(int width, int height) {

@@ -2922,61 +2922,57 @@ void main() {
     },
   );
 
-  testWidgets(
-    'optimize all uses mixed slimg requests',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1400, 1000));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets('optimize all uses mixed slimg requests', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      final slimg = _FakeSlimgApi(
-        inspectResults: {
-          '/tmp/first.png': _metadata('png', 2400),
-          '/tmp/second.jpg': _metadata('jpeg', 1800),
-          '/tmp/first.jpeg': _metadata('jpeg', 900),
-        },
-        batchDelay: const Duration(milliseconds: 1),
-      );
-      final controller = FileOpenController(
-        channel: _FakeFileOpenChannel(),
-        slimg: slimg,
-        initialPaths: const ['/tmp/first.png', '/tmp/second.jpg'],
-      );
-      await controller.initialize();
+    final slimg = _FakeSlimgApi(
+      inspectResults: {
+        '/tmp/first.png': _metadata('png', 2400),
+        '/tmp/second.jpg': _metadata('jpeg', 1800),
+        '/tmp/first.jpeg': _metadata('jpeg', 900),
+      },
+      batchDelay: const Duration(milliseconds: 1),
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png', '/tmp/second.jpg'],
+    );
+    await controller.initialize();
 
-      await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
 
-      await tester.tap(find.text('Optimize'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 250));
-      await tester.pumpAndSettle();
-      await tester.pump(const Duration(milliseconds: 300));
-      await tester.pumpAndSettle();
-      await tester.pump(const Duration(seconds: 2));
-      await tester.pumpAndSettle();
+    await tester.tap(find.text('Optimize'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
 
-      final batch = slimg.lastBatchRequest!;
-      expect(batch.requests.length, 2);
-      expect(batch.requests[0].outputPath, '/tmp/first.jpeg');
-      expect(batch.requests[1].outputPath, isNull);
-      batch.requests[0].operation.when(
-        convert: (options) => expect(options.targetFormat, 'jpeg'),
-        optimize: (_) => fail('expected convert for png -> jpeg'),
-        resize: (_) => fail('unexpected resize'),
-        crop: (_) => fail('unexpected crop'),
-        extend: (_) => fail('unexpected extend'),
-      );
-      batch.requests[1].operation.when(
-        convert: (_) => fail('expected optimize for jpeg source'),
-        optimize: (_) {},
-        resize: (_) => fail('unexpected resize'),
-        crop: (_) => fail('unexpected crop'),
-        extend: (_) => fail('unexpected extend'),
-      );
-
-    },
-  );
+    final batch = slimg.lastBatchRequest!;
+    expect(batch.requests.length, 2);
+    expect(batch.requests[0].outputPath, '/tmp/first.jpeg');
+    expect(batch.requests[1].outputPath, isNull);
+    batch.requests[0].operation.when(
+      convert: (options) => expect(options.targetFormat, 'jpeg'),
+      optimize: (_) => fail('expected convert for png -> jpeg'),
+      resize: (_) => fail('unexpected resize'),
+      crop: (_) => fail('unexpected crop'),
+      extend: (_) => fail('unexpected extend'),
+    );
+    batch.requests[1].operation.when(
+      convert: (_) => fail('expected optimize for jpeg source'),
+      optimize: (_) {},
+      resize: (_) => fail('unexpected resize'),
+      crop: (_) => fail('unexpected crop'),
+      extend: (_) => fail('unexpected extend'),
+    );
+  });
 
   testWidgets('cancel stops queued files after the active item finishes', (
     tester,
@@ -3013,6 +3009,8 @@ void main() {
     await tester.pump();
 
     expect(find.text('Cancel'), findsOneWidget);
+    expect(find.text('0/3'), findsOneWidget);
+    expect(find.text('0:00/--:--'), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 1300));
     await tester.pump(const Duration(milliseconds: 250));
