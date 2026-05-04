@@ -253,6 +253,7 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(fileOpenControllerProvider);
+    final runState = ref.watch(optimizationRunControllerProvider);
     final appSettings = ref.watch(appSettingsProvider).asData?.value;
     final showCaptionButtons = _shouldShowTitleBarCaptionButtons(appSettings);
     final title =
@@ -293,7 +294,11 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
                     ),
                     if (controller.hasSession) ...[
                       const SizedBox(width: 6),
-                      _TitleBarHomeButton(onPressed: controller.clearSession),
+                      _TitleBarHomeButton(
+                        onPressed: runState.isRunning
+                            ? null
+                            : controller.clearSession,
+                      ),
                     ],
                     const SizedBox(width: 6),
                     const _TitleBarSettingsButton(),
@@ -3870,7 +3875,7 @@ class _TitleBarSettingsButton extends ConsumerWidget {
 class _TitleBarHomeButton extends StatelessWidget {
   const _TitleBarHomeButton({required this.onPressed});
 
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {

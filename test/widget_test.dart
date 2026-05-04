@@ -3220,6 +3220,47 @@ void main() {
     expect(find.text('first.png'), findsNothing);
   });
 
+  testWidgets('title bar home button is disabled while optimizing', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {
+        '/tmp/first.png': _metadata('png', 2400),
+        '/tmp/first.jpeg': _metadata('jpeg', 900),
+      },
+      batchDelay: const Duration(seconds: 1),
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('optimize-action-idle')));
+    await tester.pump();
+
+    final homeButton = tester.widget<GhostButton>(
+      find.byKey(const ValueKey('title-bar-home-button')),
+    );
+    expect(homeButton.onPressed, isNull);
+
+    await tester.tap(find.byKey(const ValueKey('title-bar-home-button')));
+    await tester.pump();
+
+    expect(find.text('first.png'), findsWidgets);
+    expect(find.text('Optimize your images easily'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('title bar settings menu cycles persisted theme preference', (
     tester,
   ) async {
