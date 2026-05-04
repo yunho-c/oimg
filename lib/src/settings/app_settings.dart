@@ -12,6 +12,8 @@ enum StorageDestinationMode { sameFolder, differentLocation }
 
 enum SameFolderAction { replaceSource, keepSource }
 
+enum KeepSourceNaming { renameOptimized, renameOriginal }
+
 enum AppThemePreference { system, light, dark }
 
 const Object _noAppSettingsValue = Object();
@@ -60,6 +62,9 @@ class AppSettings {
     required this.quality,
     required this.storageDestinationMode,
     required this.sameFolderAction,
+    this.keepSourceNaming = KeepSourceNaming.renameOptimized,
+    this.keepSourceOriginalSuffix = defaultKeepSourceOriginalSuffix,
+    this.keepSourceOptimizedSuffix = defaultKeepSourceOptimizedSuffix,
     required this.preserveFolderStructure,
     required this.preserveOriginalDate,
     required this.preserveExif,
@@ -86,6 +91,9 @@ class AppSettings {
   final int quality;
   final StorageDestinationMode storageDestinationMode;
   final SameFolderAction sameFolderAction;
+  final KeepSourceNaming keepSourceNaming;
+  final String keepSourceOriginalSuffix;
+  final String keepSourceOptimizedSuffix;
   final String? differentLocationPath;
   final bool preserveFolderStructure;
   final bool preserveOriginalDate;
@@ -104,6 +112,9 @@ class AppSettings {
   final bool macOsCaptionButtonsEnabled;
   final bool previewPathHeaderEnabled;
 
+  static const defaultKeepSourceOriginalSuffix = '_original';
+  static const defaultKeepSourceOptimizedSuffix = '_optimized';
+
   static const defaults = AppSettings(
     compressionMethod: CompressionMethod.lossy,
     compressionPriority: CompressionPriority.compatibility,
@@ -112,6 +123,9 @@ class AppSettings {
     quality: 80,
     storageDestinationMode: StorageDestinationMode.sameFolder,
     sameFolderAction: SameFolderAction.replaceSource,
+    keepSourceNaming: KeepSourceNaming.renameOptimized,
+    keepSourceOriginalSuffix: defaultKeepSourceOriginalSuffix,
+    keepSourceOptimizedSuffix: defaultKeepSourceOptimizedSuffix,
     preserveFolderStructure: true,
     preserveOriginalDate: false,
     preserveExif: false,
@@ -181,6 +195,9 @@ class AppSettings {
     int? quality,
     StorageDestinationMode? storageDestinationMode,
     SameFolderAction? sameFolderAction,
+    KeepSourceNaming? keepSourceNaming,
+    String? keepSourceOriginalSuffix,
+    String? keepSourceOptimizedSuffix,
     Object? differentLocationPath = _noAppSettingsValue,
     bool? preserveFolderStructure,
     bool? preserveOriginalDate,
@@ -208,6 +225,11 @@ class AppSettings {
       storageDestinationMode:
           storageDestinationMode ?? this.storageDestinationMode,
       sameFolderAction: sameFolderAction ?? this.sameFolderAction,
+      keepSourceNaming: keepSourceNaming ?? this.keepSourceNaming,
+      keepSourceOriginalSuffix:
+          keepSourceOriginalSuffix ?? this.keepSourceOriginalSuffix,
+      keepSourceOptimizedSuffix:
+          keepSourceOptimizedSuffix ?? this.keepSourceOptimizedSuffix,
       differentLocationPath:
           identical(differentLocationPath, _noAppSettingsValue)
           ? this.differentLocationPath
@@ -250,6 +272,9 @@ class AppSettings {
       'quality': quality,
       'storageDestinationMode': storageDestinationMode.name,
       'sameFolderAction': sameFolderAction.name,
+      'keepSourceNaming': keepSourceNaming.name,
+      'keepSourceOriginalSuffix': keepSourceOriginalSuffix,
+      'keepSourceOptimizedSuffix': keepSourceOptimizedSuffix,
       'differentLocationPath': differentLocationPath,
       'preserveFolderStructure': preserveFolderStructure,
       'preserveOriginalDate': preserveOriginalDate,
@@ -300,6 +325,15 @@ class AppSettings {
       sameFolderAction: SameFolderAction.values.byName(
         json['sameFolderAction'] as String? ?? defaults.sameFolderAction.name,
       ),
+      keepSourceNaming: KeepSourceNaming.values.byName(
+        json['keepSourceNaming'] as String? ?? defaults.keepSourceNaming.name,
+      ),
+      keepSourceOriginalSuffix:
+          json['keepSourceOriginalSuffix'] as String? ??
+          defaults.keepSourceOriginalSuffix,
+      keepSourceOptimizedSuffix:
+          json['keepSourceOptimizedSuffix'] as String? ??
+          defaults.keepSourceOptimizedSuffix,
       differentLocationPath:
           json['differentLocationPath'] as String? ??
           defaults.differentLocationPath,
@@ -361,6 +395,9 @@ class AppSettings {
         other.quality == quality &&
         other.storageDestinationMode == storageDestinationMode &&
         other.sameFolderAction == sameFolderAction &&
+        other.keepSourceNaming == keepSourceNaming &&
+        other.keepSourceOriginalSuffix == keepSourceOriginalSuffix &&
+        other.keepSourceOptimizedSuffix == keepSourceOptimizedSuffix &&
         other.differentLocationPath == differentLocationPath &&
         other.preserveFolderStructure == preserveFolderStructure &&
         other.preserveOriginalDate == preserveOriginalDate &&
@@ -390,6 +427,9 @@ class AppSettings {
     quality,
     storageDestinationMode,
     sameFolderAction,
+    keepSourceNaming,
+    keepSourceOriginalSuffix,
+    keepSourceOptimizedSuffix,
     differentLocationPath,
     preserveFolderStructure,
     preserveOriginalDate,

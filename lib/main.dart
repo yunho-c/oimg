@@ -2041,7 +2041,7 @@ class _PreviewModeShortcutKey extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      padding: const EdgeInsets.fromLTRB(4, 3, 4, 2),
       decoration: BoxDecoration(
         color: theme.colorScheme.secondary.withValues(alpha: 0.7),
         borderRadius: theme.borderRadiusSm,
@@ -3153,6 +3153,15 @@ class _StorageCollapsibleState extends ConsumerState<_StorageCollapsible> {
                                 enabled: !widget.controlsLocked,
                                 trailing: const Text('Keep original').small(),
                               ),
+                              if (widget.settings.sameFolderAction ==
+                                  SameFolderAction.keepSource) ...[
+                                const SizedBox(height: 8),
+                                _KeepSourceNamingControls(
+                                  settings: widget.settings,
+                                  controlsLocked: widget.controlsLocked,
+                                  notifier: notifier,
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -3197,6 +3206,78 @@ class _StorageCollapsibleState extends ConsumerState<_StorageCollapsible> {
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _KeepSourceNamingControls extends StatelessWidget {
+  const _KeepSourceNamingControls({
+    required this.settings,
+    required this.controlsLocked,
+    required this.notifier,
+  });
+
+  final AppSettings settings;
+  final bool controlsLocked;
+  final AppSettingsController notifier;
+
+  @override
+  Widget build(BuildContext context) {
+    final suffix = settings.keepSourceNaming == KeepSourceNaming.renameOriginal
+        ? settings.keepSourceOriginalSuffix
+        : settings.keepSourceOptimizedSuffix;
+    return Padding(
+      padding: const EdgeInsets.only(left: 22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RadioGroup<KeepSourceNaming>(
+            value: settings.keepSourceNaming,
+            onChanged: controlsLocked ? null : notifier.setKeepSourceNaming,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RadioItem<KeepSourceNaming>(
+                  value: KeepSourceNaming.renameOptimized,
+                  enabled: !controlsLocked,
+                  trailing: const Text('Rename optimized').small(),
+                ),
+                const SizedBox(height: 8),
+                RadioItem<KeepSourceNaming>(
+                  value: KeepSourceNaming.renameOriginal,
+                  enabled: !controlsLocked,
+                  trailing: const Text('Rename original').small(),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const _SettingsLabel('Suffix'),
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 160,
+                child: TextField(
+                  key: ValueKey(
+                    'keep-source-suffix-${settings.keepSourceNaming.name}',
+                  ),
+                  initialValue: suffix,
+                  enabled: !controlsLocked,
+                  onChanged: (value) {
+                    if (settings.keepSourceNaming ==
+                        KeepSourceNaming.renameOriginal) {
+                      unawaited(notifier.setKeepSourceOriginalSuffix(value));
+                      return;
+                    }
+                    unawaited(notifier.setKeepSourceOptimizedSuffix(value));
+                  },
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -4111,7 +4192,15 @@ class _BottomSidebar extends ConsumerStatefulWidget {
 }
 
 class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
+  static const double _optimizeEtaSmoothing = 0.3;
+
   Timer? _optimizeSuccessTimer;
+  Timer? _optimizeProgressTimer;
+  DateTime? _optimizeProgressStartedAt;
+  DateTime? _optimizeProgressLastCompletedAt;
+  int _optimizeProgressLastCompletedCount = 0;
+  Duration? _optimizeProgressSmoothedItemDuration;
+  Duration _optimizeProgressElapsed = Duration.zero;
   bool _showOptimizeSuccess = false;
 
   @override
@@ -4126,6 +4215,7 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
   @override
   void dispose() {
     _optimizeSuccessTimer?.cancel();
+    _stopOptimizeProgressTimer();
     super.dispose();
   }
 
@@ -4135,7 +4225,15 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
   ) {
     if (next.isRunning || next.jobState == BatchJobState.cancelRequested) {
       _clearOptimizeSuccess();
+      if (previous?.isRunning != true) {
+        _startOptimizeProgressTimer();
+      }
+      _updateOptimizeProgressEstimate(next);
       return;
+    }
+
+    if (previous?.isRunning == true) {
+      _stopOptimizeProgressTimer();
     }
 
     if (next.jobState == BatchJobState.completed &&
@@ -4150,6 +4248,62 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
     }
   }
 
+  void _startOptimizeProgressTimer() {
+    _optimizeProgressTimer?.cancel();
+    final now = DateTime.now();
+    _optimizeProgressStartedAt = now;
+    _optimizeProgressLastCompletedAt = now;
+    _optimizeProgressLastCompletedCount = 0;
+    _optimizeProgressSmoothedItemDuration = null;
+    _optimizeProgressElapsed = Duration.zero;
+    _optimizeProgressTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final startedAt = _optimizeProgressStartedAt;
+      if (!mounted || startedAt == null) {
+        return;
+      }
+      setState(() {
+        _optimizeProgressElapsed = DateTime.now().difference(startedAt);
+      });
+    });
+  }
+
+  void _stopOptimizeProgressTimer() {
+    _optimizeProgressTimer?.cancel();
+    _optimizeProgressTimer = null;
+    _optimizeProgressStartedAt = null;
+    _optimizeProgressLastCompletedAt = null;
+    _optimizeProgressLastCompletedCount = 0;
+    _optimizeProgressSmoothedItemDuration = null;
+    _optimizeProgressElapsed = Duration.zero;
+  }
+
+  void _updateOptimizeProgressEstimate(OptimizationRunState state) {
+    final completedDelta =
+        state.completedCount - _optimizeProgressLastCompletedCount;
+    if (completedDelta <= 0) {
+      return;
+    }
+
+    final now = DateTime.now();
+    final lastCompletedAt = _optimizeProgressLastCompletedAt ?? now;
+    final latestItemDuration = Duration(
+      microseconds:
+          now.difference(lastCompletedAt).inMicroseconds ~/ completedDelta,
+    );
+    final previousSmoothedDuration = _optimizeProgressSmoothedItemDuration;
+    _optimizeProgressSmoothedItemDuration = previousSmoothedDuration == null
+        ? latestItemDuration
+        : Duration(
+            microseconds:
+                (_optimizeEtaSmoothing * latestItemDuration.inMicroseconds +
+                        (1 - _optimizeEtaSmoothing) *
+                            previousSmoothedDuration.inMicroseconds)
+                    .round(),
+          );
+    _optimizeProgressLastCompletedAt = now;
+    _optimizeProgressLastCompletedCount = state.completedCount;
+  }
+
   void _showOptimizeSuccessState() {
     _optimizeSuccessTimer?.cancel();
     if (!_showOptimizeSuccess) {
@@ -4157,7 +4311,7 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
         _showOptimizeSuccess = true;
       });
     }
-    _optimizeSuccessTimer = Timer(const Duration(seconds: 1), () {
+    _optimizeSuccessTimer = Timer(const Duration(seconds: 3), () {
       if (!mounted) {
         return;
       }
@@ -4402,7 +4556,38 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
                             minHeight: 6,
                             borderRadius: theme.borderRadiusLg,
                           ),
-                          if (analyzeState.isRunning &&
+                          if (runState.isRunning &&
+                              runState.totalCount > 0) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Text(
+                                  '${runState.completedCount}/${runState.totalCount}',
+                                  key: const ValueKey(
+                                    'optimize-progress-count',
+                                  ),
+                                  style: TextStyle(
+                                    color: theme.colorScheme.mutedForeground,
+                                  ),
+                                ).xSmall(),
+                                const Spacer(),
+                                Text(
+                                  _formatOptimizeProgressTime(
+                                    elapsed: _optimizeProgressElapsed,
+                                    completedCount: runState.completedCount,
+                                    totalCount: runState.totalCount,
+                                    smoothedItemDuration:
+                                        _optimizeProgressSmoothedItemDuration,
+                                  ),
+                                  key: const ValueKey('optimize-progress-time'),
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.mutedForeground,
+                                  ),
+                                ).xSmall(),
+                              ],
+                            ),
+                          ] else if (analyzeState.isRunning &&
                               analyzeState.totalCount > 0) ...[
                             const SizedBox(height: 4),
                             Align(
@@ -5922,6 +6107,35 @@ String _formatMetricTimingTooltip(int elapsedMilliseconds) {
   return '$elapsedMilliseconds ms';
 }
 
+String _formatOptimizeProgressTime({
+  required Duration elapsed,
+  required int completedCount,
+  required int totalCount,
+  required Duration? smoothedItemDuration,
+}) {
+  final estimate =
+      completedCount > 0 && totalCount > 0 && smoothedItemDuration != null
+      ? Duration(
+          microseconds:
+              elapsed.inMicroseconds +
+              smoothedItemDuration.inMicroseconds *
+                  (totalCount - completedCount),
+        )
+      : null;
+  return '${_formatProgressDuration(elapsed)}/${estimate == null ? '--:--' : _formatProgressDuration(estimate)}';
+}
+
+String _formatProgressDuration(Duration duration) {
+  final totalSeconds = duration.inSeconds;
+  final hours = totalSeconds ~/ 3600;
+  final minutes = (totalSeconds % 3600) ~/ 60;
+  final seconds = totalSeconds % 60;
+  if (hours > 0) {
+    return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+  return '$minutes:${seconds.toString().padLeft(2, '0')}';
+}
+
 String _formatMegapixels(int width, int height) {
   final megapixels = (width * height) / 1000000;
   return '${megapixels.toStringAsFixed(1)} MP';
@@ -6013,6 +6227,7 @@ class _StorageDestinationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      key: ValueKey('storage-destination-${value.name}'),
       behavior: HitTestBehavior.opaque,
       onTap: enabled ? onTap : null,
       child: IgnorePointer(
@@ -6146,6 +6361,7 @@ class _EmptyState extends ConsumerWidget {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 920;
+              final wideHero = constraints.maxWidth >= 760;
 
               final hero = Container(
                 decoration: BoxDecoration(
@@ -6201,55 +6417,106 @@ class _EmptyState extends ConsumerWidget {
                     ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(28, 30, 28, 28),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            'Optimize your images easily',
-                            style: TextStyle(
-                              fontSize: 31,
-                              height: 1.08,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.9,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          Text(
-                            'OIMG helps you choose the optimal image format and settings.',
-                            style: TextStyle(
-                              color: theme.colorScheme.mutedForeground,
-                              fontSize: 13.6,
-                              height: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: 26),
-                          Row(
+                      child: LayoutBuilder(
+                        builder: (context, heroConstraints) {
+                          final useHeroGrid =
+                              wideHero && heroConstraints.maxWidth >= 620;
+                          final titleGroup = Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              PrimaryButton(
-                                key: const ValueKey(
-                                  'empty-state-browse-button',
-                                ),
-                                onPressed: () => _showBrowseMenu(context, ref),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: const [
-                                    Icon(LucideIcons.folderSearch, size: 16),
-                                    SizedBox(width: 8),
-                                    Text('Browse…'),
-                                  ],
+                              const Text(
+                                'Optimize your images easily',
+                                style: TextStyle(
+                                  fontSize: 31,
+                                  height: 1.08,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.9,
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(height: 14),
                               Text(
-                                'or drop files and folders anywhere',
+                                'OIMG helps you choose the optimal image format and settings.',
                                 style: TextStyle(
                                   color: theme.colorScheme.mutedForeground,
+                                  fontSize: 13.6,
+                                  height: 1.5,
                                 ),
-                              ).small(),
+                              ),
                             ],
-                          ),
-                        ],
+                          );
+                          final actionGroup = Align(
+                            alignment: useHeroGrid
+                                ? Alignment.centerRight
+                                : Alignment.centerLeft,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: useHeroGrid
+                                  ? CrossAxisAlignment.end
+                                  : CrossAxisAlignment.start,
+                              children: [
+                                Builder(
+                                  builder: (buttonContext) {
+                                    return PrimaryButton(
+                                      key: const ValueKey(
+                                        'empty-state-browse-button',
+                                      ),
+                                      size: ButtonSize.large,
+                                      density: ButtonDensity.normal,
+                                      onPressed: () =>
+                                          _showBrowseMenu(buttonContext, ref),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: const [
+                                          Icon(
+                                            LucideIcons.folderSearch,
+                                            size: 18,
+                                          ),
+                                          SizedBox(width: 10),
+                                          Text(
+                                            'Open images',
+                                            textScaler: TextScaler.linear(0.7),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'or drop files and folders anywhere',
+                                  textAlign: useHeroGrid
+                                      ? TextAlign.right
+                                      : TextAlign.left,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.mutedForeground,
+                                  ),
+                                ).small(),
+                              ],
+                            ),
+                          );
+
+                          if (useHeroGrid) {
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(flex: 3, child: titleGroup),
+                                const SizedBox(width: 28),
+                                Expanded(flex: 2, child: actionGroup),
+                              ],
+                            );
+                          }
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              titleGroup,
+                              const SizedBox(height: 26),
+                              actionGroup,
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ],

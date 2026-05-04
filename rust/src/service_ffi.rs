@@ -236,6 +236,7 @@ fn build_batch_request(request: CompressionServiceRequest) -> Result<ProcessFile
             input_path,
             output_path,
             overwrite,
+            preserve_file_dates: false,
             preserve_exif: false,
             preserve_color_profile: false,
             operation,
@@ -293,6 +294,7 @@ fn process_save_as_path(
                 input_path: input_path.to_string(),
                 output_path: Some(output_path.to_string_lossy().into_owned()),
                 overwrite: true,
+                preserve_file_dates: false,
                 preserve_exif: false,
                 preserve_color_profile: false,
                 operation: ImageOperation::Convert(ConvertOptions {
@@ -339,7 +341,7 @@ fn process_save_as_jpg(
         },
     )?;
 
-    safe_write_bytes(output_path, &encoded, true)?;
+    safe_write_bytes(output_path, &encoded, true, None)?;
 
     Ok(ProcessResult {
         output_path: output_path.to_string_lossy().into_owned(),

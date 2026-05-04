@@ -165,6 +165,7 @@ pub(crate) fn process_file_request_with_threads(
         request.output_path,
         None,
         request.overwrite,
+        request.preserve_file_dates,
         request.preserve_exif,
         request.preserve_color_profile,
         request.operation,
@@ -187,6 +188,7 @@ pub(crate) fn process_file_path_with_threads(
         overwrite,
         false,
         false,
+        false,
         operation,
         threads,
     )
@@ -197,6 +199,7 @@ fn process_file_path_with_metadata(
     explicit_output_path: Option<String>,
     output_dir: Option<PathBuf>,
     overwrite: bool,
+    preserve_file_dates: bool,
     preserve_exif: bool,
     preserve_color_profile: bool,
     operation: ImageOperation,
@@ -222,6 +225,11 @@ fn process_file_path_with_metadata(
     )?;
 
     let mut output = run_operation(&input_bytes, &operation, threads)?;
+    let preserved_dates = if preserve_file_dates && output.should_write {
+        crate::fs::PreservedFileDates::capture(&input)
+    } else {
+        None
+    };
     if output.should_write {
         output.data = preserve_metadata(
             &input_bytes,
@@ -245,7 +253,12 @@ fn process_file_path_with_metadata(
             derived_output_path.display(),
             output.data.len()
         ));
-        safe_write_bytes(&derived_output_path, &output.data, overwrite)?;
+        safe_write_bytes(
+            &derived_output_path,
+            &output.data,
+            overwrite,
+            preserved_dates.as_ref(),
+        )?;
         crate::diagnostics::timing_log(format!(
             "process write done output={}",
             derived_output_path.display()

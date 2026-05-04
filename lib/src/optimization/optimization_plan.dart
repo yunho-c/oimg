@@ -13,6 +13,8 @@ class OptimizationPlan {
     required this.useSourceImageForPreview,
     required this.keepSourceEntry,
     required this.deleteSourceAfterSuccess,
+    this.renameSourceAfterSuccessPath,
+    this.moveOutputAfterSuccessPath,
   });
 
   final OpenedImageFile sourceFile;
@@ -22,8 +24,11 @@ class OptimizationPlan {
   final bool useSourceImageForPreview;
   final bool keepSourceEntry;
   final bool deleteSourceAfterSuccess;
+  final String? renameSourceAfterSuccessPath;
+  final String? moveOutputAfterSuccessPath;
 
-  bool get usesSourceCodec => sourceFile.metadata.format == codecIdOf(targetCodec);
+  bool get usesSourceCodec =>
+      sourceFile.metadata.format == codecIdOf(targetCodec);
 }
 
 OptimizationPlan buildOptimizationPlan({
@@ -34,7 +39,9 @@ OptimizationPlan buildOptimizationPlan({
   final targetCodec = settings.effectiveCodec;
   final targetFormat = codecIdOf(targetCodec);
   final usesSourceCodec = file.metadata.format == targetFormat;
-  final effectiveQuality = settings.showsQualityControl ? settings.quality : 100;
+  final effectiveQuality = settings.showsQualityControl
+      ? settings.quality
+      : 100;
   final useSourceImageForPreview = switch (targetCodec) {
     PreferredCodec.png => true,
     PreferredCodec.webp => effectiveQuality == 100,
@@ -43,10 +50,7 @@ OptimizationPlan buildOptimizationPlan({
   };
   final operation = usesSourceCodec
       ? ImageOperation.optimize(
-          OptimizeOptions(
-            quality: effectiveQuality,
-            writeOnlyIfSmaller: true,
-          ),
+          OptimizeOptions(quality: effectiveQuality, writeOnlyIfSmaller: true),
         )
       : ImageOperation.convert(
           ConvertOptions(targetFormat: targetFormat, quality: effectiveQuality),
@@ -67,13 +71,19 @@ OptimizationPlan buildOptimizationPlan({
       inputPath: file.path,
       outputPath: storageDecision.outputPath,
       overwrite: storageDecision.overwrite,
+      preserveFileDates: settings.preserveOriginalDate,
       preserveExif: settings.preserveExif,
       preserveColorProfile: settings.preserveColorProfile,
       operation: operation,
     ),
-    previewRequest: PreviewFileRequest(inputPath: file.path, operation: operation),
+    previewRequest: PreviewFileRequest(
+      inputPath: file.path,
+      operation: operation,
+    ),
     keepSourceEntry: storageDecision.keepSourceEntry,
     deleteSourceAfterSuccess: storageDecision.deleteSourceAfterSuccess,
+    renameSourceAfterSuccessPath: storageDecision.renameSourceAfterSuccessPath,
+    moveOutputAfterSuccessPath: storageDecision.moveOutputAfterSuccessPath,
   );
 }
 
@@ -114,9 +124,29 @@ String formatLabel(String format) {
   return format.toUpperCase();
 }
 
-String _optimizedSiblingPath(String path, String targetFormat) {
+String _suffixedSiblingPath(String path, String suffix, String targetFormat) {
+  final stem = p.basenameWithoutExtension(path);
+  return p.join(p.dirname(path), '$stem$suffix.$targetFormat');
+}
+
+String _suffixedOriginalPath(String path, String suffix) {
+  final stem = p.basenameWithoutExtension(path);
+  return p.join(p.dirname(path), '$stem$suffix${p.extension(path)}');
+}
+
+String _replacementSiblingPath(String path, String targetFormat) {
+  final stem = p.basenameWithoutExtension(path);
+  return p.join(p.dirname(path), '$stem.$targetFormat');
+}
+
+String _renameOriginalTemporaryOutputPath(String path, String targetFormat) {
   final stem = p.basenameWithoutExtension(path);
   return p.join(p.dirname(path), '$stem.optimized.$targetFormat');
+}
+
+String _effectiveSuffix(String suffix, String fallback) {
+  final safeSuffix = suffix.replaceAll(RegExp(r'[\\/]+'), '');
+  return safeSuffix.isEmpty ? fallback : safeSuffix;
 }
 
 class _StorageDecision {
@@ -125,12 +155,16 @@ class _StorageDecision {
     required this.overwrite,
     required this.keepSourceEntry,
     required this.deleteSourceAfterSuccess,
+    this.renameSourceAfterSuccessPath,
+    this.moveOutputAfterSuccessPath,
   });
 
   final String? outputPath;
   final bool overwrite;
   final bool keepSourceEntry;
   final bool deleteSourceAfterSuccess;
+  final String? renameSourceAfterSuccessPath;
+  final String? moveOutputAfterSuccessPath;
 }
 
 _StorageDecision _resolveStorageDecision({
@@ -142,20 +176,43 @@ _StorageDecision _resolveStorageDecision({
 }) {
   if (settings.storageDestinationMode == StorageDestinationMode.sameFolder) {
     if (settings.sameFolderAction == SameFolderAction.keepSource) {
-      return _StorageDecision(
-        outputPath: usesSourceCodec
-            ? null
-            : _optimizedSiblingPath(file.path, targetFormat),
-        overwrite: !usesSourceCodec,
-        keepSourceEntry: true,
-        deleteSourceAfterSuccess: false,
-      );
+      switch (settings.keepSourceNaming) {
+        case KeepSourceNaming.renameOptimized:
+          final suffix = _effectiveSuffix(
+            settings.keepSourceOptimizedSuffix,
+            AppSettings.defaultKeepSourceOptimizedSuffix,
+          );
+          return _StorageDecision(
+            outputPath: _suffixedSiblingPath(file.path, suffix, targetFormat),
+            overwrite: true,
+            keepSourceEntry: true,
+            deleteSourceAfterSuccess: false,
+          );
+        case KeepSourceNaming.renameOriginal:
+          final suffix = _effectiveSuffix(
+            settings.keepSourceOriginalSuffix,
+            AppSettings.defaultKeepSourceOriginalSuffix,
+          );
+          return _StorageDecision(
+            outputPath: usesSourceCodec
+                ? _renameOriginalTemporaryOutputPath(file.path, targetFormat)
+                : _replacementSiblingPath(file.path, targetFormat),
+            overwrite: true,
+            keepSourceEntry: false,
+            deleteSourceAfterSuccess: false,
+            renameSourceAfterSuccessPath: _suffixedOriginalPath(
+              file.path,
+              suffix,
+            ),
+            moveOutputAfterSuccessPath: usesSourceCodec ? file.path : null,
+          );
+      }
     }
 
     return _StorageDecision(
       outputPath: usesSourceCodec
           ? null
-          : _optimizedSiblingPath(file.path, targetFormat),
+          : _replacementSiblingPath(file.path, targetFormat),
       overwrite: true,
       keepSourceEntry: false,
       deleteSourceAfterSuccess: !usesSourceCodec,
@@ -167,7 +224,7 @@ _StorageDecision _resolveStorageDecision({
     return _StorageDecision(
       outputPath: usesSourceCodec
           ? null
-          : _optimizedSiblingPath(file.path, targetFormat),
+          : _replacementSiblingPath(file.path, targetFormat),
       overwrite: true,
       keepSourceEntry: false,
       deleteSourceAfterSuccess: !usesSourceCodec,
@@ -195,7 +252,8 @@ String _differentLocationOutputPath({
   required bool preserveFolderStructure,
   required String? sourceRootPath,
 }) {
-  final fileName = '${p.basenameWithoutExtension(filePath)}.optimized.$targetFormat';
+  final fileName =
+      '${p.basenameWithoutExtension(filePath)}.optimized.$targetFormat';
   if (!preserveFolderStructure || sourceRootPath == null) {
     return p.join(outputRoot, fileName);
   }

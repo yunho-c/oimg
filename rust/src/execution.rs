@@ -298,6 +298,7 @@ mod tests {
                 input_path: "/tmp/example.png".to_string(),
                 output_path: None,
                 overwrite: true,
+                preserve_file_dates: false,
                 preserve_exif: false,
                 preserve_color_profile: false,
                 operation: ImageOperation::Convert(ConvertOptions {
@@ -323,6 +324,7 @@ mod tests {
                 input_path: "/tmp/example.unknown".to_string(),
                 output_path: None,
                 overwrite: true,
+                preserve_file_dates: false,
                 preserve_exif: false,
                 preserve_color_profile: false,
                 operation: ImageOperation::Optimize(OptimizeOptions {

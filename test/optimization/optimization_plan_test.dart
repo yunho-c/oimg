@@ -25,6 +25,7 @@ void main() {
       expect(plan.usesSourceCodec, isTrue);
       expect(plan.useSourceImageForPreview, isFalse);
       expect(plan.processRequest.outputPath, isNull);
+      expect(plan.processRequest.preserveFileDates, isFalse);
       plan.processRequest.operation.when(
         convert: (_) => fail('expected optimize'),
         optimize: (options) {
@@ -37,7 +38,7 @@ void main() {
       );
     });
 
-    test('uses convert and optimized sibling output when codec changes', () {
+    test('uses convert and replacement sibling output when codec changes', () {
       final plan = buildOptimizationPlan(
         file: OpenedImageFile(
           path: '/tmp/photo.png',
@@ -54,10 +55,8 @@ void main() {
 
       expect(plan.usesSourceCodec, isFalse);
       expect(plan.useSourceImageForPreview, isFalse);
-      expect(
-        plan.processRequest.outputPath,
-        p.join('/tmp', 'photo.optimized.jpeg'),
-      );
+      expect(plan.processRequest.outputPath, p.join('/tmp', 'photo.jpeg'));
+      expect(plan.processRequest.preserveFileDates, isFalse);
       plan.processRequest.operation.when(
         convert: (options) {
           expect(options.targetFormat, 'jpeg');
@@ -131,15 +130,58 @@ void main() {
       expect(losslessWebpPlan.useSourceImageForPreview, isTrue);
     });
 
-    test('keeps original by suffixing optimize output when same codec is kept', () {
+    test(
+      'keeps original by suffixing optimized output when same codec is kept',
+      () {
+        final plan = buildOptimizationPlan(
+          file: OpenedImageFile(
+            path: '/tmp/photo.jpg',
+            metadata: ImageMetadata(
+              width: 48,
+              height: 32,
+              format: 'jpeg',
+              fileSize: BigInt.from(2000),
+              hasTransparency: false,
+            ),
+          ),
+          settings: const AppSettings(
+            compressionMethod: CompressionMethod.lossy,
+            compressionPriority: CompressionPriority.compatibility,
+            advancedMode: false,
+            preferredCodec: PreferredCodec.jpeg,
+            quality: 80,
+            storageDestinationMode: StorageDestinationMode.sameFolder,
+            sameFolderAction: SameFolderAction.keepSource,
+            preserveFolderStructure: true,
+            preserveOriginalDate: false,
+            preserveExif: false,
+            preserveColorProfile: false,
+            developerModeEnabled: false,
+            timingLogsEnabled: false,
+          ),
+        );
+
+        expect(
+          plan.processRequest.outputPath,
+          p.join('/tmp', 'photo_optimized.jpeg'),
+        );
+        expect(plan.processRequest.overwrite, isTrue);
+        expect(plan.keepSourceEntry, isTrue);
+        expect(plan.deleteSourceAfterSuccess, isFalse);
+        expect(plan.renameSourceAfterSuccessPath, isNull);
+        expect(plan.moveOutputAfterSuccessPath, isNull);
+      },
+    );
+
+    test('keeps original by suffixing convert output when codec changes', () {
       final plan = buildOptimizationPlan(
         file: OpenedImageFile(
-          path: '/tmp/photo.jpg',
+          path: '/tmp/photo.png',
           metadata: ImageMetadata(
             width: 48,
             height: 32,
-            format: 'jpeg',
-            fileSize: BigInt.from(2000),
+            format: 'png',
+            fileSize: BigInt.from(3000),
             hasTransparency: false,
           ),
         ),
@@ -160,10 +202,100 @@ void main() {
         ),
       );
 
-      expect(plan.processRequest.outputPath, isNull);
-      expect(plan.processRequest.overwrite, isFalse);
+      expect(
+        plan.processRequest.outputPath,
+        p.join('/tmp', 'photo_optimized.jpeg'),
+      );
+      expect(plan.processRequest.overwrite, isTrue);
       expect(plan.keepSourceEntry, isTrue);
       expect(plan.deleteSourceAfterSuccess, isFalse);
+      expect(plan.renameSourceAfterSuccessPath, isNull);
+      expect(plan.moveOutputAfterSuccessPath, isNull);
+    });
+
+    test('keeps original by renaming source when codec changes', () {
+      final plan = buildOptimizationPlan(
+        file: OpenedImageFile(
+          path: '/tmp/photo.png',
+          metadata: ImageMetadata(
+            width: 48,
+            height: 32,
+            format: 'png',
+            fileSize: BigInt.from(3000),
+            hasTransparency: false,
+          ),
+        ),
+        settings: const AppSettings(
+          compressionMethod: CompressionMethod.lossy,
+          compressionPriority: CompressionPriority.compatibility,
+          advancedMode: false,
+          preferredCodec: PreferredCodec.jpeg,
+          quality: 80,
+          storageDestinationMode: StorageDestinationMode.sameFolder,
+          sameFolderAction: SameFolderAction.keepSource,
+          keepSourceNaming: KeepSourceNaming.renameOriginal,
+          preserveFolderStructure: true,
+          preserveOriginalDate: false,
+          preserveExif: false,
+          preserveColorProfile: false,
+          developerModeEnabled: false,
+          timingLogsEnabled: false,
+        ),
+      );
+
+      expect(plan.processRequest.outputPath, p.join('/tmp', 'photo.jpeg'));
+      expect(plan.processRequest.overwrite, isTrue);
+      expect(plan.keepSourceEntry, isFalse);
+      expect(plan.deleteSourceAfterSuccess, isFalse);
+      expect(
+        plan.renameSourceAfterSuccessPath,
+        p.join('/tmp', 'photo_original.png'),
+      );
+      expect(plan.moveOutputAfterSuccessPath, isNull);
+    });
+
+    test('keeps original by renaming source when codec is unchanged', () {
+      final plan = buildOptimizationPlan(
+        file: OpenedImageFile(
+          path: '/tmp/photo.jpg',
+          metadata: ImageMetadata(
+            width: 48,
+            height: 32,
+            format: 'jpeg',
+            fileSize: BigInt.from(2000),
+            hasTransparency: false,
+          ),
+        ),
+        settings: const AppSettings(
+          compressionMethod: CompressionMethod.lossy,
+          compressionPriority: CompressionPriority.compatibility,
+          advancedMode: false,
+          preferredCodec: PreferredCodec.jpeg,
+          quality: 80,
+          storageDestinationMode: StorageDestinationMode.sameFolder,
+          sameFolderAction: SameFolderAction.keepSource,
+          keepSourceNaming: KeepSourceNaming.renameOriginal,
+          preserveFolderStructure: true,
+          preserveOriginalDate: false,
+          preserveExif: false,
+          preserveColorProfile: false,
+          developerModeEnabled: false,
+          timingLogsEnabled: false,
+        ),
+      );
+
+      expect(
+        plan.processRequest.outputPath,
+        p.join('/tmp', 'photo.optimized.jpeg'),
+      );
+      expect(plan.processRequest.overwrite, isTrue);
+      expect(plan.keepSourceEntry, isFalse);
+      expect(plan.deleteSourceAfterSuccess, isFalse);
+      expect(
+        plan.renameSourceAfterSuccessPath,
+        p.join('/tmp', 'photo_original.jpg'),
+      );
+      expect(plan.moveOutputAfterSuccessPath, '/tmp/photo.jpg');
     });
 
     test('removes the original after a successful same-folder conversion', () {
@@ -195,19 +327,59 @@ void main() {
         ),
       );
 
-      expect(
-        plan.processRequest.outputPath,
-        p.join('/tmp', 'photo.optimized.jpeg'),
-      );
+      expect(plan.processRequest.outputPath, p.join('/tmp', 'photo.jpeg'));
       expect(plan.processRequest.overwrite, isTrue);
       expect(plan.keepSourceEntry, isFalse);
       expect(plan.deleteSourceAfterSuccess, isTrue);
     });
 
-    test('writes under the selected output root while preserving folder structure', () {
+    test(
+      'writes under the selected output root while preserving folder structure',
+      () {
+        final plan = buildOptimizationPlan(
+          file: OpenedImageFile(
+            path: '/tmp/input/animals/cat.png',
+            metadata: ImageMetadata(
+              width: 48,
+              height: 32,
+              format: 'png',
+              fileSize: BigInt.from(3000),
+              hasTransparency: false,
+            ),
+          ),
+          settings: const AppSettings(
+            compressionMethod: CompressionMethod.lossy,
+            compressionPriority: CompressionPriority.compatibility,
+            advancedMode: false,
+            preferredCodec: PreferredCodec.jpeg,
+            quality: 80,
+            storageDestinationMode: StorageDestinationMode.differentLocation,
+            sameFolderAction: SameFolderAction.replaceSource,
+            differentLocationPath: '/tmp/output',
+            preserveFolderStructure: true,
+            preserveOriginalDate: false,
+            preserveExif: false,
+            preserveColorProfile: false,
+            developerModeEnabled: false,
+            timingLogsEnabled: false,
+          ),
+          sourceRootPath: '/tmp/input',
+        );
+
+        expect(
+          plan.processRequest.outputPath,
+          p.join('/tmp/output', 'animals', 'cat.optimized.jpeg'),
+        );
+        expect(plan.processRequest.overwrite, isTrue);
+        expect(plan.keepSourceEntry, isTrue);
+        expect(plan.deleteSourceAfterSuccess, isFalse);
+      },
+    );
+
+    test('passes preserve original date through to the Rust request', () {
       final plan = buildOptimizationPlan(
         file: OpenedImageFile(
-          path: '/tmp/input/animals/cat.png',
+          path: '/tmp/photo.png',
           metadata: ImageMetadata(
             width: 48,
             height: 32,
@@ -222,26 +394,18 @@ void main() {
           advancedMode: false,
           preferredCodec: PreferredCodec.jpeg,
           quality: 80,
-          storageDestinationMode: StorageDestinationMode.differentLocation,
+          storageDestinationMode: StorageDestinationMode.sameFolder,
           sameFolderAction: SameFolderAction.replaceSource,
-          differentLocationPath: '/tmp/output',
           preserveFolderStructure: true,
-          preserveOriginalDate: false,
+          preserveOriginalDate: true,
           preserveExif: false,
           preserveColorProfile: false,
           developerModeEnabled: false,
           timingLogsEnabled: false,
         ),
-        sourceRootPath: '/tmp/input',
       );
 
-      expect(
-        plan.processRequest.outputPath,
-        p.join('/tmp/output', 'animals', 'cat.optimized.jpeg'),
-      );
-      expect(plan.processRequest.overwrite, isTrue);
-      expect(plan.keepSourceEntry, isTrue);
-      expect(plan.deleteSourceAfterSuccess, isFalse);
+      expect(plan.processRequest.preserveFileDates, isTrue);
     });
   });
 }

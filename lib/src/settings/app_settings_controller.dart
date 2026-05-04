@@ -67,6 +67,31 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     );
   }
 
+  Future<void> setKeepSourceNaming(KeepSourceNaming keepSourceNaming) async {
+    await _update(
+      (settings) => settings.copyWith(keepSourceNaming: keepSourceNaming),
+    );
+  }
+
+  Future<void> setKeepSourceOriginalSuffix(
+    String keepSourceOriginalSuffix,
+  ) async {
+    await _update(
+      (settings) =>
+          settings.copyWith(keepSourceOriginalSuffix: keepSourceOriginalSuffix),
+    );
+  }
+
+  Future<void> setKeepSourceOptimizedSuffix(
+    String keepSourceOptimizedSuffix,
+  ) async {
+    await _update(
+      (settings) => settings.copyWith(
+        keepSourceOptimizedSuffix: keepSourceOptimizedSuffix,
+      ),
+    );
+  }
+
   Future<void> setDifferentLocationPath(String? differentLocationPath) async {
     await _update(
       (settings) =>
