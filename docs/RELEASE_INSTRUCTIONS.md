@@ -70,21 +70,26 @@ macOS verification checklist:
 
 ## Current Platform: Windows
 
-The Windows release workflow builds an unsigned x64 ZIP and a Microsoft Store MSIX.
+The Windows release workflow builds an unsigned x64 ZIP, an unsigned x64 installer, and a Microsoft Store MSIX.
 
 Windows artifacts:
 
 - `OIMG-<version>-windows-x64.zip`
+- `OIMG-<version>-windows-x64-setup.exe`
 - `OIMG-<version>-windows-x64.msix`
 
 Windows verification checklist:
 
-- Download the ZIP and MSIX from the draft release.
+- Download the ZIP, setup EXE, and MSIX from the draft release.
 - Extract the ZIP on Windows.
 - Launch `oimg.exe`.
+- Run the setup EXE.
+- Launch OIMG from the Start Menu.
+- If selected during install, launch OIMG from the desktop shortcut.
 - Expect Windows SmartScreen warnings while the app is unsigned.
 - Open an image from OIMG.
 - Use Windows Open with on an image file.
+- Uninstall OIMG from Windows Settings and confirm shortcuts are removed.
 - Run a basic optimization.
 - Submit the MSIX to Microsoft Store for signing and distribution.
 

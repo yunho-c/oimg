@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   release:
-    name: Build Windows ZIP and Store MSIX
+    name: Build Windows ZIP, installer, and Store MSIX
     runs-on: windows-2025
     timeout-minutes: 120
 
@@ -132,9 +132,10 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $PSNativeCommandUseErrorActionPreference = $true
-          choco install nasm llvm -y --no-progress
+          choco install nasm llvm innosetup -y --no-progress
           "C:\Program Files\NASM" >> $env:GITHUB_PATH
           "C:\Program Files\LLVM\bin" >> $env:GITHUB_PATH
+          "C:\Program Files (x86)\Inno Setup 6" >> $env:GITHUB_PATH
 
       - name: Install Flutter dependencies
         shell: pwsh
@@ -187,6 +188,16 @@ jobs:
           $hash = (Get-FileHash -Algorithm SHA256 $zipPath).Hash.ToLowerInvariant()
           Set-Content -Path "$zipPath.sha256" -Value "$hash  $(Split-Path -Leaf $zipPath)"
 
+      - name: Package Windows installer
+        shell: pwsh
+        working-directory: oimg
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+          powershell -ExecutionPolicy Bypass -File scripts/windows/package_inno_installer.ps1 `
+            -Version "${{ steps.release.outputs.version }}" `
+            -OutputDir $env:DIST_DIR
+
       - name: Package Store MSIX
         shell: pwsh
         working-directory: oimg
@@ -219,10 +230,12 @@ jobs:
           $releaseDir = "build\windows\x64\runner\Release"
           $zipPath = Join-Path $env:DIST_DIR "OIMG-${{ steps.release.outputs.version }}-windows-x64.zip"
           $shaPath = "$zipPath.sha256"
+          $setupPath = Join-Path $env:DIST_DIR "OIMG-${{ steps.release.outputs.version }}-windows-x64-setup.exe"
+          $setupShaPath = "$setupPath.sha256"
           $msixPath = Join-Path $env:DIST_DIR "OIMG-${{ steps.release.outputs.version }}-windows-x64.msix"
           $msixShaPath = "$msixPath.sha256"
 
-          foreach ($path in @((Join-Path $releaseDir "oimg.exe"), $zipPath, $shaPath, $msixPath, $msixShaPath)) {
+          foreach ($path in @((Join-Path $releaseDir "oimg.exe"), $zipPath, $shaPath, $setupPath, $setupShaPath, $msixPath, $msixShaPath)) {
             if (-not (Test-Path $path)) {
               throw "Expected artifact not found: $path"
             }
@@ -234,6 +247,7 @@ jobs:
           name: OIMG-${{ steps.release.outputs.version }}-windows-x64
           path: |
             oimg/dist/windows/*.zip
+            oimg/dist/windows/*.exe
             oimg/dist/windows/*.msix
             oimg/dist/windows/*.sha256
           if-no-files-found: error
@@ -248,10 +262,11 @@ jobs:
           $PSNativeCommandUseErrorActionPreference = $false
           $tag = "${{ steps.release.outputs.tag }}"
           $zipPath = Get-ChildItem $env:DIST_DIR -Filter "*.zip" | Sort-Object Name | Select-Object -Last 1
+          $setupPath = Get-ChildItem $env:DIST_DIR -Filter "*.exe" | Sort-Object Name | Select-Object -Last 1
           $msixPath = Get-ChildItem $env:DIST_DIR -Filter "*.msix" | Sort-Object Name | Select-Object -Last 1
-          $assetPaths = Get-ChildItem $env:DIST_DIR -Include "*.zip", "*.msix", "*.sha256" -Recurse | Sort-Object Name
+          $assetPaths = Get-ChildItem $env:DIST_DIR -Include "*.zip", "*.exe", "*.msix", "*.sha256" -Recurse | Sort-Object Name
 
-          if ($null -eq $zipPath -or $null -eq $msixPath -or $assetPaths.Count -lt 4) {
+          if ($null -eq $zipPath -or $null -eq $setupPath -or $null -eq $msixPath -or $assetPaths.Count -lt 6) {
             throw "Expected Windows release artifacts were not found in $env:DIST_DIR"
           }
 

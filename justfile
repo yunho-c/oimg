@@ -27,3 +27,6 @@ windows-build mode="debug":
 
 windows-run mode="debug":
     powershell -ExecutionPolicy Bypass -File scripts/windows/build_windows.ps1 -Command run -Mode {{mode}}
+
+windows-installer version="":
+    powershell -ExecutionPolicy Bypass -File scripts/windows/package_inno_installer.ps1 -Version "{{version}}"
