@@ -636,6 +636,7 @@ class ProcessFileRequest {
   final String inputPath;
   final String? outputPath;
   final bool overwrite;
+  final bool preserveFileDates;
   final bool preserveExif;
   final bool preserveColorProfile;
   final ImageOperation operation;
@@ -644,6 +645,7 @@ class ProcessFileRequest {
     required this.inputPath,
     this.outputPath,
     required this.overwrite,
+    required this.preserveFileDates,
     required this.preserveExif,
     required this.preserveColorProfile,
     required this.operation,
@@ -654,6 +656,7 @@ class ProcessFileRequest {
       inputPath.hashCode ^
       outputPath.hashCode ^
       overwrite.hashCode ^
+      preserveFileDates.hashCode ^
       preserveExif.hashCode ^
       preserveColorProfile.hashCode ^
       operation.hashCode;
@@ -666,6 +669,7 @@ class ProcessFileRequest {
           inputPath == other.inputPath &&
           outputPath == other.outputPath &&
           overwrite == other.overwrite &&
+          preserveFileDates == other.preserveFileDates &&
           preserveExif == other.preserveExif &&
           preserveColorProfile == other.preserveColorProfile &&
           operation == other.operation;

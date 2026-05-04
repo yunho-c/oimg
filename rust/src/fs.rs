@@ -1,12 +1,29 @@
-use std::fs;
+use std::fs::{self, FileTimes};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 
 use slimg_core::Format;
 use tempfile::NamedTempFile;
 
 use crate::error::{Result, SlimgBridgeError};
 use crate::types::ImageOperation;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct PreservedFileDates {
+    modified: Option<SystemTime>,
+    created: Option<SystemTime>,
+}
+
+impl PreservedFileDates {
+    pub(crate) fn capture(path: &Path) -> Option<Self> {
+        let metadata = fs::metadata(path).ok()?;
+        Some(Self {
+            modified: metadata.modified().ok(),
+            created: metadata.created().ok(),
+        })
+    }
+}
 
 pub(crate) fn derive_output_path(
     input: &Path,
@@ -48,7 +65,12 @@ pub(crate) fn derive_output_path(
     Ok(derived)
 }
 
-pub(crate) fn safe_write_bytes(path: &Path, bytes: &[u8], overwrite: bool) -> Result<()> {
+pub(crate) fn safe_write_bytes(
+    path: &Path,
+    bytes: &[u8],
+    overwrite: bool,
+    preserved_dates: Option<&PreservedFileDates>,
+) -> Result<()> {
     if path.exists() {
         if path.is_dir() {
             return Err(SlimgBridgeError::invalid_path(
@@ -73,6 +95,9 @@ pub(crate) fn safe_write_bytes(path: &Path, bytes: &[u8], overwrite: bool) -> Re
     let mut temp = NamedTempFile::new_in(parent)?;
     temp.write_all(bytes)?;
     temp.flush()?;
+    if let Some(dates) = preserved_dates {
+        set_file_dates_best_effort(temp.as_file(), dates);
+    }
 
     #[cfg(target_family = "windows")]
     if overwrite && path.exists() {
@@ -83,6 +108,34 @@ pub(crate) fn safe_write_bytes(path: &Path, bytes: &[u8], overwrite: bool) -> Re
         message: error.error.to_string(),
     })?;
     Ok(())
+}
+
+fn set_file_dates_best_effort(file: &fs::File, dates: &PreservedFileDates) {
+    let mut times = FileTimes::new();
+    let mut has_time = false;
+
+    if let Some(modified) = dates.modified {
+        times = times.set_modified(modified);
+        has_time = true;
+    }
+
+    #[cfg(target_vendor = "apple")]
+    if let Some(created) = dates.created {
+        use std::os::darwin::fs::FileTimesExt;
+        times = times.set_created(created);
+        has_time = true;
+    }
+
+    #[cfg(windows)]
+    if let Some(created) = dates.created {
+        use std::os::windows::fs::FileTimesExt;
+        times = times.set_created(created);
+        has_time = true;
+    }
+
+    if has_time {
+        let _ = file.set_times(times);
+    }
 }
 
 pub(crate) fn to_path_buf(value: &str, field_name: &str) -> Result<PathBuf> {
@@ -126,6 +179,7 @@ fn file_stem(input: &Path) -> String {
 mod tests {
     use super::*;
     use crate::types::{ConvertOptions, OptimizeOptions};
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     #[test]
     fn optimize_uses_sibling_name() {
@@ -177,5 +231,70 @@ mod tests {
         )
         .unwrap();
         assert_eq!(path, PathBuf::from("/tmp/photo.resized.jpg"));
+    }
+
+    #[test]
+    fn safe_write_bytes_preserves_modified_time_for_overwrite() {
+        let dir = tempfile::tempdir().unwrap();
+        let output_path = dir.path().join("photo.jpg");
+        fs::write(&output_path, b"original").unwrap();
+        let modified = UNIX_EPOCH + Duration::from_secs(1_650_000_000);
+        let dates = PreservedFileDates {
+            modified: Some(modified),
+            created: None,
+        };
+
+        safe_write_bytes(&output_path, b"optimized", true, Some(&dates)).unwrap();
+
+        assert_system_time_close(
+            fs::metadata(&output_path).unwrap().modified().unwrap(),
+            modified,
+        );
+    }
+
+    #[test]
+    fn safe_write_bytes_preserves_modified_time_for_new_output() {
+        let dir = tempfile::tempdir().unwrap();
+        let output_path = dir.path().join("photo.optimized.jpg");
+        let modified = UNIX_EPOCH + Duration::from_secs(1_650_000_123);
+        let dates = PreservedFileDates {
+            modified: Some(modified),
+            created: None,
+        };
+
+        safe_write_bytes(&output_path, b"optimized", false, Some(&dates)).unwrap();
+
+        assert_system_time_close(
+            fs::metadata(&output_path).unwrap().modified().unwrap(),
+            modified,
+        );
+    }
+
+    #[cfg(any(target_vendor = "apple", windows))]
+    #[test]
+    fn safe_write_bytes_preserves_created_time_when_supported() {
+        let dir = tempfile::tempdir().unwrap();
+        let output_path = dir.path().join("photo.optimized.jpg");
+        let created = UNIX_EPOCH + Duration::from_secs(1_640_000_000);
+        let dates = PreservedFileDates {
+            modified: None,
+            created: Some(created),
+        };
+
+        safe_write_bytes(&output_path, b"optimized", false, Some(&dates)).unwrap();
+
+        let metadata = fs::metadata(&output_path).unwrap();
+        let actual_created = metadata.created().unwrap();
+        assert_system_time_close(actual_created, created);
+    }
+
+    fn assert_system_time_close(actual: SystemTime, expected: SystemTime) {
+        let delta = actual
+            .duration_since(expected)
+            .unwrap_or_else(|_| expected.duration_since(actual).unwrap());
+        assert!(
+            delta <= Duration::from_secs(2),
+            "expected {actual:?} to be within 2s of {expected:?}",
+        );
     }
 }

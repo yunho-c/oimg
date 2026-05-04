@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:collection';
-import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -1595,7 +1594,6 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
   List<String> _activeInputPaths = const <String>[];
   Set<String> _keepSourceEntryPaths = const <String>{};
   Set<String> _deleteSourceAfterSuccessPaths = const <String>{};
-  Map<String, DateTime> _sourceModifiedTimes = const <String, DateTime>{};
 
   @override
   OptimizationRunState build() => const OptimizationRunState();
@@ -1683,9 +1681,6 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
           .where((plan) => plan.deleteSourceAfterSuccess)
           .map((plan) => plan.sourceFile.path)
           .toSet();
-      _sourceModifiedTimes = settings.preserveOriginalDate
-          ? await _captureSourceModifiedTimes(inputPaths)
-          : const <String, DateTime>{};
       state = OptimizationRunState(
         jobId: handle.jobId,
         jobState: BatchJobState.running,
@@ -1731,7 +1726,6 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
           _activeInputPaths = const <String>[];
           _keepSourceEntryPaths = const <String>{};
           _deleteSourceAfterSuccessPaths = const <String>{};
-          _sourceModifiedTimes = const <String, DateTime>{};
           return;
         }
       } on Object catch (error) {
@@ -1745,7 +1739,6 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
         _activeInputPaths = const <String>[];
         _keepSourceEntryPaths = const <String>{};
         _deleteSourceAfterSuccessPaths = const <String>{};
-        _sourceModifiedTimes = const <String, DateTime>{};
         return;
       }
 
@@ -1768,7 +1761,6 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
             newResults,
             keepSourceEntries: _keepSourceEntryPaths,
             deleteSourcesAfterSuccess: _deleteSourceAfterSuccessPaths,
-            preserveModifiedTimes: _sourceModifiedTimes,
           );
       if (state.jobId != jobId) {
         return;
@@ -1855,20 +1847,6 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
     } on Object {
       // The job is already terminal in the UI path; disposal failures are non-fatal.
     }
-  }
-
-  Future<Map<String, DateTime>> _captureSourceModifiedTimes(
-    List<String> inputPaths,
-  ) async {
-    final times = <String, DateTime>{};
-    for (final inputPath in inputPaths) {
-      try {
-        times[inputPath] = await File(inputPath).lastModified();
-      } on Object {
-        // Best-effort capture. Skip files that cannot be stat'ed.
-      }
-    }
-    return times;
   }
 }
 

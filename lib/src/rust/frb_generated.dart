@@ -1513,15 +1513,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ProcessFileRequest dco_decode_process_file_request(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    if (arr.length != 7)
+      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
     return ProcessFileRequest(
       inputPath: dco_decode_String(arr[0]),
       outputPath: dco_decode_opt_String(arr[1]),
       overwrite: dco_decode_bool(arr[2]),
-      preserveExif: dco_decode_bool(arr[3]),
-      preserveColorProfile: dco_decode_bool(arr[4]),
-      operation: dco_decode_image_operation(arr[5]),
+      preserveFileDates: dco_decode_bool(arr[3]),
+      preserveExif: dco_decode_bool(arr[4]),
+      preserveColorProfile: dco_decode_bool(arr[5]),
+      operation: dco_decode_image_operation(arr[6]),
     );
   }
 
@@ -2412,6 +2413,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_inputPath = sse_decode_String(deserializer);
     var var_outputPath = sse_decode_opt_String(deserializer);
     var var_overwrite = sse_decode_bool(deserializer);
+    var var_preserveFileDates = sse_decode_bool(deserializer);
     var var_preserveExif = sse_decode_bool(deserializer);
     var var_preserveColorProfile = sse_decode_bool(deserializer);
     var var_operation = sse_decode_image_operation(deserializer);
@@ -2419,6 +2421,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       inputPath: var_inputPath,
       outputPath: var_outputPath,
       overwrite: var_overwrite,
+      preserveFileDates: var_preserveFileDates,
       preserveExif: var_preserveExif,
       preserveColorProfile: var_preserveColorProfile,
       operation: var_operation,
@@ -3253,6 +3256,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.inputPath, serializer);
     sse_encode_opt_String(self.outputPath, serializer);
     sse_encode_bool(self.overwrite, serializer);
+    sse_encode_bool(self.preserveFileDates, serializer);
     sse_encode_bool(self.preserveExif, serializer);
     sse_encode_bool(self.preserveColorProfile, serializer);
     sse_encode_image_operation(self.operation, serializer);

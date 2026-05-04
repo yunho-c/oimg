@@ -23,7 +23,8 @@ class OptimizationPlan {
   final bool keepSourceEntry;
   final bool deleteSourceAfterSuccess;
 
-  bool get usesSourceCodec => sourceFile.metadata.format == codecIdOf(targetCodec);
+  bool get usesSourceCodec =>
+      sourceFile.metadata.format == codecIdOf(targetCodec);
 }
 
 OptimizationPlan buildOptimizationPlan({
@@ -34,7 +35,9 @@ OptimizationPlan buildOptimizationPlan({
   final targetCodec = settings.effectiveCodec;
   final targetFormat = codecIdOf(targetCodec);
   final usesSourceCodec = file.metadata.format == targetFormat;
-  final effectiveQuality = settings.showsQualityControl ? settings.quality : 100;
+  final effectiveQuality = settings.showsQualityControl
+      ? settings.quality
+      : 100;
   final useSourceImageForPreview = switch (targetCodec) {
     PreferredCodec.png => true,
     PreferredCodec.webp => effectiveQuality == 100,
@@ -43,10 +46,7 @@ OptimizationPlan buildOptimizationPlan({
   };
   final operation = usesSourceCodec
       ? ImageOperation.optimize(
-          OptimizeOptions(
-            quality: effectiveQuality,
-            writeOnlyIfSmaller: true,
-          ),
+          OptimizeOptions(quality: effectiveQuality, writeOnlyIfSmaller: true),
         )
       : ImageOperation.convert(
           ConvertOptions(targetFormat: targetFormat, quality: effectiveQuality),
@@ -67,11 +67,15 @@ OptimizationPlan buildOptimizationPlan({
       inputPath: file.path,
       outputPath: storageDecision.outputPath,
       overwrite: storageDecision.overwrite,
+      preserveFileDates: settings.preserveOriginalDate,
       preserveExif: settings.preserveExif,
       preserveColorProfile: settings.preserveColorProfile,
       operation: operation,
     ),
-    previewRequest: PreviewFileRequest(inputPath: file.path, operation: operation),
+    previewRequest: PreviewFileRequest(
+      inputPath: file.path,
+      operation: operation,
+    ),
     keepSourceEntry: storageDecision.keepSourceEntry,
     deleteSourceAfterSuccess: storageDecision.deleteSourceAfterSuccess,
   );
@@ -195,7 +199,8 @@ String _differentLocationOutputPath({
   required bool preserveFolderStructure,
   required String? sourceRootPath,
 }) {
-  final fileName = '${p.basenameWithoutExtension(filePath)}.optimized.$targetFormat';
+  final fileName =
+      '${p.basenameWithoutExtension(filePath)}.optimized.$targetFormat';
   if (!preserveFolderStructure || sourceRootPath == null) {
     return p.join(outputRoot, fileName);
   }
