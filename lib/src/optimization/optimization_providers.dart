@@ -1594,6 +1594,9 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
   List<String> _activeInputPaths = const <String>[];
   Set<String> _keepSourceEntryPaths = const <String>{};
   Set<String> _deleteSourceAfterSuccessPaths = const <String>{};
+  Map<String, String> _renameSourceAfterSuccessPaths = const <String, String>{};
+  Map<String, String> _moveOutputAfterSuccessPaths = const <String, String>{};
+  Map<String, String> _finalOutputPaths = const <String, String>{};
 
   @override
   OptimizationRunState build() => const OptimizationRunState();
@@ -1681,6 +1684,36 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
           .where((plan) => plan.deleteSourceAfterSuccess)
           .map((plan) => plan.sourceFile.path)
           .toSet();
+      _renameSourceAfterSuccessPaths = Map<String, String>.fromEntries(
+        plans
+            .where((plan) => plan.renameSourceAfterSuccessPath != null)
+            .map(
+              (plan) => MapEntry(
+                plan.sourceFile.path,
+                plan.renameSourceAfterSuccessPath!,
+              ),
+            ),
+      );
+      _moveOutputAfterSuccessPaths = Map<String, String>.fromEntries(
+        plans
+            .where((plan) => plan.moveOutputAfterSuccessPath != null)
+            .map(
+              (plan) => MapEntry(
+                plan.sourceFile.path,
+                plan.moveOutputAfterSuccessPath!,
+              ),
+            ),
+      );
+      _finalOutputPaths = Map<String, String>.fromEntries(
+        plans
+            .where((plan) => plan.moveOutputAfterSuccessPath != null)
+            .map(
+              (plan) => MapEntry(
+                plan.sourceFile.path,
+                plan.moveOutputAfterSuccessPath!,
+              ),
+            ),
+      );
       state = OptimizationRunState(
         jobId: handle.jobId,
         jobState: BatchJobState.running,
@@ -1726,6 +1759,9 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
           _activeInputPaths = const <String>[];
           _keepSourceEntryPaths = const <String>{};
           _deleteSourceAfterSuccessPaths = const <String>{};
+          _renameSourceAfterSuccessPaths = const <String, String>{};
+          _moveOutputAfterSuccessPaths = const <String, String>{};
+          _finalOutputPaths = const <String, String>{};
           return;
         }
       } on Object catch (error) {
@@ -1739,6 +1775,9 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
         _activeInputPaths = const <String>[];
         _keepSourceEntryPaths = const <String>{};
         _deleteSourceAfterSuccessPaths = const <String>{};
+        _renameSourceAfterSuccessPaths = const <String, String>{};
+        _moveOutputAfterSuccessPaths = const <String, String>{};
+        _finalOutputPaths = const <String, String>{};
         return;
       }
 
@@ -1761,6 +1800,8 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
             newResults,
             keepSourceEntries: _keepSourceEntryPaths,
             deleteSourcesAfterSuccess: _deleteSourceAfterSuccessPaths,
+            renameSourcesAfterSuccess: _renameSourceAfterSuccessPaths,
+            moveOutputsAfterSuccess: _moveOutputAfterSuccessPaths,
           );
       if (state.jobId != jobId) {
         return;
@@ -1803,7 +1844,11 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
         continue;
       }
 
-      final result = item.result!;
+      var result = item.result!;
+      final finalOutputPath = _finalOutputPaths[item.inputPath];
+      if (result.didWrite && finalOutputPath != null) {
+        result = _copyProcessResult(result, outputPath: finalOutputPath);
+      }
       final displayPath = _keepSourceEntryPaths.contains(item.inputPath)
           ? item.inputPath
           : result.outputPath;
@@ -1857,4 +1902,19 @@ bool _isTerminalJobState(BatchJobState state) {
     BatchJobState.failed => true,
     BatchJobState.running || BatchJobState.cancelRequested => false,
   };
+}
+
+ProcessResult _copyProcessResult(
+  ProcessResult result, {
+  required String outputPath,
+}) {
+  return ProcessResult(
+    outputPath: outputPath,
+    format: result.format,
+    width: result.width,
+    height: result.height,
+    originalSize: result.originalSize,
+    newSize: result.newSize,
+    didWrite: result.didWrite,
+  );
 }

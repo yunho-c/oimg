@@ -2,6 +2,7 @@ import 'dart:collection';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 import 'package:oimg/src/rust/slimg_api.dart';
 import 'package:oimg/src/settings/developer_diagnostics.dart';
 import 'package:oimg/src/rust/types.dart';
@@ -243,6 +244,8 @@ class FileOpenController extends ChangeNotifier {
     List<BatchItemResult> results, {
     Set<String> keepSourceEntries = const <String>{},
     Set<String> deleteSourcesAfterSuccess = const <String>{},
+    Map<String, String> renameSourcesAfterSuccess = const <String, String>{},
+    Map<String, String> moveOutputsAfterSuccess = const <String, String>{},
   }) async {
     if (_sessionFiles.isEmpty) {
       return;
@@ -275,11 +278,70 @@ class FileOpenController extends ChangeNotifier {
         continue;
       }
 
-      final result = item.result!;
+      var result = item.result!;
       final keepSourceEntry = keepSourceEntries.contains(item.inputPath);
       final deleteSourceAfterSuccess = deleteSourcesAfterSuccess.contains(
         item.inputPath,
       );
+      final sourceRenamePath = renameSourcesAfterSuccess[item.inputPath];
+      final outputMovePath = moveOutputsAfterSuccess[item.inputPath];
+
+      if (sourceRenamePath != null && !result.didWrite) {
+        final effectiveResult = _copyProcessResult(
+          result,
+          outputPath: item.inputPath,
+        );
+        final refreshedFile = await _inspectPath(item.inputPath);
+        updatedFiles[index] = (refreshedFile ?? updatedFiles[index]).copyWith(
+          lastResult: effectiveResult,
+          clearLastError: true,
+        );
+        continue;
+      }
+
+      if (sourceRenamePath != null && result.didWrite) {
+        try {
+          final actualRenamePath = await _renameSourceFile(
+            from: item.inputPath,
+            preferredTo: sourceRenamePath,
+          );
+          DeveloperDiagnostics.logTiming(
+            'optimize-results',
+            'renamed-source input=${item.inputPath} renamed=$actualRenamePath',
+          );
+        } on Object catch (error) {
+          DeveloperDiagnostics.logTimingError('optimize-results', error);
+          updatedFiles[index] = updatedFiles[index].copyWith(
+            lastResult: result,
+            lastError: 'Unable to rename original file.',
+          );
+          continue;
+        }
+      }
+
+      if (outputMovePath != null &&
+          result.didWrite &&
+          result.outputPath != outputMovePath) {
+        try {
+          final movedOutput = await _moveOutputFile(
+            from: result.outputPath,
+            to: outputMovePath,
+          );
+          result = _copyProcessResult(result, outputPath: movedOutput);
+          DeveloperDiagnostics.logTiming(
+            'optimize-results',
+            'moved-output from=${item.result!.outputPath} to=$movedOutput',
+          );
+        } on Object catch (error) {
+          DeveloperDiagnostics.logTimingError('optimize-results', error);
+          updatedFiles[index] = updatedFiles[index].copyWith(
+            lastResult: result,
+            lastError: 'Unable to move optimized file.',
+          );
+          continue;
+        }
+      }
+
       if (keepSourceEntry) {
         DeveloperDiagnostics.logTiming(
           'optimize-results',
@@ -349,6 +411,62 @@ class FileOpenController extends ChangeNotifier {
     } on Object {
       return null;
     }
+  }
+
+  Future<String> _renameSourceFile({
+    required String from,
+    required String preferredTo,
+  }) async {
+    final source = File(from);
+    if (!await source.exists()) {
+      return from;
+    }
+
+    final destination = await _availableSiblingPath(preferredTo);
+    await source.rename(destination);
+    return destination;
+  }
+
+  Future<String> _moveOutputFile({
+    required String from,
+    required String to,
+  }) async {
+    final output = File(from);
+    await output.rename(to);
+    return to;
+  }
+
+  Future<String> _availableSiblingPath(String preferredPath) async {
+    if (!await File(preferredPath).exists()) {
+      return preferredPath;
+    }
+
+    final directory = p.dirname(preferredPath);
+    final stem = p.basenameWithoutExtension(preferredPath);
+    final extension = p.extension(preferredPath);
+    for (var index = 1; index < 10000; index += 1) {
+      final candidate = p.join(directory, '$stem-$index$extension');
+      if (!await File(candidate).exists()) {
+        return candidate;
+      }
+    }
+
+    throw FileSystemException('Unable to find available rename path');
+  }
+
+  ProcessResult _copyProcessResult(
+    ProcessResult result, {
+    required String outputPath,
+  }) {
+    return ProcessResult(
+      outputPath: outputPath,
+      format: result.format,
+      width: result.width,
+      height: result.height,
+      originalSize: result.originalSize,
+      newSize: result.newSize,
+      didWrite: result.didWrite,
+    );
   }
 
   static String fileNameOf(String path) {

@@ -241,6 +241,9 @@ void main() {
         StorageDestinationMode.sameFolder,
       );
       expect(settings.sameFolderAction, SameFolderAction.replaceSource);
+      expect(settings.keepSourceNaming, KeepSourceNaming.renameOptimized);
+      expect(settings.keepSourceOriginalSuffix, '_original');
+      expect(settings.keepSourceOptimizedSuffix, '_optimized');
       expect(settings.differentLocationPath, isNull);
       expect(settings.preserveFolderStructure, isTrue);
       expect(settings.preserveOriginalDate, isFalse);

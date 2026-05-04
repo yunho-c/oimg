@@ -44,6 +44,9 @@ void main() {
         StorageDestinationMode.differentLocation,
       );
       await notifier.setSameFolderAction(SameFolderAction.keepSource);
+      await notifier.setKeepSourceNaming(KeepSourceNaming.renameOriginal);
+      await notifier.setKeepSourceOriginalSuffix('_raw');
+      await notifier.setKeepSourceOptimizedSuffix('_small');
       await notifier.setDifferentLocationPath('/tmp/export');
       await notifier.setPreserveFolderStructure(false);
       await notifier.setPreserveOriginalDate(true);
@@ -72,6 +75,9 @@ void main() {
           quality: 92,
           storageDestinationMode: StorageDestinationMode.differentLocation,
           sameFolderAction: SameFolderAction.keepSource,
+          keepSourceNaming: KeepSourceNaming.renameOriginal,
+          keepSourceOriginalSuffix: '_raw',
+          keepSourceOptimizedSuffix: '_small',
           differentLocationPath: '/tmp/export',
           preserveFolderStructure: false,
           preserveOriginalDate: true,

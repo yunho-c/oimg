@@ -242,6 +242,114 @@ void main() {
     );
 
     test(
+      'renames the original after a successful keep-original conversion',
+      () async {
+        final root = await Directory.systemTemp.createTemp('oimg-rename-test');
+        addTearDown(() async {
+          if (await root.exists()) {
+            await root.delete(recursive: true);
+          }
+        });
+
+        final input = File('${root.path}/source.png')
+          ..writeAsBytesSync([1, 2, 3]);
+        final output = File('${root.path}/source.jpeg')
+          ..writeAsBytesSync([4, 5, 6]);
+        final renamedSource = '${root.path}/source_original.png';
+        final controller = FileOpenController(
+          channel: _FakeFileOpenChannel(),
+          slimg: _FakeSlimgApi(
+            inspectResults: {
+              input.path: _metadata('png'),
+              output.path: _metadata('jpeg'),
+            },
+          ),
+          initialPaths: [input.path],
+        );
+
+        await controller.initialize();
+        await controller.applyProcessResults(
+          [
+            BatchItemResult(
+              inputPath: input.path,
+              success: true,
+              result: ProcessResult(
+                outputPath: output.path,
+                format: 'jpeg',
+                width: 48,
+                height: 32,
+                originalSize: BigInt.from(2400),
+                newSize: BigInt.from(900),
+                didWrite: true,
+              ),
+            ),
+          ],
+          renameSourcesAfterSuccess: {input.path: renamedSource},
+        );
+
+        expect(controller.sessionPaths, [output.path]);
+        expect(await input.exists(), isFalse);
+        expect(await File(renamedSource).exists(), isTrue);
+        expect(await output.exists(), isTrue);
+      },
+    );
+
+    test(
+      'moves optimized output into place after same-format source rename',
+      () async {
+        final root = await Directory.systemTemp.createTemp('oimg-move-test');
+        addTearDown(() async {
+          if (await root.exists()) {
+            await root.delete(recursive: true);
+          }
+        });
+
+        final input = File('${root.path}/source.jpg')
+          ..writeAsBytesSync([1, 2, 3]);
+        final temporaryOutput = File('${root.path}/source.optimized.jpeg')
+          ..writeAsBytesSync([4, 5, 6]);
+        final renamedSource = '${root.path}/source_original.jpg';
+        final controller = FileOpenController(
+          channel: _FakeFileOpenChannel(),
+          slimg: _FakeSlimgApi(
+            inspectResults: {
+              input.path: _metadata('jpeg'),
+              temporaryOutput.path: _metadata('jpeg'),
+            },
+          ),
+          initialPaths: [input.path],
+        );
+
+        await controller.initialize();
+        await controller.applyProcessResults(
+          [
+            BatchItemResult(
+              inputPath: input.path,
+              success: true,
+              result: ProcessResult(
+                outputPath: temporaryOutput.path,
+                format: 'jpeg',
+                width: 48,
+                height: 32,
+                originalSize: BigInt.from(2400),
+                newSize: BigInt.from(900),
+                didWrite: true,
+              ),
+            ),
+          ],
+          renameSourcesAfterSuccess: {input.path: renamedSource},
+          moveOutputsAfterSuccess: {input.path: input.path},
+        );
+
+        expect(controller.sessionPaths, [input.path]);
+        expect(await input.exists(), isTrue);
+        expect(await File(renamedSource).exists(), isTrue);
+        expect(await temporaryOutput.exists(), isFalse);
+        expect(controller.currentFile?.lastResult?.outputPath, input.path);
+      },
+    );
+
+    test(
       'deletes the original after a successful remove-original conversion',
       () async {
         final root = await Directory.systemTemp.createTemp('oimg-storage-test');
@@ -253,7 +361,7 @@ void main() {
 
         final input = File('${root.path}/source.png')
           ..writeAsBytesSync([1, 2, 3]);
-        final output = File('${root.path}/source.optimized.jpeg')
+        final output = File('${root.path}/source.jpeg')
           ..writeAsBytesSync([4, 5, 6]);
         final controller = FileOpenController(
           channel: _FakeFileOpenChannel(),

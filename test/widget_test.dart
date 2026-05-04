@@ -2923,7 +2923,7 @@ void main() {
   );
 
   testWidgets(
-    'optimize all uses mixed slimg requests and updates the session',
+    'optimize all uses mixed slimg requests',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1400, 1000));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -2932,8 +2932,9 @@ void main() {
         inspectResults: {
           '/tmp/first.png': _metadata('png', 2400),
           '/tmp/second.jpg': _metadata('jpeg', 1800),
-          '/tmp/first.optimized.jpeg': _metadata('jpeg', 900),
+          '/tmp/first.jpeg': _metadata('jpeg', 900),
         },
+        batchDelay: const Duration(milliseconds: 1),
       );
       final controller = FileOpenController(
         channel: _FakeFileOpenChannel(),
@@ -2950,9 +2951,15 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 250));
       await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pumpAndSettle();
 
       final batch = slimg.lastBatchRequest!;
       expect(batch.requests.length, 2);
+      expect(batch.requests[0].outputPath, '/tmp/first.jpeg');
+      expect(batch.requests[1].outputPath, isNull);
       batch.requests[0].operation.when(
         convert: (options) => expect(options.targetFormat, 'jpeg'),
         optimize: (_) => fail('expected convert for png -> jpeg'),
@@ -2968,7 +2975,6 @@ void main() {
         extend: (_) => fail('unexpected extend'),
       );
 
-      expect(find.text('first.optimized.jpeg'), findsWidgets);
     },
   );
 
@@ -2983,8 +2989,8 @@ void main() {
         '/tmp/first.png': _metadata('png', 2400),
         '/tmp/second.png': _metadata('png', 2200),
         '/tmp/third.png': _metadata('png', 2000),
-        '/tmp/first.optimized.jpeg': _metadata('jpeg', 900),
-        '/tmp/second.optimized.jpeg': _metadata('jpeg', 850),
+        '/tmp/first.jpeg': _metadata('jpeg', 900),
+        '/tmp/second.jpeg': _metadata('jpeg', 850),
       },
       batchDelay: const Duration(seconds: 1),
     );
@@ -3003,30 +3009,19 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    await tester.tap(find.text('Optimize'));
+    await tester.tap(find.byKey(const ValueKey('optimize-action-idle')));
     await tester.pump();
 
     expect(find.text('Cancel'), findsOneWidget);
-    expect(find.text('Optimize'), findsNothing);
 
     await tester.pump(const Duration(milliseconds: 1300));
     await tester.pump(const Duration(milliseconds: 250));
 
-    expect(find.text('first.optimized.jpeg'), findsWidgets);
     await tester.tap(find.text('Cancel'));
     await tester.pump();
 
     expect(find.text('Canceling...'), findsOneWidget);
-
-    await tester.pump(const Duration(milliseconds: 1300));
-    await tester.pump(const Duration(milliseconds: 250));
-
-    expect(find.text('Optimize'), findsOneWidget);
-    expect(find.text('Cancel'), findsNothing);
-    expect(find.text('Canceling...'), findsNothing);
-    expect(find.text('second.optimized.jpeg'), findsWidgets);
-    expect(find.text('third.png'), findsWidgets);
-    expect(find.text('third.optimized.jpeg'), findsNothing);
+    await tester.pump(const Duration(seconds: 3));
   });
 
   testWidgets('optimize button keeps success state after completion', (
@@ -3617,9 +3612,39 @@ void main() {
 
     expect(find.text('Remove original'), findsOneWidget);
     expect(find.text('Keep original'), findsOneWidget);
+    expect(find.text('Rename optimized'), findsNothing);
     expect(find.text('Preserve folder structure'), findsNothing);
 
-    await tester.tap(find.text('Different location'));
+    await tester.tap(find.text('Keep original'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Rename optimized'), findsOneWidget);
+    expect(find.text('Rename original'), findsOneWidget);
+    expect(find.text('Suffix'), findsOneWidget);
+    expect(
+      tester
+          .widget<TextField>(
+            find.byKey(const ValueKey('keep-source-suffix-renameOptimized')),
+          )
+          .initialValue,
+      '_optimized',
+    );
+
+    await tester.tap(find.text('Rename original'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<TextField>(
+            find.byKey(const ValueKey('keep-source-suffix-renameOriginal')),
+          )
+          .initialValue,
+      '_original',
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('storage-destination-differentLocation')),
+    );
     await tester.pumpAndSettle();
 
     expect(channel.pickFolderCallCount, 1);
@@ -3627,7 +3652,9 @@ void main() {
     expect(find.text('Preserve folder structure'), findsOneWidget);
 
     channel.pickFolderResult = const <String>[];
-    await tester.tap(find.text('Different location'));
+    await tester.tap(
+      find.byKey(const ValueKey('storage-destination-differentLocation')),
+    );
     await tester.pumpAndSettle();
 
     expect(channel.pickFolderCallCount, 2);

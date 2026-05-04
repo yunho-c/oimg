@@ -3153,6 +3153,15 @@ class _StorageCollapsibleState extends ConsumerState<_StorageCollapsible> {
                                 enabled: !widget.controlsLocked,
                                 trailing: const Text('Keep original').small(),
                               ),
+                              if (widget.settings.sameFolderAction ==
+                                  SameFolderAction.keepSource) ...[
+                                const SizedBox(height: 8),
+                                _KeepSourceNamingControls(
+                                  settings: widget.settings,
+                                  controlsLocked: widget.controlsLocked,
+                                  notifier: notifier,
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -3197,6 +3206,78 @@ class _StorageCollapsibleState extends ConsumerState<_StorageCollapsible> {
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _KeepSourceNamingControls extends StatelessWidget {
+  const _KeepSourceNamingControls({
+    required this.settings,
+    required this.controlsLocked,
+    required this.notifier,
+  });
+
+  final AppSettings settings;
+  final bool controlsLocked;
+  final AppSettingsController notifier;
+
+  @override
+  Widget build(BuildContext context) {
+    final suffix = settings.keepSourceNaming == KeepSourceNaming.renameOriginal
+        ? settings.keepSourceOriginalSuffix
+        : settings.keepSourceOptimizedSuffix;
+    return Padding(
+      padding: const EdgeInsets.only(left: 22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RadioGroup<KeepSourceNaming>(
+            value: settings.keepSourceNaming,
+            onChanged: controlsLocked ? null : notifier.setKeepSourceNaming,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RadioItem<KeepSourceNaming>(
+                  value: KeepSourceNaming.renameOptimized,
+                  enabled: !controlsLocked,
+                  trailing: const Text('Rename optimized').small(),
+                ),
+                const SizedBox(height: 8),
+                RadioItem<KeepSourceNaming>(
+                  value: KeepSourceNaming.renameOriginal,
+                  enabled: !controlsLocked,
+                  trailing: const Text('Rename original').small(),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const _SettingsLabel('Suffix'),
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 160,
+                child: TextField(
+                  key: ValueKey(
+                    'keep-source-suffix-${settings.keepSourceNaming.name}',
+                  ),
+                  initialValue: suffix,
+                  enabled: !controlsLocked,
+                  onChanged: (value) {
+                    if (settings.keepSourceNaming ==
+                        KeepSourceNaming.renameOriginal) {
+                      unawaited(notifier.setKeepSourceOriginalSuffix(value));
+                      return;
+                    }
+                    unawaited(notifier.setKeepSourceOptimizedSuffix(value));
+                  },
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -6013,6 +6094,7 @@ class _StorageDestinationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      key: ValueKey('storage-destination-${value.name}'),
       behavior: HitTestBehavior.opaque,
       onTap: enabled ? onTap : null,
       child: IgnorePointer(
