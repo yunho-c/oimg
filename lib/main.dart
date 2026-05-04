@@ -2041,7 +2041,7 @@ class _PreviewModeShortcutKey extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      padding: const EdgeInsets.fromLTRB(4, 3, 4, 2),
       decoration: BoxDecoration(
         color: theme.colorScheme.secondary.withValues(alpha: 0.7),
         borderRadius: theme.borderRadiusSm,
@@ -4192,9 +4192,14 @@ class _BottomSidebar extends ConsumerStatefulWidget {
 }
 
 class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
+  static const double _optimizeEtaSmoothing = 0.3;
+
   Timer? _optimizeSuccessTimer;
   Timer? _optimizeProgressTimer;
   DateTime? _optimizeProgressStartedAt;
+  DateTime? _optimizeProgressLastCompletedAt;
+  int _optimizeProgressLastCompletedCount = 0;
+  Duration? _optimizeProgressSmoothedItemDuration;
   Duration _optimizeProgressElapsed = Duration.zero;
   bool _showOptimizeSuccess = false;
 
@@ -4223,6 +4228,7 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
       if (previous?.isRunning != true) {
         _startOptimizeProgressTimer();
       }
+      _updateOptimizeProgressEstimate(next);
       return;
     }
 
@@ -4244,7 +4250,11 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
 
   void _startOptimizeProgressTimer() {
     _optimizeProgressTimer?.cancel();
-    _optimizeProgressStartedAt = DateTime.now();
+    final now = DateTime.now();
+    _optimizeProgressStartedAt = now;
+    _optimizeProgressLastCompletedAt = now;
+    _optimizeProgressLastCompletedCount = 0;
+    _optimizeProgressSmoothedItemDuration = null;
     _optimizeProgressElapsed = Duration.zero;
     _optimizeProgressTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       final startedAt = _optimizeProgressStartedAt;
@@ -4261,7 +4271,37 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
     _optimizeProgressTimer?.cancel();
     _optimizeProgressTimer = null;
     _optimizeProgressStartedAt = null;
+    _optimizeProgressLastCompletedAt = null;
+    _optimizeProgressLastCompletedCount = 0;
+    _optimizeProgressSmoothedItemDuration = null;
     _optimizeProgressElapsed = Duration.zero;
+  }
+
+  void _updateOptimizeProgressEstimate(OptimizationRunState state) {
+    final completedDelta =
+        state.completedCount - _optimizeProgressLastCompletedCount;
+    if (completedDelta <= 0) {
+      return;
+    }
+
+    final now = DateTime.now();
+    final lastCompletedAt = _optimizeProgressLastCompletedAt ?? now;
+    final latestItemDuration = Duration(
+      microseconds:
+          now.difference(lastCompletedAt).inMicroseconds ~/ completedDelta,
+    );
+    final previousSmoothedDuration = _optimizeProgressSmoothedItemDuration;
+    _optimizeProgressSmoothedItemDuration = previousSmoothedDuration == null
+        ? latestItemDuration
+        : Duration(
+            microseconds:
+                (_optimizeEtaSmoothing * latestItemDuration.inMicroseconds +
+                        (1 - _optimizeEtaSmoothing) *
+                            previousSmoothedDuration.inMicroseconds)
+                    .round(),
+          );
+    _optimizeProgressLastCompletedAt = now;
+    _optimizeProgressLastCompletedCount = state.completedCount;
   }
 
   void _showOptimizeSuccessState() {
@@ -4536,6 +4576,8 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
                                     elapsed: _optimizeProgressElapsed,
                                     completedCount: runState.completedCount,
                                     totalCount: runState.totalCount,
+                                    smoothedItemDuration:
+                                        _optimizeProgressSmoothedItemDuration,
                                   ),
                                   key: const ValueKey('optimize-progress-time'),
                                   textAlign: TextAlign.right,
@@ -6069,11 +6111,15 @@ String _formatOptimizeProgressTime({
   required Duration elapsed,
   required int completedCount,
   required int totalCount,
+  required Duration? smoothedItemDuration,
 }) {
-  final estimate = completedCount > 0 && totalCount > 0
+  final estimate =
+      completedCount > 0 && totalCount > 0 && smoothedItemDuration != null
       ? Duration(
-          milliseconds: (elapsed.inMilliseconds * totalCount / completedCount)
-              .round(),
+          microseconds:
+              elapsed.inMicroseconds +
+              smoothedItemDuration.inMicroseconds *
+                  (totalCount - completedCount),
         )
       : null;
   return '${_formatProgressDuration(elapsed)}/${estimate == null ? '--:--' : _formatProgressDuration(estimate)}';
