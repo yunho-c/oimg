@@ -281,7 +281,7 @@ jobs:
               --repo "$GITHUB_REPOSITORY" \
               --draft \
               --title "OIMG $tag" \
-              --notes "macOS release candidate for $tag."
+              --notes "Release candidate for $tag."
           fi
 
           gh release upload "$tag" "$dmg_path" \
