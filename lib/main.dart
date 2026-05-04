@@ -6361,6 +6361,7 @@ class _EmptyState extends ConsumerWidget {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 920;
+              final wideHero = constraints.maxWidth >= 760;
 
               final hero = Container(
                 decoration: BoxDecoration(
@@ -6416,55 +6417,99 @@ class _EmptyState extends ConsumerWidget {
                     ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(28, 30, 28, 28),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            'Optimize your images easily',
-                            style: TextStyle(
-                              fontSize: 31,
-                              height: 1.08,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.9,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          Text(
-                            'OIMG helps you choose the optimal image format and settings.',
-                            style: TextStyle(
-                              color: theme.colorScheme.mutedForeground,
-                              fontSize: 13.6,
-                              height: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: 26),
-                          Row(
+                      child: LayoutBuilder(
+                        builder: (context, heroConstraints) {
+                          final useHeroGrid =
+                              wideHero && heroConstraints.maxWidth >= 620;
+                          final titleGroup = Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              PrimaryButton(
-                                key: const ValueKey(
-                                  'empty-state-browse-button',
-                                ),
-                                onPressed: () => _showBrowseMenu(context, ref),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: const [
-                                    Icon(LucideIcons.folderSearch, size: 16),
-                                    SizedBox(width: 8),
-                                    Text('Browse…'),
-                                  ],
+                              const Text(
+                                'Optimize your images easily',
+                                style: TextStyle(
+                                  fontSize: 31,
+                                  height: 1.08,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.9,
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(height: 14),
                               Text(
-                                'or drop files and folders anywhere',
+                                'OIMG helps you choose the optimal image format and settings.',
                                 style: TextStyle(
                                   color: theme.colorScheme.mutedForeground,
+                                  fontSize: 13.6,
+                                  height: 1.5,
                                 ),
-                              ).small(),
+                              ),
                             ],
-                          ),
-                        ],
+                          );
+                          final actionGroup = Align(
+                            alignment: useHeroGrid
+                                ? Alignment.centerRight
+                                : Alignment.centerLeft,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: useHeroGrid
+                                  ? CrossAxisAlignment.end
+                                  : CrossAxisAlignment.start,
+                              children: [
+                                PrimaryButton(
+                                  key: const ValueKey(
+                                    'empty-state-browse-button',
+                                  ),
+                                  size: ButtonSize.large,
+                                  density: ButtonDensity.normal,
+                                  onPressed: () =>
+                                      _showBrowseMenu(context, ref),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: const [
+                                      Icon(LucideIcons.folderSearch, size: 18),
+                                      SizedBox(width: 10),
+                                      Text(
+                                        'Open images',
+                                        textScaler: TextScaler.linear(0.7),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'or drop files and folders anywhere',
+                                  textAlign: useHeroGrid
+                                      ? TextAlign.right
+                                      : TextAlign.left,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.mutedForeground,
+                                  ),
+                                ).small(),
+                              ],
+                            ),
+                          );
+
+                          if (useHeroGrid) {
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(flex: 3, child: titleGroup),
+                                const SizedBox(width: 28),
+                                Expanded(flex: 2, child: actionGroup),
+                              ],
+                            );
+                          }
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              titleGroup,
+                              const SizedBox(height: 26),
+                              actionGroup,
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ],
