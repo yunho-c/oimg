@@ -1,6 +1,6 @@
 # Windows CI/CD Setup
 
-One-time setup required before the GitHub Windows release workflow can build unsigned ZIP releases.
+One-time setup required before the GitHub Windows release workflow can build ZIP releases and Microsoft Store MSIX packages.
 
 ## GitHub Secrets
 
@@ -30,6 +30,8 @@ The workflow runs on GitHub-hosted Windows and installs the native tools needed 
 - LLVM
 
 The workflow uses `scripts/windows/build_windows.ps1` so Rust and Cargokit use the x64 MSVC toolchain consistently.
+
+The workflow then uses `dart run msix:create` to package the existing release build for Microsoft Store submission. The MSIX package is intentionally unsigned because Microsoft Store signs packages after submission.
 
 ## Release Workflow
 
@@ -73,21 +75,36 @@ The workflow creates a draft GitHub Release and attaches:
 
 - `OIMG-<version>-windows-x64.zip`
 - `OIMG-<version>-windows-x64.zip.sha256`
+- `OIMG-<version>-windows-x64.msix`
+- `OIMG-<version>-windows-x64.msix.sha256`
 
 Before publishing the draft:
 
-1. Download the ZIP from the draft release.
+1. Download the ZIP and MSIX from the draft release.
 2. Extract the ZIP on Windows.
 3. Launch `oimg.exe`.
 4. Confirm any SmartScreen warning is only the expected unsigned-app warning.
 5. Open an image from OIMG.
 6. Use Windows Open with on an image file.
 7. Run a basic optimization.
-8. Publish the GitHub Release when the ZIP looks correct.
+8. Submit the MSIX to Microsoft Store.
+9. Publish the GitHub Release when the ZIP and Store package look correct.
+
+## Microsoft Store
+
+The MSIX configuration uses the Partner Center identity for OIMG:
+
+- Publisher display name: `Yunho Cho`
+- Identity name: `YunhoCho.OIMG`
+- Publisher: `CN=5FD6739C-65DE-4602-8C56-90200FC1D6DC`
+
+The MSIX manifest declares the same supported image file extensions as the native Windows runner.
+
+The workflow passes the release tag version to MSIX as `<version>.0`. For example, tag `v1.0.1` becomes MSIX version `1.0.1.0`.
 
 ## Future Signing
 
-The Windows ZIP is unsigned until a code-signing certificate is available in CI.
+The Windows ZIP is unsigned until a code-signing certificate is available in CI. The Microsoft Store MSIX is also unsigned before submission because Store distribution signs the package.
 
 When signing is added, the workflow should:
 

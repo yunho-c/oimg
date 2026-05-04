@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   release:
-    name: Build unsigned Windows ZIP
+    name: Build Windows ZIP and Store MSIX
     runs-on: windows-2025
     timeout-minutes: 120
 
@@ -187,6 +187,30 @@ jobs:
           $hash = (Get-FileHash -Algorithm SHA256 $zipPath).Hash.ToLowerInvariant()
           Set-Content -Path "$zipPath.sha256" -Value "$hash  $(Split-Path -Leaf $zipPath)"
 
+      - name: Package Store MSIX
+        shell: pwsh
+        working-directory: oimg
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+
+          $msixVersion = "${{ steps.release.outputs.version }}.0"
+          dart run msix:create --version $msixVersion
+
+          $generatedMsix = Get-ChildItem "build\windows\x64\msix" -Filter "*.msix" | Sort-Object LastWriteTime | Select-Object -Last 1
+          if ($null -eq $generatedMsix) {
+            throw "Expected MSIX artifact not found in build\windows\x64\msix"
+          }
+
+          $msixPath = Join-Path $env:DIST_DIR "OIMG-${{ steps.release.outputs.version }}-windows-x64.msix"
+          if (Test-Path $msixPath) {
+            Remove-Item $msixPath
+          }
+
+          Move-Item -Path $generatedMsix.FullName -Destination $msixPath
+          $hash = (Get-FileHash -Algorithm SHA256 $msixPath).Hash.ToLowerInvariant()
+          Set-Content -Path "$msixPath.sha256" -Value "$hash  $(Split-Path -Leaf $msixPath)"
+
       - name: Verify Windows artifacts
         shell: pwsh
         working-directory: oimg
@@ -195,8 +219,10 @@ jobs:
           $releaseDir = "build\windows\x64\runner\Release"
           $zipPath = Join-Path $env:DIST_DIR "OIMG-${{ steps.release.outputs.version }}-windows-x64.zip"
           $shaPath = "$zipPath.sha256"
+          $msixPath = Join-Path $env:DIST_DIR "OIMG-${{ steps.release.outputs.version }}-windows-x64.msix"
+          $msixShaPath = "$msixPath.sha256"
 
-          foreach ($path in @((Join-Path $releaseDir "oimg.exe"), $zipPath, $shaPath)) {
+          foreach ($path in @((Join-Path $releaseDir "oimg.exe"), $zipPath, $shaPath, $msixPath, $msixShaPath)) {
             if (-not (Test-Path $path)) {
               throw "Expected artifact not found: $path"
             }
@@ -208,6 +234,7 @@ jobs:
           name: OIMG-${{ steps.release.outputs.version }}-windows-x64
           path: |
             oimg/dist/windows/*.zip
+            oimg/dist/windows/*.msix
             oimg/dist/windows/*.sha256
           if-no-files-found: error
 
@@ -221,9 +248,10 @@ jobs:
           $PSNativeCommandUseErrorActionPreference = $false
           $tag = "${{ steps.release.outputs.tag }}"
           $zipPath = Get-ChildItem $env:DIST_DIR -Filter "*.zip" | Sort-Object Name | Select-Object -Last 1
-          $shaPath = Get-ChildItem $env:DIST_DIR -Filter "*.sha256" | Sort-Object Name | Select-Object -Last 1
+          $msixPath = Get-ChildItem $env:DIST_DIR -Filter "*.msix" | Sort-Object Name | Select-Object -Last 1
+          $assetPaths = Get-ChildItem $env:DIST_DIR -Include "*.zip", "*.msix", "*.sha256" -Recurse | Sort-Object Name
 
-          if ($null -eq $zipPath -or $null -eq $shaPath) {
+          if ($null -eq $zipPath -or $null -eq $msixPath -or $assetPaths.Count -lt 4) {
             throw "Expected Windows release artifacts were not found in $env:DIST_DIR"
           }
 
@@ -239,7 +267,7 @@ jobs:
             }
           }
 
-          gh release upload $tag $zipPath.FullName $shaPath.FullName `
+          gh release upload $tag @($assetPaths | ForEach-Object { $_.FullName }) `
             --repo $env:GITHUB_REPOSITORY `
             --clobber
           if ($LASTEXITCODE -ne 0) {

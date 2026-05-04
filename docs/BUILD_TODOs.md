@@ -13,9 +13,9 @@ Follow-up: make `scripts/linux/package-deb.sh` derive the generated Debian deskt
 
 ## Windows release signing
 
-The Windows release workflow currently produces unsigned ZIP artifacts.
+The Windows release workflow currently produces unsigned ZIP artifacts. It also produces an unsigned Microsoft Store MSIX because Store distribution signs submitted packages.
 
-Follow-up: add Authenticode signing before packaging once a Windows code-signing certificate is available in CI. The workflow should sign `oimg.exe` and bundled DLLs, verify the signatures, then package the signed release directory.
+Follow-up: add Authenticode signing before ZIP packaging once a Windows code-signing certificate is available in CI. The workflow should sign `oimg.exe` and bundled DLLs, verify the signatures, then package the signed release directory.
 
 ## Release dependency pinning
 
