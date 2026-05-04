@@ -60,12 +60,28 @@ dev_dependencies:
   build_runner: ^2.7.1
   freezed: ^3.2.3
   flutter_to_debian: ^2.0.2
+  msix: ^3.16.13
   integration_test:
     sdk: flutter
 
 dependency_overrides:
   irondash_engine_context:
     path: ../irondash/engine_context/dart
+
+msix_config:
+  display_name: OIMG
+  publisher_display_name: Yunho Cho
+  identity_name: YunhoCho.OIMG
+  publisher: CN=5FD6739C-65DE-4602-8C56-90200FC1D6DC
+  store: true
+  sign_msix: false
+  install_certificate: false
+  architecture: x64
+  build_windows: false
+  file_extension: .png,.jpg,.jpeg,.gif,.bmp,.webp,.tif,.tiff
+  logo_path: assets/icon/icon-1024.png
+  output_path: build/windows/x64/msix
+  output_name: OIMG
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

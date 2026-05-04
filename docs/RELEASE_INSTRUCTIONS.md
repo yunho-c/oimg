@@ -68,11 +68,36 @@ macOS verification checklist:
 - Check that macOS does not show a signing or notarization warning.
 - Open an image and run a basic optimization.
 
+## Current Platform: Windows
+
+The Windows release workflow builds an unsigned x64 ZIP, an unsigned x64 installer, and a Microsoft Store MSIX.
+
+Windows artifacts:
+
+- `OIMG-<version>-windows-x64.zip`
+- `OIMG-<version>-windows-x64-setup.exe`
+- `OIMG-<version>-windows-x64.msix`
+
+Windows verification checklist:
+
+- Download the ZIP, setup EXE, and MSIX from the draft release.
+- Extract the ZIP on Windows.
+- Launch `oimg.exe`.
+- Run the setup EXE.
+- Launch OIMG from the Start Menu.
+- If selected during install, launch OIMG from the desktop shortcut.
+- Expect Windows SmartScreen warnings while the app is unsigned.
+- Open an image from OIMG.
+- Use Windows Open with on an image file.
+- Uninstall OIMG from Windows Settings and confirm shortcuts are removed.
+- Run a basic optimization.
+- Submit the MSIX to Microsoft Store for signing and distribution.
+
 ## Future Platforms
 
-Windows and Linux Debian packaging are not part of the current release workflow yet.
+Linux Debian packaging is not part of the current release workflow yet.
 
-When they are added, extend this file with:
+When it is added, extend this file with:
 
 - Artifact name and extension.
 - Required signing or packaging credentials.
