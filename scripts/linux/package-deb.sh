@@ -111,12 +111,15 @@ require_file "$repo_root/assets/icon/icon-256.png" "missing assets/icon/icon-256
 
 version="$(awk '/^version:/ { print $2; exit }' pubspec.yaml)"
 [[ -n "$version" ]] || die "could not read version from pubspec.yaml"
+artifact_version="${version%%+*}"
+[[ -n "$artifact_version" ]] || die "could not derive artifact version from pubspec.yaml"
 
 runtime_depends="libgtk-3-0, libstdc++6, libc6, libglib2.0-0, libx11-6, libblkid1, liblzma5, python3-nautilus"
 debian_arch="$(detect_debian_arch)"
 flutter_arch="$(flutter_arch_for_debian_arch "$debian_arch")"
 bundle_dir="$repo_root/build/linux/$flutter_arch/release/bundle"
-deb_path="$repo_root/debian/packages/oimg_${version}_${debian_arch}.deb"
+generated_deb_path="$repo_root/debian/packages/oimg_${version}_${debian_arch}.deb"
+deb_path="$repo_root/debian/packages/oimg_${artifact_version}_${debian_arch}.deb"
 helper_path="$repo_root/rust/target/release/oimg-service"
 
 note "building OIMG Linux release bundle for $debian_arch ($flutter_arch)"
@@ -138,7 +141,11 @@ remove_python_caches
 
 note "creating Debian package"
 "${dart_cmd[@]}" run flutter_to_debian build
-require_file "$deb_path" "missing $deb_path after flutter_to_debian build"
+require_file "$generated_deb_path" "missing $generated_deb_path after flutter_to_debian build"
+if [[ "$generated_deb_path" != "$deb_path" ]]; then
+  rm -f "$deb_path"
+  mv "$generated_deb_path" "$deb_path"
+fi
 patch_deb_control_depends "$deb_path"
 
 note "package output:"
