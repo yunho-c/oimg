@@ -5102,12 +5102,14 @@ class _BottomQualitySection extends ConsumerWidget {
     final theme = Theme.of(context);
     final settings = ref.watch(appSettingsProvider).asData?.value;
     final previewState = ref.watch(currentPreviewProvider);
+    final analyzeState = ref.watch(analyzeRunControllerProvider);
     final selectedAnalyzeSample = ref.watch(selectedAnalyzeSampleProvider);
     final previewPendingBeforeMetrics =
         selectedAnalyzeSample == null &&
         previewState.isLoading &&
         previewState.asData?.value == null;
     final colorCodingEnabled = settings?.qualityMetricColorsEnabled ?? false;
+    final showMetricLegendDots = analyzeState.samples.isNotEmpty;
     final rows = isFolderSelected
         ? const <_BottomMetricRowState>[
             _BottomMetricRowState.text(label: 'Pixel Match', value: 'N/A'),
@@ -5252,6 +5254,7 @@ class _BottomQualitySection extends ConsumerWidget {
             _BottomMetricRow(
               row: rows[index],
               colorCodingEnabled: colorCodingEnabled,
+              showLegendDot: showMetricLegendDots,
             ),
             if (index + 1 < rows.length) const SizedBox(height: 8),
           ],
@@ -5332,9 +5335,9 @@ class _BottomMetricRowState {
 
 enum _BottomMetricRowDisplayState { loading, text }
 
-const _pixelMatchAnalyzeColor = Color(0xFF2563EB);
-const _msSsimAnalyzeColor = Color(0xFFD97706);
-const _ssimulacra2AnalyzeColor = Color(0xFF16A34A);
+const _pixelMatchAnalyzeColor = Color(0xFF06B6D4);
+const _msSsimAnalyzeColor = Color(0xFFD946EF);
+const _ssimulacra2AnalyzeColor = Color(0xFFEAB308);
 
 Color _analyzeMetricColorForLabel(String label) {
   return switch (label) {
@@ -5346,10 +5349,15 @@ Color _analyzeMetricColorForLabel(String label) {
 }
 
 class _BottomMetricRow extends StatelessWidget {
-  const _BottomMetricRow({required this.row, required this.colorCodingEnabled});
+  const _BottomMetricRow({
+    required this.row,
+    required this.colorCodingEnabled,
+    required this.showLegendDot,
+  });
 
   final _BottomMetricRowState row;
   final bool colorCodingEnabled;
+  final bool showLegendDot;
 
   @override
   Widget build(BuildContext context) {
@@ -5357,16 +5365,18 @@ class _BottomMetricRow extends StatelessWidget {
     final labelWidget = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          key: ValueKey('metric-legend-dot-${row.label}'),
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: _analyzeMetricColorForLabel(row.label),
+        if (showLegendDot) ...[
+          Container(
+            key: ValueKey('metric-legend-dot-${row.label}'),
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _analyzeMetricColorForLabel(row.label),
+            ),
           ),
-        ),
-        const SizedBox(width: 6),
+          const SizedBox(width: 6),
+        ],
         Flexible(child: Text(row.label).xSmall().medium().muted()),
       ],
     );

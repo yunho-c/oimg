@@ -3876,6 +3876,23 @@ void main() {
     await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
     await tester.pumpAndSettle();
 
+    expect(
+      find.byKey(const ValueKey('metric-legend-dot-Pixel Match')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('metric-legend-dot-MS-SSIM')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('metric-legend-dot-SSIMULACRA 2')),
+      findsNothing,
+    );
+
+    await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
     final pixelMatchDot = tester.widget<Container>(
       find.byKey(const ValueKey('metric-legend-dot-Pixel Match')),
     );
@@ -3888,15 +3905,15 @@ void main() {
 
     expect(
       (pixelMatchDot.decoration! as BoxDecoration).color,
-      const Color(0xFF2563EB),
+      const Color(0xFF06B6D4),
     );
     expect(
       (msSsimDot.decoration! as BoxDecoration).color,
-      const Color(0xFFD97706),
+      const Color(0xFFD946EF),
     );
     expect(
       (ssimulacra2Dot.decoration! as BoxDecoration).color,
-      const Color(0xFF16A34A),
+      const Color(0xFFEAB308),
     );
   });
 
