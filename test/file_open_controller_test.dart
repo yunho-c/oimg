@@ -6,6 +6,7 @@ import 'package:oimg/src/file_open/file_open_channel.dart';
 import 'package:oimg/src/file_open/file_open_controller.dart';
 import 'package:oimg/src/rust/slimg_api.dart';
 import 'package:oimg/src/rust/types.dart';
+import 'package:path/path.dart' as p;
 
 void main() {
   group('FileOpenController', () {
@@ -179,12 +180,12 @@ void main() {
         await root.delete(recursive: true);
       });
 
-      final nested = Directory('${root.path}/nested')..createSync();
-      final imageA = File('${root.path}/first.png')
+      final nested = Directory(p.join(root.path, 'nested'))..createSync();
+      final imageA = File(p.join(root.path, 'first.png'))
         ..writeAsBytesSync([1, 2, 3]);
-      final imageB = File('${nested.path}/second.jpg')
+      final imageB = File(p.join(nested.path, 'second.jpg'))
         ..writeAsBytesSync([1, 2, 3]);
-      File('${nested.path}/notes.txt').writeAsStringSync('ignored');
+      File(p.join(nested.path, 'notes.txt')).writeAsStringSync('ignored');
 
       final controller = FileOpenController(
         channel: _FakeFileOpenChannel(),

@@ -3,6 +3,7 @@ import 'package:oimg/src/file_open/opened_image_file.dart';
 import 'package:oimg/src/optimization/optimization_plan.dart';
 import 'package:oimg/src/rust/types.dart';
 import 'package:oimg/src/settings/app_settings.dart';
+import 'package:path/path.dart' as p;
 
 void main() {
   group('buildOptimizationPlan', () {
@@ -54,7 +55,7 @@ void main() {
 
       expect(plan.usesSourceCodec, isFalse);
       expect(plan.useSourceImageForPreview, isFalse);
-      expect(plan.processRequest.outputPath, '/tmp/photo.jpeg');
+      expect(plan.processRequest.outputPath, p.join('/tmp', 'photo.jpeg'));
       expect(plan.processRequest.preserveFileDates, isFalse);
       plan.processRequest.operation.when(
         convert: (options) {
@@ -160,7 +161,10 @@ void main() {
           ),
         );
 
-        expect(plan.processRequest.outputPath, '/tmp/photo_optimized.jpeg');
+        expect(
+          plan.processRequest.outputPath,
+          p.join('/tmp', 'photo_optimized.jpeg'),
+        );
         expect(plan.processRequest.overwrite, isTrue);
         expect(plan.keepSourceEntry, isTrue);
         expect(plan.deleteSourceAfterSuccess, isFalse);
@@ -198,7 +202,10 @@ void main() {
         ),
       );
 
-      expect(plan.processRequest.outputPath, '/tmp/photo_optimized.jpeg');
+      expect(
+        plan.processRequest.outputPath,
+        p.join('/tmp', 'photo_optimized.jpeg'),
+      );
       expect(plan.processRequest.overwrite, isTrue);
       expect(plan.keepSourceEntry, isTrue);
       expect(plan.deleteSourceAfterSuccess, isFalse);
@@ -236,11 +243,14 @@ void main() {
         ),
       );
 
-      expect(plan.processRequest.outputPath, '/tmp/photo.jpeg');
+      expect(plan.processRequest.outputPath, p.join('/tmp', 'photo.jpeg'));
       expect(plan.processRequest.overwrite, isTrue);
       expect(plan.keepSourceEntry, isFalse);
       expect(plan.deleteSourceAfterSuccess, isFalse);
-      expect(plan.renameSourceAfterSuccessPath, '/tmp/photo_original.png');
+      expect(
+        plan.renameSourceAfterSuccessPath,
+        p.join('/tmp', 'photo_original.png'),
+      );
       expect(plan.moveOutputAfterSuccessPath, isNull);
     });
 
@@ -274,11 +284,17 @@ void main() {
         ),
       );
 
-      expect(plan.processRequest.outputPath, '/tmp/photo.optimized.jpeg');
+      expect(
+        plan.processRequest.outputPath,
+        p.join('/tmp', 'photo.optimized.jpeg'),
+      );
       expect(plan.processRequest.overwrite, isTrue);
       expect(plan.keepSourceEntry, isFalse);
       expect(plan.deleteSourceAfterSuccess, isFalse);
-      expect(plan.renameSourceAfterSuccessPath, '/tmp/photo_original.jpg');
+      expect(
+        plan.renameSourceAfterSuccessPath,
+        p.join('/tmp', 'photo_original.jpg'),
+      );
       expect(plan.moveOutputAfterSuccessPath, '/tmp/photo.jpg');
     });
 
@@ -311,7 +327,7 @@ void main() {
         ),
       );
 
-      expect(plan.processRequest.outputPath, '/tmp/photo.jpeg');
+      expect(plan.processRequest.outputPath, p.join('/tmp', 'photo.jpeg'));
       expect(plan.processRequest.overwrite, isTrue);
       expect(plan.keepSourceEntry, isFalse);
       expect(plan.deleteSourceAfterSuccess, isTrue);
@@ -352,7 +368,7 @@ void main() {
 
         expect(
           plan.processRequest.outputPath,
-          '/tmp/output/animals/cat.optimized.jpeg',
+          p.join('/tmp/output', 'animals', 'cat.optimized.jpeg'),
         );
         expect(plan.processRequest.overwrite, isTrue);
         expect(plan.keepSourceEntry, isTrue);

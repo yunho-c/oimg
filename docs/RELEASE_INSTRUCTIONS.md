@@ -68,13 +68,60 @@ macOS verification checklist:
 - Check that macOS does not show a signing or notarization warning.
 - Open an image and run a basic optimization.
 
-## Future Platforms
+## Current Platform: Windows
 
-Windows and Linux Debian packaging are not part of the current release workflow yet.
+The Windows release workflow builds an unsigned x64 ZIP, an unsigned x64 installer, and a Microsoft Store MSIX.
 
-When they are added, extend this file with:
+Windows artifacts:
 
-- Artifact name and extension.
-- Required signing or packaging credentials.
-- Target OS version assumptions.
-- Manual smoke-test steps.
+- `OIMG-<version>-windows-x64.zip`
+- `OIMG-<version>-windows-x64-setup.exe`
+- `OIMG-<version>-windows-x64.msix`
+
+Windows verification checklist:
+
+- Download the ZIP, setup EXE, and MSIX from the draft release.
+- Extract the ZIP on Windows.
+- Launch `oimg.exe`.
+- Run the setup EXE.
+- Launch OIMG from the Start Menu.
+- If selected during install, launch OIMG from the desktop shortcut.
+- Expect Windows SmartScreen warnings while the app is unsigned.
+- Open an image from OIMG.
+- Use Windows Open with on an image file.
+- Uninstall OIMG from Windows Settings and confirm shortcuts are removed.
+- Run a basic optimization.
+- Submit the MSIX to Microsoft Store for signing and distribution.
+
+## Current Platform: Linux Debian
+
+The Linux Debian release workflow should build, validate, and upload an unsigned `amd64` `.deb`.
+
+Linux verification checklist:
+
+- Download the `.deb` from the draft release.
+- Install it on Debian/Ubuntu/Pop!_OS:
+
+  ```bash
+  sudo dpkg -i oimg_*_amd64.deb
+  sudo apt install -f
+  ```
+
+- Launch OIMG.
+- Check image Open With metadata:
+
+  ```bash
+  gio mime image/png
+  gio mime image/avif
+  ```
+
+- If testing Nautilus integration, restart Files and verify the context menu:
+
+  ```bash
+  nautilus -q
+  ```
+
+- Right-click a supported image in Nautilus and test:
+  - `Compress image`
+  - `Compress image (lossless)`
+- Open an image and run a basic optimization in the app.
