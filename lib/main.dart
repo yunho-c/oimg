@@ -4157,7 +4157,7 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
         _showOptimizeSuccess = true;
       });
     }
-    _optimizeSuccessTimer = Timer(const Duration(seconds: 1), () {
+    _optimizeSuccessTimer = Timer(const Duration(seconds: 3), () {
       if (!mounted) {
         return;
       }

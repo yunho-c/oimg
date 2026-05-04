@@ -107,9 +107,7 @@ void main() {
 
     const path = '/tmp/oimg-empty-state/inside.png';
     final channel = _FakeFileOpenChannel()..pickFolderResult = [path];
-    final slimg = _FakeSlimgApi(
-      inspectResults: {path: _metadata('png', 2400)},
-    );
+    final slimg = _FakeSlimgApi(inspectResults: {path: _metadata('png', 2400)});
     final controller = FileOpenController(channel: channel, slimg: slimg);
     await controller.initialize();
 
@@ -3031,7 +3029,7 @@ void main() {
     expect(find.text('third.optimized.jpeg'), findsNothing);
   });
 
-  testWidgets('optimize button briefly shows success state after completion', (
+  testWidgets('optimize button keeps success state after completion', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
@@ -3061,11 +3059,11 @@ void main() {
     expect(find.text('Success!'), findsOneWidget);
     expect(find.text('Optimize'), findsNothing);
 
-    await tester.pump(const Duration(milliseconds: 1000));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 1100));
 
-    expect(find.text('Success!'), findsNothing);
-    expect(find.text('Optimize'), findsOneWidget);
+    expect(find.text('Success!'), findsOneWidget);
+    expect(find.text('Optimize'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('developer dialog toggles persisted timing logs', (tester) async {
