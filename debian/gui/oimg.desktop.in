@@ -1,7 +1,6 @@
 [Desktop Entry]
 Type=Application
 Name=OIMG
-Icon=oimg
 StartupWMClass=com.yunho-c.oimg
 MimeType=image/png;image/jpeg;image/gif;image/bmp;image/webp;image/tiff;image/avif;
 Categories=Graphics;Viewer;
