@@ -2252,7 +2252,7 @@ void main() {
 
       expect(find.text('1 / 3'), findsNothing);
       expect(find.text('0 / 2'), findsOneWidget);
-      expect(find.text('Loaded'), findsOneWidget);
+      expect(find.text('Loaded'), findsNothing);
 
       await tester.tap(find.text('dog.jpg').first);
       await tester.pump();

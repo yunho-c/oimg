@@ -4192,15 +4192,18 @@ class _BottomSidebar extends ConsumerStatefulWidget {
 }
 
 class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
-  static const double _optimizeEtaSmoothing = 0.3;
+  static const double _optimizeEtaSmoothing = 0.12;
+  static const _optimizeEstimateDisplayInterval = Duration(seconds: 3);
 
   Timer? _optimizeSuccessTimer;
   Timer? _optimizeProgressTimer;
   DateTime? _optimizeProgressStartedAt;
   DateTime? _optimizeProgressLastCompletedAt;
+  DateTime? _optimizeProgressLastEstimateDisplayedAt;
   int _optimizeProgressLastCompletedCount = 0;
   Duration? _optimizeProgressSmoothedItemDuration;
   Duration _optimizeProgressElapsed = Duration.zero;
+  Duration? _optimizeProgressDisplayedEstimate;
   bool _showOptimizeSuccess = false;
 
   @override
@@ -4253,9 +4256,11 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
     final now = DateTime.now();
     _optimizeProgressStartedAt = now;
     _optimizeProgressLastCompletedAt = now;
+    _optimizeProgressLastEstimateDisplayedAt = null;
     _optimizeProgressLastCompletedCount = 0;
     _optimizeProgressSmoothedItemDuration = null;
     _optimizeProgressElapsed = Duration.zero;
+    _optimizeProgressDisplayedEstimate = null;
     _optimizeProgressTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       final startedAt = _optimizeProgressStartedAt;
       if (!mounted || startedAt == null) {
@@ -4272,9 +4277,11 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
     _optimizeProgressTimer = null;
     _optimizeProgressStartedAt = null;
     _optimizeProgressLastCompletedAt = null;
+    _optimizeProgressLastEstimateDisplayedAt = null;
     _optimizeProgressLastCompletedCount = 0;
     _optimizeProgressSmoothedItemDuration = null;
     _optimizeProgressElapsed = Duration.zero;
+    _optimizeProgressDisplayedEstimate = null;
   }
 
   void _updateOptimizeProgressEstimate(OptimizationRunState state) {
@@ -4302,6 +4309,38 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
           );
     _optimizeProgressLastCompletedAt = now;
     _optimizeProgressLastCompletedCount = state.completedCount;
+    _maybeUpdateOptimizeProgressDisplayedEstimate(state, now);
+  }
+
+  void _maybeUpdateOptimizeProgressDisplayedEstimate(
+    OptimizationRunState state,
+    DateTime now,
+  ) {
+    final startedAt = _optimizeProgressStartedAt;
+    final smoothedItemDuration = _optimizeProgressSmoothedItemDuration;
+    if (startedAt == null ||
+        smoothedItemDuration == null ||
+        state.completedCount <= 0 ||
+        state.totalCount <= 0) {
+      _optimizeProgressDisplayedEstimate = null;
+      _optimizeProgressLastEstimateDisplayedAt = null;
+      return;
+    }
+
+    final lastDisplayedAt = _optimizeProgressLastEstimateDisplayedAt;
+    if (_optimizeProgressDisplayedEstimate != null &&
+        lastDisplayedAt != null &&
+        now.difference(lastDisplayedAt) < _optimizeEstimateDisplayInterval) {
+      return;
+    }
+
+    _optimizeProgressDisplayedEstimate = Duration(
+      microseconds:
+          now.difference(startedAt).inMicroseconds +
+          smoothedItemDuration.inMicroseconds *
+              (state.totalCount - state.completedCount),
+    );
+    _optimizeProgressLastEstimateDisplayedAt = now;
   }
 
   void _showOptimizeSuccessState() {
@@ -4574,10 +4613,8 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
                                 Text(
                                   _formatOptimizeProgressTime(
                                     elapsed: _optimizeProgressElapsed,
-                                    completedCount: runState.completedCount,
-                                    totalCount: runState.totalCount,
-                                    smoothedItemDuration:
-                                        _optimizeProgressSmoothedItemDuration,
+                                    estimate:
+                                        _optimizeProgressDisplayedEstimate,
                                   ),
                                   key: const ValueKey('optimize-progress-time'),
                                   textAlign: TextAlign.right,
@@ -5772,7 +5809,6 @@ class _BottomSummaryViewModel {
               'Unknown',
         ),
         _BottomInfoRowData(label: 'Images', value: '${files.length}'),
-        const _BottomInfoRowData(label: 'Scope', value: 'Loaded'),
         _BottomInfoRowData(
           label: 'Bits Per Pixel',
           value: _formatNullableBpp(originalBpp),
@@ -6109,19 +6145,8 @@ String _formatMetricTimingTooltip(int elapsedMilliseconds) {
 
 String _formatOptimizeProgressTime({
   required Duration elapsed,
-  required int completedCount,
-  required int totalCount,
-  required Duration? smoothedItemDuration,
+  required Duration? estimate,
 }) {
-  final estimate =
-      completedCount > 0 && totalCount > 0 && smoothedItemDuration != null
-      ? Duration(
-          microseconds:
-              elapsed.inMicroseconds +
-              smoothedItemDuration.inMicroseconds *
-                  (totalCount - completedCount),
-        )
-      : null;
   return '${_formatProgressDuration(elapsed)}/${estimate == null ? '--:--' : _formatProgressDuration(estimate)}';
 }
 
