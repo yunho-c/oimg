@@ -6401,6 +6401,7 @@ class _EmptyState extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final secondaryTextColor = _homeSecondaryTextColor(theme);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -6485,7 +6486,7 @@ class _EmptyState extends ConsumerWidget {
                         Text(
                           'OIMG helps you choose the optimal image format and settings.',
                           style: TextStyle(
-                            color: theme.colorScheme.mutedForeground,
+                            color: secondaryTextColor,
                             fontSize: 13.6,
                             height: 1.5,
                           ),
@@ -6532,9 +6533,7 @@ class _EmptyState extends ConsumerWidget {
                             textAlign: useHeroGrid
                                 ? TextAlign.right
                                 : TextAlign.left,
-                            style: TextStyle(
-                              color: theme.colorScheme.mutedForeground,
-                            ),
+                            style: TextStyle(color: secondaryTextColor),
                           ).small(),
                         ],
                       ),
@@ -7064,6 +7063,7 @@ class _EmptyStateFeatureCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final secondaryTextColor = _homeSecondaryTextColor(theme);
 
     final card = _HomeAcrylicSurface(
       key: cardKey,
@@ -7089,10 +7089,7 @@ class _EmptyStateFeatureCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     description,
-                    style: TextStyle(
-                      color: theme.colorScheme.mutedForeground,
-                      height: 1.45,
-                    ),
+                    style: TextStyle(color: secondaryTextColor, height: 1.45),
                   ).small(),
                 ],
               ),
@@ -7114,6 +7111,12 @@ class _EmptyStateFeatureCard extends StatelessWidget {
       child: card,
     );
   }
+}
+
+Color _homeSecondaryTextColor(ThemeData theme) {
+  return theme.brightness == ui.Brightness.dark
+      ? theme.colorScheme.foreground.withValues(alpha: 0.70)
+      : theme.colorScheme.foreground.withValues(alpha: 0.60);
 }
 
 class _EmptyStateFeaturePreview extends StatelessWidget {
