@@ -3788,6 +3788,14 @@ LineChartBarData _buildAnalyzeLine({
   );
 }
 
+IconData _themePreferenceIcon(AppThemePreference preference) {
+  return switch (preference) {
+    AppThemePreference.system => LucideIcons.monitor,
+    AppThemePreference.light => LucideIcons.sun,
+    AppThemePreference.dark => LucideIcons.moon,
+  };
+}
+
 class _DeveloperButton extends StatelessWidget {
   const _DeveloperButton({required this.onPressed});
 
@@ -3853,6 +3861,12 @@ class _TitleBarSettingsButton extends ConsumerWidget {
                               MenuButton(
                                 key: const ValueKey('title-bar-theme-toggle'),
                                 autoClose: false,
+                                leading: Icon(
+                                  _themePreferenceIcon(
+                                    settings.themePreference,
+                                  ),
+                                  size: 15,
+                                ),
                                 onPressed: (context) {
                                   unawaited(
                                     ref
