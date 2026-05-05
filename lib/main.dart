@@ -7061,9 +7061,9 @@ class _EmptyStateFeatureCard extends StatelessWidget {
     final card = _HomeAcrylicSurface(
       key: cardKey,
       borderRadius: theme.borderRadiusXl,
-      blurSigma: 20,
-      backgroundAlpha: 0.34,
-      tintAlpha: 0.08,
+      blurSigma: 12,
+      backgroundAlpha: 0.24,
+      tintAlpha: 0.06,
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Row(
