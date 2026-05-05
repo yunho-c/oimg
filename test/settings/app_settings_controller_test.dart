@@ -60,6 +60,7 @@ void main() {
       await notifier.setDifferenceTooltipShowsCoordinates(false);
       await notifier.setDifferenceTooltipUsesSwatches(true);
       await notifier.setThemePreference(AppThemePreference.dark);
+      await notifier.setColorSchemePreference(AppColorSchemePreference.zinc);
       await notifier.setDeveloperModeEnabled(true);
       await notifier.setTimingLogsEnabled(true);
       await notifier.setMacOsCaptionButtonsEnabled(true);
@@ -91,6 +92,7 @@ void main() {
           differenceTooltipShowsCoordinates: false,
           differenceTooltipUsesSwatches: true,
           themePreference: AppThemePreference.dark,
+          colorSchemePreference: AppColorSchemePreference.zinc,
           developerModeEnabled: true,
           timingLogsEnabled: true,
           macOsCaptionButtonsEnabled: true,

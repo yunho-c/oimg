@@ -16,6 +16,8 @@ enum KeepSourceNaming { renameOptimized, renameOriginal }
 
 enum AppThemePreference { system, light, dark }
 
+enum AppColorSchemePreference { slate, zinc, stone, neutral, gray }
+
 const Object _noAppSettingsValue = Object();
 
 extension PreferredCodecCapabilities on PreferredCodec {
@@ -53,6 +55,28 @@ extension AppThemePreferenceValues on AppThemePreference {
   }
 }
 
+extension AppColorSchemePreferenceValues on AppColorSchemePreference {
+  String get label {
+    return switch (this) {
+      AppColorSchemePreference.slate => 'Slate',
+      AppColorSchemePreference.zinc => 'Zinc',
+      AppColorSchemePreference.stone => 'Stone',
+      AppColorSchemePreference.neutral => 'Neutral',
+      AppColorSchemePreference.gray => 'Gray',
+    };
+  }
+
+  AppColorSchemePreference get next {
+    return switch (this) {
+      AppColorSchemePreference.slate => AppColorSchemePreference.zinc,
+      AppColorSchemePreference.zinc => AppColorSchemePreference.stone,
+      AppColorSchemePreference.stone => AppColorSchemePreference.neutral,
+      AppColorSchemePreference.neutral => AppColorSchemePreference.gray,
+      AppColorSchemePreference.gray => AppColorSchemePreference.slate,
+    };
+  }
+}
+
 class AppSettings {
   const AppSettings({
     required this.compressionMethod,
@@ -77,6 +101,7 @@ class AppSettings {
     this.differenceTooltipShowsCoordinates = true,
     this.differenceTooltipUsesSwatches = true,
     this.themePreference = AppThemePreference.system,
+    this.colorSchemePreference = AppColorSchemePreference.slate,
     required this.developerModeEnabled,
     required this.timingLogsEnabled,
     this.macOsCaptionButtonsEnabled = false,
@@ -108,6 +133,7 @@ class AppSettings {
   final bool differenceTooltipShowsCoordinates;
   final bool differenceTooltipUsesSwatches;
   final AppThemePreference themePreference;
+  final AppColorSchemePreference colorSchemePreference;
   final bool developerModeEnabled;
   final bool timingLogsEnabled;
   final bool macOsCaptionButtonsEnabled;
@@ -141,6 +167,7 @@ class AppSettings {
     differenceTooltipShowsCoordinates: true,
     differenceTooltipUsesSwatches: true,
     themePreference: AppThemePreference.system,
+    colorSchemePreference: AppColorSchemePreference.slate,
     developerModeEnabled: false,
     timingLogsEnabled: false,
     macOsCaptionButtonsEnabled: false,
@@ -215,6 +242,7 @@ class AppSettings {
     bool? differenceTooltipShowsCoordinates,
     bool? differenceTooltipUsesSwatches,
     AppThemePreference? themePreference,
+    AppColorSchemePreference? colorSchemePreference,
     bool? developerModeEnabled,
     bool? timingLogsEnabled,
     bool? macOsCaptionButtonsEnabled,
@@ -259,6 +287,8 @@ class AppSettings {
       differenceTooltipUsesSwatches:
           differenceTooltipUsesSwatches ?? this.differenceTooltipUsesSwatches,
       themePreference: themePreference ?? this.themePreference,
+      colorSchemePreference:
+          colorSchemePreference ?? this.colorSchemePreference,
       developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,
       timingLogsEnabled: timingLogsEnabled ?? this.timingLogsEnabled,
       macOsCaptionButtonsEnabled:
@@ -294,6 +324,7 @@ class AppSettings {
       'differenceTooltipShowsCoordinates': differenceTooltipShowsCoordinates,
       'differenceTooltipUsesSwatches': differenceTooltipUsesSwatches,
       'themePreference': themePreference.name,
+      'colorSchemePreference': colorSchemePreference.name,
       'developerModeEnabled': developerModeEnabled,
       'timingLogsEnabled': timingLogsEnabled,
       'macOsCaptionButtonsEnabled': macOsCaptionButtonsEnabled,
@@ -378,6 +409,10 @@ class AppSettings {
       themePreference: AppThemePreference.values.byName(
         json['themePreference'] as String? ?? defaults.themePreference.name,
       ),
+      colorSchemePreference: AppColorSchemePreference.values.byName(
+        json['colorSchemePreference'] as String? ??
+            defaults.colorSchemePreference.name,
+      ),
       developerModeEnabled:
           json['developerModeEnabled'] as bool? ??
           defaults.developerModeEnabled,
@@ -422,6 +457,7 @@ class AppSettings {
             differenceTooltipShowsCoordinates &&
         other.differenceTooltipUsesSwatches == differenceTooltipUsesSwatches &&
         other.themePreference == themePreference &&
+        other.colorSchemePreference == colorSchemePreference &&
         other.developerModeEnabled == developerModeEnabled &&
         other.timingLogsEnabled == timingLogsEnabled &&
         other.macOsCaptionButtonsEnabled == macOsCaptionButtonsEnabled &&
@@ -454,6 +490,7 @@ class AppSettings {
     differenceTooltipShowsCoordinates,
     differenceTooltipUsesSwatches,
     themePreference,
+    colorSchemePreference,
     developerModeEnabled,
     timingLogsEnabled,
     macOsCaptionButtonsEnabled,

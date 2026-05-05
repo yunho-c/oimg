@@ -138,12 +138,15 @@ class MyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final baseTypography = const Typography.geist().scale(_uiScale);
     final settings = ref.watch(appSettingsProvider).asData?.value;
+    final colorSchemePreference =
+        settings?.colorSchemePreference ??
+        AppSettings.defaults.colorSchemePreference;
 
     return ShadcnApp(
       title: 'OIMG',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorSchemes.lightSlate,
+        colorScheme: _lightColorScheme(colorSchemePreference),
         radius: _uiRadius,
         scaling: _uiScale,
         typography: baseTypography,
@@ -151,7 +154,7 @@ class MyApp extends ConsumerWidget {
         surfaceBlur: 8,
       ),
       darkTheme: ThemeData.dark(
-        colorScheme: ColorSchemes.darkSlate,
+        colorScheme: _darkColorScheme(colorSchemePreference),
         radius: _uiRadius,
         scaling: _uiScale,
         typography: baseTypography,
@@ -162,6 +165,26 @@ class MyApp extends ConsumerWidget {
       home: const OimgHomePage(),
     );
   }
+}
+
+ColorScheme _lightColorScheme(AppColorSchemePreference preference) {
+  return switch (preference) {
+    AppColorSchemePreference.slate => ColorSchemes.lightSlate,
+    AppColorSchemePreference.zinc => ColorSchemes.lightZinc,
+    AppColorSchemePreference.stone => ColorSchemes.lightStone,
+    AppColorSchemePreference.neutral => ColorSchemes.lightNeutral,
+    AppColorSchemePreference.gray => ColorSchemes.lightGray,
+  };
+}
+
+ColorScheme _darkColorScheme(AppColorSchemePreference preference) {
+  return switch (preference) {
+    AppColorSchemePreference.slate => ColorSchemes.darkSlate,
+    AppColorSchemePreference.zinc => ColorSchemes.darkZinc,
+    AppColorSchemePreference.stone => ColorSchemes.darkStone,
+    AppColorSchemePreference.neutral => ColorSchemes.darkNeutral,
+    AppColorSchemePreference.gray => ColorSchemes.darkGray,
+  };
 }
 
 class OimgHomePage extends ConsumerStatefulWidget {
@@ -3892,6 +3915,22 @@ class _TitleBarSettingsButton extends ConsumerWidget {
                                 },
                                 child: Text(
                                   'Theme: ${settings.themePreference.label}',
+                                ),
+                              ),
+                              MenuButton(
+                                key: const ValueKey(
+                                  'title-bar-color-scheme-toggle',
+                                ),
+                                autoClose: false,
+                                onPressed: (context) {
+                                  unawaited(
+                                    ref
+                                        .read(appSettingsProvider.notifier)
+                                        .cycleColorSchemePreference(),
+                                  );
+                                },
+                                child: Text(
+                                  'Color: ${settings.colorSchemePreference.label}',
                                 ),
                               ),
                               const MenuDivider(),

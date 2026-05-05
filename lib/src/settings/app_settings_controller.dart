@@ -201,6 +201,23 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     );
   }
 
+  Future<void> setColorSchemePreference(
+    AppColorSchemePreference colorSchemePreference,
+  ) async {
+    await _update(
+      (settings) =>
+          settings.copyWith(colorSchemePreference: colorSchemePreference),
+    );
+  }
+
+  Future<void> cycleColorSchemePreference() async {
+    await _update(
+      (settings) => settings.copyWith(
+        colorSchemePreference: settings.colorSchemePreference.next,
+      ),
+    );
+  }
+
   Future<void> setDeveloperModeEnabled(bool developerModeEnabled) async {
     await _update(
       (settings) => settings.copyWith(

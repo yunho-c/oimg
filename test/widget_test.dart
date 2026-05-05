@@ -3343,6 +3343,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Theme: System'), findsOneWidget);
+    expect(find.text('Color: Slate'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('title-bar-community-label')),
       findsOneWidget,
@@ -3382,6 +3383,16 @@ void main() {
       AppThemePreference.light,
     );
 
+    await tester.tap(
+      find.byKey(const ValueKey('title-bar-color-scheme-toggle')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Color: Zinc'), findsOneWidget);
+    expect(
+      AppSettings.fromJsonString((await store.read())!).colorSchemePreference,
+      AppColorSchemePreference.zinc,
+    );
+
     await tester.tap(find.byKey(const ValueKey('title-bar-theme-toggle')));
     await tester.pumpAndSettle();
     expect(
@@ -3404,6 +3415,58 @@ void main() {
     expect(
       AppSettings.fromJsonString((await store.read())!).themePreference,
       AppThemePreference.system,
+    );
+  });
+
+  testWidgets('stored color scheme preference maps to app color schemes', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    Future<void> pumpWithColorScheme(
+      AppColorSchemePreference colorSchemePreference,
+    ) async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+
+      final store = _FakeAppSettingsStore()
+        ..value = AppSettings.defaults
+            .copyWith(colorSchemePreference: colorSchemePreference)
+            .toJsonString();
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      );
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+      await tester.pumpWidget(
+        _buildApp(controller: controller, slimg: slimg, store: store),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await pumpWithColorScheme(AppColorSchemePreference.zinc);
+    expect(
+      tester.widget<ShadcnApp>(find.byType(ShadcnApp)).theme.colorScheme,
+      ColorSchemes.lightZinc,
+    );
+    expect(
+      tester.widget<ShadcnApp>(find.byType(ShadcnApp)).darkTheme?.colorScheme,
+      ColorSchemes.darkZinc,
+    );
+
+    await pumpWithColorScheme(AppColorSchemePreference.stone);
+    expect(
+      tester.widget<ShadcnApp>(find.byType(ShadcnApp)).theme.colorScheme,
+      ColorSchemes.lightStone,
+    );
+    expect(
+      tester.widget<ShadcnApp>(find.byType(ShadcnApp)).darkTheme?.colorScheme,
+      ColorSchemes.darkStone,
     );
   });
 

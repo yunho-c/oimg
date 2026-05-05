@@ -256,6 +256,7 @@ void main() {
       expect(settings.bitsPerPixelColorsEnabled, isFalse);
       expect(settings.fileSizeColorsEnabled, isFalse);
       expect(settings.themePreference, AppThemePreference.system);
+      expect(settings.colorSchemePreference, AppColorSchemePreference.slate);
     });
   });
 }
