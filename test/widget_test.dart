@@ -3122,6 +3122,12 @@ void main() {
     await tester.tap(find.byType(Switch).last);
     await tester.pumpAndSettle();
 
+    await tester.enterText(
+      find.byKey(const ValueKey('developer-home-shader-speed-field')),
+      '0.25',
+    );
+    await tester.pumpAndSettle();
+
     await tester.tap(
       find.ancestor(
         of: find.text('Timing logs'),
@@ -3142,6 +3148,7 @@ void main() {
     expect(store.value, contains('"developerModeEnabled":true'));
     expect(store.value, contains('"timingLogsEnabled":true'));
     expect(store.value, contains('"macOsCaptionButtonsEnabled":true'));
+    expect(store.value, contains('"homeShaderSpeed":0.25'));
   });
 
   testWidgets('title bar keeps developer left of home and settings', (

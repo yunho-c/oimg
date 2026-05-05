@@ -240,6 +240,12 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     );
   }
 
+  Future<void> setHomeShaderSpeed(double homeShaderSpeed) async {
+    await _update(
+      (settings) => settings.copyWith(homeShaderSpeed: homeShaderSpeed),
+    );
+  }
+
   Future<void> _update(
     AppSettings Function(AppSettings settings) transform,
   ) async {

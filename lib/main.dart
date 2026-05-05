@@ -4129,6 +4129,15 @@ class _DeveloperSettingsDialog extends ConsumerWidget {
                   ),
                   const SizedBox(height: 14),
                   _DeveloperSection(
+                    title: 'Home',
+                    child: _DeveloperShaderSpeedField(
+                      value: settings.homeShaderSpeed,
+                      enabled: settings.developerModeEnabled,
+                      onChanged: notifier.setHomeShaderSpeed,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _DeveloperSection(
                     title: 'Window',
                     child: Checkbox(
                       state: settings.macOsCaptionButtonsEnabled
@@ -4167,6 +4176,50 @@ class _DeveloperSettingsDialog extends ConsumerWidget {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Close'),
         ),
+      ],
+    );
+  }
+}
+
+class _DeveloperShaderSpeedField extends StatelessWidget {
+  const _DeveloperShaderSpeedField({
+    required this.value,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final double value;
+  final bool enabled;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: Text('Shader speed').small().medium()),
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 96,
+          child: TextField(
+            key: const ValueKey('developer-home-shader-speed-field'),
+            initialValue: value.toStringAsFixed(2),
+            enabled: enabled,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            textAlign: TextAlign.end,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+            ],
+            onChanged: (value) {
+              final parsed = double.tryParse(value);
+              if (parsed == null || parsed.isNaN || parsed.isInfinite) {
+                return;
+              }
+              onChanged(parsed.clamp(0.0, 4.0).toDouble());
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text('x').small().muted(),
       ],
     );
   }
@@ -6402,6 +6455,7 @@ class _EmptyState extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final appSettings = ref.watch(appSettingsProvider).asData?.value;
     final secondaryTextColor = _homeSecondaryTextColor(theme);
 
     return LayoutBuilder(
@@ -6616,8 +6670,13 @@ class _EmptyState extends ConsumerWidget {
 
         return Stack(
           children: [
-            const Positioned.fill(
-              child: _HomeShaderBackdrop(borderRadius: BorderRadius.zero),
+            Positioned.fill(
+              child: _HomeShaderBackdrop(
+                borderRadius: BorderRadius.zero,
+                speed:
+                    appSettings?.homeShaderSpeed ??
+                    AppSettings.defaultHomeShaderSpeed,
+              ),
             ),
             Center(
               child: Padding(
@@ -6781,7 +6840,7 @@ class _EmptyStateFooterButton extends StatelessWidget {
 }
 
 class _HomeShaderBackdrop extends StatefulWidget {
-  const _HomeShaderBackdrop({required this.borderRadius});
+  const _HomeShaderBackdrop({required this.borderRadius, required this.speed});
 
   static const _lightShaderAsset = 'assets/shaders/home_wavy_background.frag';
   static const _darkShaderAsset =
@@ -6795,6 +6854,7 @@ class _HomeShaderBackdrop extends StatefulWidget {
   );
 
   final BorderRadiusGeometry borderRadius;
+  final double speed;
 
   @override
   State<_HomeShaderBackdrop> createState() => _HomeShaderBackdropState();
@@ -6861,7 +6921,8 @@ class _HomeShaderBackdropState extends State<_HomeShaderBackdrop>
               program: program,
               time:
                   _shaderElapsed.inMicroseconds /
-                  Duration.microsecondsPerSecond,
+                  Duration.microsecondsPerSecond *
+                  widget.speed,
             ),
           ),
         );

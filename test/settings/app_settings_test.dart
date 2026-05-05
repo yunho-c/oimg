@@ -236,6 +236,7 @@ void main() {
       expect(settings.timingLogsEnabled, isFalse);
       expect(settings.macOsCaptionButtonsEnabled, isFalse);
       expect(settings.previewPathHeaderEnabled, isFalse);
+      expect(settings.homeShaderSpeed, AppSettings.defaultHomeShaderSpeed);
       expect(
         settings.storageDestinationMode,
         StorageDestinationMode.sameFolder,
