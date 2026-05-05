@@ -18,10 +18,19 @@ import 'package:oimg/src/rust/types.dart';
 import 'package:oimg/src/settings/app_settings.dart';
 import 'package:oimg/src/settings/app_settings_controller.dart';
 import 'package:oimg/src/settings/app_settings_repository.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 
 void main() {
+  PackageInfo.setMockInitialValues(
+    appName: 'OIMG',
+    packageName: 'com.yunho-c.oimg',
+    version: '0.1.2',
+    buildNumber: '5',
+    buildSignature: '',
+  );
+
   testWidgets('renders empty state with no startup files', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -3330,6 +3339,23 @@ void main() {
     await tester.tap(settingsButton);
     await tester.pumpAndSettle();
     expect(find.text('Theme: System'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('title-bar-app-name-label')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('title-bar-version-label')),
+      findsOneWidget,
+    );
+    expect(find.text('Version 0.1.2'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('title-bar-donate-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('title-bar-contributors-button')),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(const ValueKey('title-bar-theme-toggle')));
     await tester.pumpAndSettle();

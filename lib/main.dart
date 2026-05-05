@@ -19,6 +19,7 @@ import 'package:oimg/src/rust/types.dart';
 import 'package:oimg/src/settings/app_settings.dart';
 import 'package:oimg/src/settings/app_settings_controller.dart';
 import 'package:oimg/src/settings/developer_diagnostics.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -38,7 +39,6 @@ const _defaultBottomSidebarHeight = 165.0;
 const _minBottomSidebarHeight = 140.0;
 const _maxBottomSidebarHeight = 320.0;
 const _settingsBottomSectionsFoldThreshold = 650.0;
-const _appVersion = '0.1.2';
 const List<({double value, Color color})> _qualityMetricColorStops = [
   (value: 0, color: Color(0xFFFF0000)),
   (value: 20, color: Color(0xFFAA0000)),
@@ -71,6 +71,11 @@ final _savingsDisplayModeProvider =
     NotifierProvider<_SavingsDisplayModeNotifier, _SavingsDisplayMode>(
       _SavingsDisplayModeNotifier.new,
     );
+
+final _packageVersionProvider = FutureProvider<String>((ref) async {
+  final packageInfo = await PackageInfo.fromPlatform();
+  return packageInfo.version;
+});
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -3853,6 +3858,10 @@ class _TitleBarSettingsButton extends ConsumerWidget {
                               .watch(appSettingsProvider)
                               .asData
                               ?.value;
+                          final packageVersion = ref
+                              .watch(_packageVersionProvider)
+                              .asData
+                              ?.value;
                           if (settings == null) {
                             return const SizedBox.shrink();
                           }
@@ -3861,7 +3870,7 @@ class _TitleBarSettingsButton extends ConsumerWidget {
                               MenuButton(
                                 key: const ValueKey('title-bar-theme-toggle'),
                                 autoClose: false,
-                                leading: Icon(
+                                trailing: Icon(
                                   _themePreferenceIcon(
                                     settings.themePreference,
                                   ),
@@ -3877,6 +3886,49 @@ class _TitleBarSettingsButton extends ConsumerWidget {
                                 child: Text(
                                   'Theme: ${settings.themePreference.label}',
                                 ),
+                              ),
+                              const MenuDivider(),
+                              const MenuLabel(
+                                key: ValueKey('title-bar-app-name-label'),
+                                child: Text('OIMG'),
+                              ),
+                              MenuLabel(
+                                key: const ValueKey('title-bar-version-label'),
+                                child: Text(
+                                  packageVersion == null
+                                      ? 'Version'
+                                      : 'Version $packageVersion',
+                                ).xSmall().muted(),
+                              ),
+                              MenuButton(
+                                key: const ValueKey('title-bar-donate-button'),
+                                child: const Text('Donate'),
+                                onPressed: (context) {
+                                  unawaited(
+                                    launchUrl(
+                                      Uri.parse(
+                                        'https://github.com/sponsors/yunho-c',
+                                      ),
+                                      mode: LaunchMode.externalApplication,
+                                    ),
+                                  );
+                                },
+                              ),
+                              MenuButton(
+                                key: const ValueKey(
+                                  'title-bar-contributors-button',
+                                ),
+                                child: const Text('Contributors'),
+                                onPressed: (context) {
+                                  unawaited(
+                                    launchUrl(
+                                      Uri.parse(
+                                        'https://github.com/yunho-c/oimg/graphs/contributors',
+                                      ),
+                                      mode: LaunchMode.externalApplication,
+                                    ),
+                                  );
+                                },
                               ),
                             ],
                           );
@@ -6760,21 +6812,23 @@ class _EmptyState extends ConsumerWidget {
   }
 }
 
-class _EmptyStateCredit extends StatelessWidget {
+class _EmptyStateCredit extends ConsumerWidget {
   const _EmptyStateCredit();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final packageVersion = ref.watch(_packageVersionProvider).asData?.value;
     final color = theme.colorScheme.mutedForeground.withValues(
       alpha: theme.brightness == ui.Brightness.dark ? 0.86 : 0.80,
     );
     final style = TextStyle(color: color, fontSize: 11.5, height: 1.2);
+    final prefix = packageVersion == null ? '' : 'v$packageVersion · ';
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('v$_appVersion · Built with care by ', style: style),
+        Text('${prefix}Built with care by ', style: style),
         MouseRegion(
           cursor: SystemMouseCursors.click,
           child: GestureDetector(
