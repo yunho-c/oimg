@@ -64,6 +64,7 @@ void main() {
       await notifier.setDeveloperModeEnabled(true);
       await notifier.setTimingLogsEnabled(true);
       await notifier.setMacOsCaptionButtonsEnabled(true);
+      await notifier.setHomeAcrylicPanelEnabled(true);
 
       final settings = container.read(appSettingsProvider).requireValue;
       expect(
@@ -96,6 +97,7 @@ void main() {
           developerModeEnabled: true,
           timingLogsEnabled: true,
           macOsCaptionButtonsEnabled: true,
+          homeAcrylicPanelEnabled: true,
         ),
       );
       expect(await store.read(), settings.toJsonString());

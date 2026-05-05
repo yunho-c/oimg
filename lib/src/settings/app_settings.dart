@@ -108,6 +108,7 @@ class AppSettings {
     this.differentLocationPath,
     this.previewPathHeaderEnabled = false,
     this.homeShaderSpeed = defaultHomeShaderSpeed,
+    this.homeAcrylicPanelEnabled = false,
   });
 
   final CompressionMethod compressionMethod;
@@ -139,6 +140,7 @@ class AppSettings {
   final bool macOsCaptionButtonsEnabled;
   final bool previewPathHeaderEnabled;
   final double homeShaderSpeed;
+  final bool homeAcrylicPanelEnabled;
 
   static const defaultKeepSourceOriginalSuffix = '_original';
   static const defaultKeepSourceOptimizedSuffix = '_optimized';
@@ -173,6 +175,7 @@ class AppSettings {
     macOsCaptionButtonsEnabled: false,
     previewPathHeaderEnabled: false,
     homeShaderSpeed: defaultHomeShaderSpeed,
+    homeAcrylicPanelEnabled: false,
   );
 
   PreferredCodec get effectiveCodec {
@@ -248,6 +251,7 @@ class AppSettings {
     bool? macOsCaptionButtonsEnabled,
     bool? previewPathHeaderEnabled,
     double? homeShaderSpeed,
+    bool? homeAcrylicPanelEnabled,
   }) {
     return AppSettings(
       compressionMethod: compressionMethod ?? this.compressionMethod,
@@ -296,6 +300,8 @@ class AppSettings {
       previewPathHeaderEnabled:
           previewPathHeaderEnabled ?? this.previewPathHeaderEnabled,
       homeShaderSpeed: homeShaderSpeed ?? this.homeShaderSpeed,
+      homeAcrylicPanelEnabled:
+          homeAcrylicPanelEnabled ?? this.homeAcrylicPanelEnabled,
     );
   }
 
@@ -330,6 +336,7 @@ class AppSettings {
       'macOsCaptionButtonsEnabled': macOsCaptionButtonsEnabled,
       'previewPathHeaderEnabled': previewPathHeaderEnabled,
       'homeShaderSpeed': homeShaderSpeed,
+      'homeAcrylicPanelEnabled': homeAcrylicPanelEnabled,
     };
   }
 
@@ -427,6 +434,9 @@ class AppSettings {
       homeShaderSpeed:
           (json['homeShaderSpeed'] as num?)?.toDouble() ??
           defaults.homeShaderSpeed,
+      homeAcrylicPanelEnabled:
+          json['homeAcrylicPanelEnabled'] as bool? ??
+          defaults.homeAcrylicPanelEnabled,
     );
   }
 
@@ -462,7 +472,8 @@ class AppSettings {
         other.timingLogsEnabled == timingLogsEnabled &&
         other.macOsCaptionButtonsEnabled == macOsCaptionButtonsEnabled &&
         other.previewPathHeaderEnabled == previewPathHeaderEnabled &&
-        other.homeShaderSpeed == homeShaderSpeed;
+        other.homeShaderSpeed == homeShaderSpeed &&
+        other.homeAcrylicPanelEnabled == homeAcrylicPanelEnabled;
   }
 
   @override
@@ -496,5 +507,6 @@ class AppSettings {
     macOsCaptionButtonsEnabled,
     previewPathHeaderEnabled,
     homeShaderSpeed,
+    homeAcrylicPanelEnabled,
   ]);
 }

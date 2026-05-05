@@ -50,7 +50,48 @@ void main() {
       find.byKey(const ValueKey('empty-state-browse-button')),
       findsOneWidget,
     );
+    expect(
+      find.byKey(const ValueKey('empty-state-hero-gradient-panel')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('empty-state-hero-acrylic-panel')),
+      findsNothing,
+    );
     expect(find.byType(DropRegion), findsOneWidget);
+  });
+
+  testWidgets('stored acrylic panel preference changes empty state hero', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final store = _FakeAppSettingsStore()
+      ..value = AppSettings.defaults
+          .copyWith(homeAcrylicPanelEnabled: true)
+          .toJsonString();
+    final slimg = _FakeSlimgApi();
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(
+      _buildApp(controller: controller, slimg: slimg, store: store),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Optimize images easily'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('empty-state-hero-acrylic-panel')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('empty-state-hero-gradient-panel')),
+      findsNothing,
+    );
   });
 
   testWidgets('feature card hover shows a preview panel', (tester) async {
@@ -3139,6 +3180,14 @@ void main() {
 
     await tester.tap(
       find.ancestor(
+        of: find.text('Acrylic panel'),
+        matching: find.byType(Checkbox),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.ancestor(
         of: find.text('Timing logs'),
         matching: find.byType(Checkbox),
       ),
@@ -3158,6 +3207,7 @@ void main() {
     expect(store.value, contains('"timingLogsEnabled":true'));
     expect(store.value, contains('"macOsCaptionButtonsEnabled":true'));
     expect(store.value, contains('"homeShaderSpeed":0.25'));
+    expect(store.value, contains('"homeAcrylicPanelEnabled":true'));
   });
 
   testWidgets('title bar keeps developer left of home and settings', (

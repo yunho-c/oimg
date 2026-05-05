@@ -263,6 +263,13 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     );
   }
 
+  Future<void> setHomeAcrylicPanelEnabled(bool homeAcrylicPanelEnabled) async {
+    await _update(
+      (settings) =>
+          settings.copyWith(homeAcrylicPanelEnabled: homeAcrylicPanelEnabled),
+    );
+  }
+
   Future<void> _update(
     AppSettings Function(AppSettings settings) transform,
   ) async {
