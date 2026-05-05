@@ -22,6 +22,7 @@ import 'package:oimg/src/settings/developer_diagnostics.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 import 'package:window_manager/window_manager.dart';
 
 const _uiScale = 0.8;
@@ -6561,21 +6562,25 @@ class _EmptyState extends ConsumerWidget {
 
         final supportCards = const [
           _EmptyStateFeatureCard(
+            cardKey: ValueKey('empty-state-feature-preview'),
             icon: LucideIcons.sparkles,
             title: 'Preview',
             description: 'Inspect optimized images before you hit save.',
           ),
           _EmptyStateFeatureCard(
+            cardKey: ValueKey('empty-state-feature-compare'),
             icon: LucideIcons.badgePercent,
             title: 'Compare',
             description:
                 'See how different image formats compare in savings, quality, and compatibility.',
           ),
           _EmptyStateFeatureCard(
+            cardKey: ValueKey('empty-state-feature-analyze'),
             icon: LucideIcons.chartSpline,
             title: 'Analyze',
             description:
                 'Explore the balance between size and quality using image quality analysis methods.',
+            previewVideoUrl: 'https://media.oimg.org/videos/analyze_demo.mp4',
           ),
         ];
 
@@ -6932,20 +6937,25 @@ class _SettingsWarningBlock extends StatelessWidget {
 
 class _EmptyStateFeatureCard extends StatelessWidget {
   const _EmptyStateFeatureCard({
+    required this.cardKey,
     required this.icon,
     required this.title,
     required this.description,
+    this.previewVideoUrl,
   });
 
+  final Key cardKey;
   final IconData icon;
   final String title;
   final String description;
+  final String? previewVideoUrl;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return ClipRRect(
+    final card = ClipRRect(
+      key: cardKey,
       borderRadius: theme.borderRadiusXl.resolve(Directionality.of(context)),
       child: BackdropFilter(
         filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
@@ -6962,13 +6972,9 @@ class _EmptyStateFeatureCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(9),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                    borderRadius: theme.borderRadiusLg,
-                  ),
-                  child: Icon(icon, size: 18, color: theme.colorScheme.primary),
+                Padding(
+                  padding: const EdgeInsets.only(top: 1),
+                  child: Icon(icon, size: 20, color: theme.colorScheme.primary),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -6991,6 +6997,204 @@ class _EmptyStateFeatureCard extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+
+    return HoverCard(
+      wait: const Duration(milliseconds: 250),
+      debounce: const Duration(milliseconds: 120),
+      anchorAlignment: Alignment.topCenter,
+      popoverAlignment: Alignment.bottomCenter,
+      popoverOffset: const Offset(0, -10),
+      hoverBuilder: (context) {
+        return _EmptyStateFeaturePreview(videoUrl: previewVideoUrl);
+      },
+      child: card,
+    );
+  }
+}
+
+class _EmptyStateFeaturePreview extends StatelessWidget {
+  const _EmptyStateFeaturePreview({this.videoUrl});
+
+  final String? videoUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return ClipRRect(
+      key: const ValueKey('empty-state-feature-preview-panel'),
+      borderRadius: theme.borderRadiusXl.resolve(Directionality.of(context)),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: theme.borderRadiusXl,
+            border: Border.all(
+              color: theme.colorScheme.border.withValues(alpha: 0.72),
+            ),
+            color: theme.colorScheme.popover.withValues(alpha: 0.82),
+            boxShadow: [
+              BoxShadow(
+                color: theme.colorScheme.foreground.withValues(alpha: 0.10),
+                blurRadius: 28,
+                offset: const Offset(0, 16),
+              ),
+            ],
+          ),
+          child: SizedBox(
+            width: 520,
+            height: 292,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: videoUrl == null
+                  ? const _EmptyStateFeaturePreviewFrame()
+                  : _EmptyStateFeaturePreviewVideo(url: videoUrl!),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyStateFeaturePreviewVideo extends StatefulWidget {
+  const _EmptyStateFeaturePreviewVideo({required this.url});
+
+  final String url;
+
+  @override
+  State<_EmptyStateFeaturePreviewVideo> createState() =>
+      _EmptyStateFeaturePreviewVideoState();
+}
+
+class _EmptyStateFeaturePreviewVideoState
+    extends State<_EmptyStateFeaturePreviewVideo> {
+  late final VideoPlayerController _controller;
+  late final Future<void> _initializeFuture;
+  var _loadFailed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+    _initializeFuture = _controller
+        .initialize()
+        .then((_) async {
+          await _controller.setLooping(true);
+          await _controller.setVolume(0);
+          await _controller.play();
+        })
+        .catchError((Object _) {
+          if (mounted) {
+            setState(() {
+              _loadFailed = true;
+            });
+          }
+        });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return ClipRRect(
+      borderRadius: theme.borderRadiusLg.resolve(Directionality.of(context)),
+      child: SizedBox(
+        width: double.infinity,
+        height: double.infinity,
+        child: FutureBuilder<void>(
+          future: _initializeFuture,
+          builder: (context, snapshot) {
+            if (_loadFailed ||
+                snapshot.connectionState != ConnectionState.done ||
+                !_controller.value.isInitialized) {
+              return const _EmptyStateFeaturePreviewFrame();
+            }
+
+            return FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: _controller.value.size.width,
+                height: _controller.value.size.height,
+                child: VideoPlayer(_controller),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyStateFeaturePreviewFrame extends StatelessWidget {
+  const _EmptyStateFeaturePreviewFrame();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: theme.borderRadiusLg,
+        border: Border.all(
+          color: theme.colorScheme.border.withValues(alpha: 0.65),
+        ),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primary.withValues(alpha: 0.14),
+            theme.colorScheme.secondary.withValues(alpha: 0.12),
+          ],
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: _EmptyStateFeaturePreviewBlock(
+                color: theme.colorScheme.primary.withValues(alpha: 0.34),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 2,
+              child: _EmptyStateFeaturePreviewBlock(
+                color: theme.colorScheme.secondaryForeground.withValues(
+                  alpha: 0.18,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyStateFeaturePreviewBlock extends StatelessWidget {
+  const _EmptyStateFeaturePreviewBlock({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: theme.borderRadiusSm,
       ),
     );
   }

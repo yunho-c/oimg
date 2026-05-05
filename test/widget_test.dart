@@ -44,6 +44,39 @@ void main() {
     expect(find.byType(DropRegion), findsOneWidget);
   });
 
+  testWidgets('feature card hover shows a preview panel', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi();
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('empty-state-feature-preview-panel')),
+      findsNothing,
+    );
+
+    final card = find.byKey(const ValueKey('empty-state-feature-preview'));
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: tester.getCenter(card));
+    await mouse.moveTo(tester.getCenter(card));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 260));
+
+    expect(
+      find.byKey(const ValueKey('empty-state-feature-preview-panel')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('browse menu shows file and folder actions on empty state', (
     tester,
   ) async {
