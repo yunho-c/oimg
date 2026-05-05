@@ -6583,18 +6583,18 @@ class _EmptyState extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(child: supportCards[0]),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 10),
                   Expanded(child: supportCards[1]),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 10),
                   Expanded(child: supportCards[2]),
                 ],
               )
             : Column(
                 children: [
                   supportCards[0],
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
                   supportCards[1],
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
                   supportCards[2],
                 ],
               );
@@ -6649,7 +6649,7 @@ class _EmptyState extends ConsumerWidget {
                         const SizedBox(height: 18),
                         ConstrainedBox(
                           constraints: BoxConstraints(
-                            maxWidth: contentWidth * 0.85,
+                            maxWidth: contentWidth * 0.92,
                           ),
                           child: support,
                         ),
@@ -6949,19 +6949,19 @@ class _EmptyStateFeatureCard extends StatelessWidget {
     return Card(
       borderRadius: theme.borderRadiusXl,
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(14),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(9),
               decoration: BoxDecoration(
                 color: theme.colorScheme.primary.withValues(alpha: 0.08),
                 borderRadius: theme.borderRadiusLg,
               ),
               child: Icon(icon, size: 18, color: theme.colorScheme.primary),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
