@@ -6393,268 +6393,263 @@ class _EmptyState extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(28, 8, 28, 28),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1180),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final wide = constraints.maxWidth >= 920;
-              final wideHero = constraints.maxWidth >= 760;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final contentWidth = math.min(
+          1180.0,
+          math.max(0.0, constraints.maxWidth - 56),
+        );
+        final wide = contentWidth >= 920;
+        final wideHero = contentWidth >= 760;
 
-              final hero = Container(
-                decoration: BoxDecoration(
-                  borderRadius: theme.borderRadiusXxl,
-                  border: Border.all(
-                    color: theme.colorScheme.border.withValues(alpha: 0.7),
+        final hero = Container(
+          decoration: BoxDecoration(
+            borderRadius: theme.borderRadiusXxl,
+            border: Border.all(
+              color: theme.colorScheme.border.withValues(alpha: 0.7),
+            ),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                theme.colorScheme.background,
+                theme.colorScheme.primary.withValues(alpha: 0.06),
+                theme.colorScheme.secondary.withValues(alpha: 0.42),
+              ],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                blurRadius: 42,
+                offset: const Offset(0, 18),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                top: -56,
+                right: -42,
+                child: Container(
+                  width: 210,
+                  height: 210,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   ),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      theme.colorScheme.background,
-                      theme.colorScheme.primary.withValues(alpha: 0.06),
-                      theme.colorScheme.secondary.withValues(alpha: 0.42),
-                    ],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                      blurRadius: 42,
-                      offset: const Offset(0, 18),
-                    ),
-                  ],
                 ),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      top: -56,
-                      right: -42,
-                      child: Container(
-                        width: 210,
-                        height: 210,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: theme.colorScheme.primary.withValues(
-                            alpha: 0.1,
+              ),
+              Positioned(
+                bottom: -80,
+                left: -28,
+                child: Container(
+                  width: 180,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: theme.colorScheme.secondaryForeground.withValues(
+                      alpha: 0.05,
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(28, 30, 28, 28),
+                child: LayoutBuilder(
+                  builder: (context, heroConstraints) {
+                    final useHeroGrid =
+                        wideHero && heroConstraints.maxWidth >= 620;
+                    final titleGroup = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'Optimize your images easily',
+                          style: TextStyle(
+                            fontSize: 31,
+                            height: 1.08,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.9,
                           ),
                         ),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: -80,
-                      left: -28,
-                      child: Container(
-                        width: 180,
-                        height: 180,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: theme.colorScheme.secondaryForeground
-                              .withValues(alpha: 0.05),
+                        const SizedBox(height: 14),
+                        Text(
+                          'OIMG helps you choose the optimal image format and settings.',
+                          style: TextStyle(
+                            color: theme.colorScheme.mutedForeground,
+                            fontSize: 13.6,
+                            height: 1.5,
+                          ),
                         ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(28, 30, 28, 28),
-                      child: LayoutBuilder(
-                        builder: (context, heroConstraints) {
-                          final useHeroGrid =
-                              wideHero && heroConstraints.maxWidth >= 620;
-                          final titleGroup = Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Text(
-                                'Optimize your images easily',
-                                style: TextStyle(
-                                  fontSize: 31,
-                                  height: 1.08,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: -0.9,
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              Text(
-                                'OIMG helps you choose the optimal image format and settings.',
-                                style: TextStyle(
-                                  color: theme.colorScheme.mutedForeground,
-                                  fontSize: 13.6,
-                                  height: 1.5,
-                                ),
-                              ),
-                            ],
-                          );
-                          final actionGroup = Align(
-                            alignment: useHeroGrid
-                                ? Alignment.centerRight
-                                : Alignment.centerLeft,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: useHeroGrid
-                                  ? CrossAxisAlignment.end
-                                  : CrossAxisAlignment.start,
-                              children: [
-                                Builder(
-                                  builder: (buttonContext) {
-                                    return PrimaryButton(
-                                      key: const ValueKey(
-                                        'empty-state-browse-button',
-                                      ),
-                                      size: ButtonSize.large,
-                                      density: ButtonDensity.normal,
-                                      onPressed: () =>
-                                          _showBrowseMenu(buttonContext, ref),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: const [
-                                          Icon(
-                                            LucideIcons.folderSearch,
-                                            size: 18,
-                                          ),
-                                          SizedBox(width: 10),
-                                          Text(
-                                            'Open images',
-                                            textScaler: TextScaler.linear(0.7),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'or drop files and folders anywhere',
-                                  textAlign: useHeroGrid
-                                      ? TextAlign.right
-                                      : TextAlign.left,
-                                  style: TextStyle(
-                                    color: theme.colorScheme.mutedForeground,
-                                  ),
-                                ).small(),
-                              ],
-                            ),
-                          );
-
-                          if (useHeroGrid) {
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Expanded(flex: 3, child: titleGroup),
-                                const SizedBox(width: 28),
-                                Expanded(flex: 2, child: actionGroup),
-                              ],
-                            );
-                          }
-
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              titleGroup,
-                              const SizedBox(height: 26),
-                              actionGroup,
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              );
-
-              final supportCards = const [
-                _EmptyStateFeatureCard(
-                  icon: LucideIcons.sparkles,
-                  title: 'Preview',
-                  description:
-                      'Inspect the optimized images before you hit save.',
-                ),
-                _EmptyStateFeatureCard(
-                  icon: LucideIcons.badgePercent,
-                  title: 'Compare',
-                  description:
-                      'See how different image formats compare in savings, quality, and compatibility.',
-                ),
-                _EmptyStateFeatureCard(
-                  icon: LucideIcons.chartSpline,
-                  title: 'Analyze',
-                  description:
-                      'Explore the balance between size and quality using state-of-the-art image quality analysis methods.',
-                ),
-              ];
-
-              final support = wide
-                  ? Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: supportCards[0]),
-                        const SizedBox(width: 14),
-                        Expanded(child: supportCards[1]),
-                        const SizedBox(width: 14),
-                        Expanded(child: supportCards[2]),
-                      ],
-                    )
-                  : Column(
-                      children: [
-                        supportCards[0],
-                        const SizedBox(height: 14),
-                        supportCards[1],
-                        const SizedBox(height: 14),
-                        supportCards[2],
                       ],
                     );
+                    final actionGroup = Align(
+                      alignment: useHeroGrid
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: useHeroGrid
+                            ? CrossAxisAlignment.end
+                            : CrossAxisAlignment.start,
+                        children: [
+                          Builder(
+                            builder: (buttonContext) {
+                              return PrimaryButton(
+                                key: const ValueKey(
+                                  'empty-state-browse-button',
+                                ),
+                                size: ButtonSize.large,
+                                density: ButtonDensity.normal,
+                                onPressed: () =>
+                                    _showBrowseMenu(buttonContext, ref),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    Icon(LucideIcons.folderSearch, size: 18),
+                                    SizedBox(width: 10),
+                                    Text(
+                                      'Open images',
+                                      textScaler: TextScaler.linear(0.7),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'or drop files and folders anywhere',
+                            textAlign: useHeroGrid
+                                ? TextAlign.right
+                                : TextAlign.left,
+                            style: TextStyle(
+                              color: theme.colorScheme.mutedForeground,
+                            ),
+                          ).small(),
+                        ],
+                      ),
+                    );
 
-              return Stack(
+                    if (useHeroGrid) {
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(flex: 3, child: titleGroup),
+                          const SizedBox(width: 28),
+                          Expanded(flex: 2, child: actionGroup),
+                        ],
+                      );
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        titleGroup,
+                        const SizedBox(height: 26),
+                        actionGroup,
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+
+        final supportCards = const [
+          _EmptyStateFeatureCard(
+            icon: LucideIcons.sparkles,
+            title: 'Preview',
+            description: 'Inspect the optimized images before you hit save.',
+          ),
+          _EmptyStateFeatureCard(
+            icon: LucideIcons.badgePercent,
+            title: 'Compare',
+            description:
+                'See how different image formats compare in savings, quality, and compatibility.',
+          ),
+          _EmptyStateFeatureCard(
+            icon: LucideIcons.chartSpline,
+            title: 'Analyze',
+            description:
+                'Explore the balance between size and quality using state-of-the-art image quality analysis methods.',
+          ),
+        ];
+
+        final support = wide
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Positioned.fill(
-                    child: _HomeShaderBackdrop(
-                      borderRadius: theme.borderRadiusXxl,
-                    ),
+                  Expanded(child: supportCards[0]),
+                  const SizedBox(width: 14),
+                  Expanded(child: supportCards[1]),
+                  const SizedBox(width: 14),
+                  Expanded(child: supportCards[2]),
+                ],
+              )
+            : Column(
+                children: [
+                  supportCards[0],
+                  const SizedBox(height: 14),
+                  supportCards[1],
+                  const SizedBox(height: 14),
+                  supportCards[2],
+                ],
+              );
+
+        return Stack(
+          children: [
+            const Positioned.fill(
+              child: _HomeShaderBackdrop(borderRadius: BorderRadius.zero),
+            ),
+            Positioned(
+              left: 28,
+              top: 24,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.colorScheme.primary.withValues(alpha: 0.05),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 54,
+              bottom: 20,
+              child: Container(
+                width: 160,
+                height: 160,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.colorScheme.secondaryForeground.withValues(
+                    alpha: 0.04,
                   ),
-                  Positioned(
-                    left: 28,
-                    top: 24,
-                    child: Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: theme.colorScheme.primary.withValues(
-                          alpha: 0.05,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: 54,
-                    bottom: 20,
-                    child: Container(
-                      width: 160,
-                      height: 160,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: theme.colorScheme.secondaryForeground.withValues(
-                          alpha: 0.04,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Padding(
+                ),
+              ),
+            ),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(28, 8, 28, 28),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1180),
+                  child: Padding(
                     padding: const EdgeInsets.all(22),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         ConstrainedBox(
                           constraints: BoxConstraints(
-                            maxWidth: constraints.maxWidth * 0.8,
+                            maxWidth: contentWidth * 0.8,
                           ),
                           child: hero,
                         ),
                         const SizedBox(height: 18),
                         ConstrainedBox(
                           constraints: BoxConstraints(
-                            maxWidth: constraints.maxWidth * 0.85,
+                            maxWidth: contentWidth * 0.85,
                           ),
                           child: support,
                         ),
@@ -6662,52 +6657,52 @@ class _EmptyState extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  Positioned(
-                    right: 28,
-                    bottom: 24,
-                    child: Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      alignment: WrapAlignment.end,
-                      children: [
-                        OutlineButton(
-                          key: const ValueKey('empty-state-github-button'),
-                          onPressed: () async {
-                            await launchUrl(
-                              Uri.parse('https://github.com/yunho-c/oimg'),
-                              mode: LaunchMode.externalApplication,
-                            );
-                          },
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(LucideIcons.github, size: 15),
-                              SizedBox(width: 8),
-                              Text('GitHub'),
-                            ],
-                          ),
-                        ),
-                        OutlineButton(
-                          key: const ValueKey('empty-state-feedback-button'),
-                          onPressed: () {},
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(LucideIcons.messageSquare, size: 15),
-                              SizedBox(width: 8),
-                              Text('Feedback'),
-                            ],
-                          ),
-                        ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 28,
+              bottom: 24,
+              child: Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                alignment: WrapAlignment.end,
+                children: [
+                  OutlineButton(
+                    key: const ValueKey('empty-state-github-button'),
+                    onPressed: () async {
+                      await launchUrl(
+                        Uri.parse('https://github.com/yunho-c/oimg'),
+                        mode: LaunchMode.externalApplication,
+                      );
+                    },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(LucideIcons.github, size: 15),
+                        SizedBox(width: 8),
+                        Text('GitHub'),
+                      ],
+                    ),
+                  ),
+                  OutlineButton(
+                    key: const ValueKey('empty-state-feedback-button'),
+                    onPressed: () {},
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(LucideIcons.messageSquare, size: 15),
+                        SizedBox(width: 8),
+                        Text('Feedback'),
                       ],
                     ),
                   ),
                 ],
-              );
-            },
-          ),
-        ),
-      ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
