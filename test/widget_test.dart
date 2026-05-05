@@ -45,6 +45,11 @@ void main() {
     await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
     await tester.pumpAndSettle();
 
+    final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+    final appBar = tester.widget<AppBar>(find.byType(AppBar));
+    expect(scaffold.floatingHeader, isTrue);
+    expect(appBar.surfaceOpacity, 0.10);
+    expect(appBar.surfaceBlur, 4);
     expect(find.text('Optimize images easily'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('empty-state-browse-button')),
@@ -3310,11 +3315,21 @@ void main() {
     await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
     await tester.pumpAndSettle();
 
+    var scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+    var appBar = tester.widget<AppBar>(find.byType(AppBar));
+    expect(scaffold.floatingHeader, isFalse);
+    expect(appBar.surfaceOpacity, isNull);
+    expect(appBar.surfaceBlur, isNull);
     expect(find.text('first.png'), findsWidgets);
 
     await tester.tap(find.byKey(const ValueKey('title-bar-home-button')));
     await tester.pumpAndSettle();
 
+    scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+    appBar = tester.widget<AppBar>(find.byType(AppBar));
+    expect(scaffold.floatingHeader, isTrue);
+    expect(appBar.surfaceOpacity, 0.10);
+    expect(appBar.surfaceBlur, 4);
     expect(find.text('Optimize images easily'), findsOneWidget);
     expect(find.text('first.png'), findsNothing);
   });

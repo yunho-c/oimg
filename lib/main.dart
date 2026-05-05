@@ -289,12 +289,16 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
     final showCaptionButtons = _shouldShowTitleBarCaptionButtons(appSettings);
     final title =
         controller.currentDisplayTitle ?? 'Open images from your desktop';
+    final homeScreen = !controller.hasSession;
 
     return Scaffold(
+      floatingHeader: homeScreen,
       headers: [
         AppBar(
           height: _titleBarHeight,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          surfaceOpacity: homeScreen ? 0.10 : null,
+          surfaceBlur: homeScreen ? 4 : null,
           child: Stack(
             alignment: Alignment.center,
             children: [
