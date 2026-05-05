@@ -7093,7 +7093,7 @@ class _EmptyStateFeaturePreview extends StatelessWidget {
             width: 520,
             height: 292,
             child: Padding(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(6),
               child: videoUrl == null
                   ? const _EmptyStateFeaturePreviewFrame()
                   : _EmptyStateFeaturePreviewVideo(url: videoUrl!),
