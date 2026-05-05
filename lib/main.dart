@@ -38,6 +38,7 @@ const _defaultBottomSidebarHeight = 165.0;
 const _minBottomSidebarHeight = 140.0;
 const _maxBottomSidebarHeight = 320.0;
 const _settingsBottomSectionsFoldThreshold = 650.0;
+const _appVersion = '0.1.2';
 const List<({double value, Color color})> _qualityMetricColorStops = [
   (value: 0, color: Color(0xFFFF0000)),
   (value: 20, color: Color(0xFFAA0000)),
@@ -6648,6 +6649,7 @@ class _EmptyState extends ConsumerWidget {
                 ),
               ),
             ),
+            const Positioned(left: 20, bottom: 19, child: _EmptyStateCredit()),
             Positioned(
               right: 28,
               bottom: 24,
@@ -6681,6 +6683,45 @@ class _EmptyState extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _EmptyStateCredit extends StatelessWidget {
+  const _EmptyStateCredit();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = theme.colorScheme.mutedForeground.withValues(
+      alpha: theme.brightness == ui.Brightness.dark ? 0.86 : 0.80,
+    );
+    final style = TextStyle(color: color, fontSize: 11.5, height: 1.2);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('v$_appVersion · Built with care by ', style: style),
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () async {
+              await launchUrl(
+                Uri.parse('https://yunhocho.com/'),
+                mode: LaunchMode.externalApplication,
+              );
+            },
+            child: Text(
+              'Yunho Cho',
+              style: style.copyWith(
+                decoration: TextDecoration.underline,
+                decorationColor: color.withValues(alpha: 0.75),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
