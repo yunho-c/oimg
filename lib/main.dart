@@ -6887,12 +6887,12 @@ class _EmptyStateHeroPanel extends StatelessWidget {
     if (acrylicEnabled) {
       final darkMode = theme.brightness == ui.Brightness.dark;
       final baseColor = darkMode
-          ? const Color(0xFFF8FAFC).withValues(alpha: 0.14)
+          ? const Color(0xFFF8FAFC).withValues(alpha: 0.126)
           : Color.lerp(
               theme.colorScheme.background,
               Colors.white,
               0.45,
-            )!.withValues(alpha: 0.68);
+            )!.withValues(alpha: 0.612);
       final borderColor = darkMode
           ? Colors.white.withValues(alpha: 0.18)
           : Colors.white.withValues(alpha: 0.58);
@@ -6912,7 +6912,7 @@ class _EmptyStateHeroPanel extends StatelessWidget {
         child: ClipRRect(
           borderRadius: borderRadius,
           child: BackdropFilter(
-            filter: ui.ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+            filter: ui.ImageFilter.blur(sigmaX: 3, sigmaY: 3),
             child: DecoratedBox(
               decoration: BoxDecoration(
                 borderRadius: borderRadius,
