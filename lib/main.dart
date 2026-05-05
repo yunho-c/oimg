@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6562,7 +6563,7 @@ class _EmptyState extends ConsumerWidget {
           _EmptyStateFeatureCard(
             icon: LucideIcons.sparkles,
             title: 'Preview',
-            description: 'Inspect the optimized images before you hit save.',
+            description: 'Inspect optimized images before you hit save.',
           ),
           _EmptyStateFeatureCard(
             icon: LucideIcons.badgePercent,
@@ -6574,7 +6575,7 @@ class _EmptyState extends ConsumerWidget {
             icon: LucideIcons.chartSpline,
             title: 'Analyze',
             description:
-                'Explore the balance between size and quality using state-of-the-art image quality analysis methods.',
+                'Explore the balance between size and quality using image quality analysis methods.',
           ),
         ];
 
@@ -6649,7 +6650,7 @@ class _EmptyState extends ConsumerWidget {
                         const SizedBox(height: 18),
                         ConstrainedBox(
                           constraints: BoxConstraints(
-                            maxWidth: contentWidth * 0.92,
+                            maxWidth: contentWidth * 0.8,
                           ),
                           child: support,
                         ),
@@ -6722,22 +6723,24 @@ class _HomeShaderBackdrop extends StatefulWidget {
 
 class _HomeShaderBackdropState extends State<_HomeShaderBackdrop>
     with SingleTickerProviderStateMixin {
-  AnimationController? _animationController;
+  Ticker? _shaderTicker;
+  Duration _shaderElapsed = Duration.zero;
 
   @override
   void initState() {
     super.initState();
     if (_shouldAnimateHomeShader) {
-      _animationController = AnimationController(
-        vsync: this,
-        duration: const Duration(seconds: 18),
-      )..repeat();
+      _shaderTicker = createTicker((elapsed) {
+        setState(() {
+          _shaderElapsed = elapsed;
+        });
+      })..start();
     }
   }
 
   @override
   void dispose() {
-    _animationController?.dispose();
+    _shaderTicker?.dispose();
     super.dispose();
   }
 
@@ -6763,36 +6766,16 @@ class _HomeShaderBackdropState extends State<_HomeShaderBackdrop>
           return fallback;
         }
 
-        final animationController = _animationController;
-        final shaderPaint = ClipRRect(
+        return ClipRRect(
           borderRadius: widget.borderRadius.resolve(Directionality.of(context)),
           child: CustomPaint(
             painter: _HomeShaderPainter(
               program: program,
-              time: (animationController?.value ?? 0) * 18,
+              time:
+                  _shaderElapsed.inMicroseconds /
+                  Duration.microsecondsPerSecond,
             ),
           ),
-        );
-
-        if (animationController == null) {
-          return shaderPaint;
-        }
-
-        return AnimatedBuilder(
-          animation: animationController,
-          builder: (context, child) {
-            return ClipRRect(
-              borderRadius: widget.borderRadius.resolve(
-                Directionality.of(context),
-              ),
-              child: CustomPaint(
-                painter: _HomeShaderPainter(
-                  program: program,
-                  time: animationController.value * 18,
-                ),
-              ),
-            );
-          },
         );
       },
     );
@@ -6946,39 +6929,51 @@ class _EmptyStateFeatureCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Card(
-      borderRadius: theme.borderRadiusXl,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(9),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                borderRadius: theme.borderRadiusLg,
-              ),
-              child: Icon(icon, size: 18, color: theme.colorScheme.primary),
+    return ClipRRect(
+      borderRadius: theme.borderRadiusXl.resolve(Directionality.of(context)),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: theme.borderRadiusXl,
+            border: Border.all(
+              color: theme.colorScheme.border.withValues(alpha: 0.7),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title).medium(),
-                  const SizedBox(height: 6),
-                  Text(
-                    description,
-                    style: TextStyle(
-                      color: theme.colorScheme.mutedForeground,
-                      height: 1.45,
-                    ),
-                  ).small(),
-                ],
-              ),
+            color: theme.colorScheme.background.withValues(alpha: 0.58),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(9),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                    borderRadius: theme.borderRadiusLg,
+                  ),
+                  child: Icon(icon, size: 18, color: theme.colorScheme.primary),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title).medium(),
+                      const SizedBox(height: 6),
+                      Text(
+                        description,
+                        style: TextStyle(
+                          color: theme.colorScheme.mutedForeground,
+                          height: 1.45,
+                        ),
+                      ).small(),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
