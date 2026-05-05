@@ -283,6 +283,7 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final controller = ref.watch(fileOpenControllerProvider);
     final runState = ref.watch(optimizationRunControllerProvider);
     final appSettings = ref.watch(appSettingsProvider).asData?.value;
@@ -290,6 +291,8 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
     final title =
         controller.currentDisplayTitle ?? 'Open images from your desktop';
     final homeScreen = !controller.hasSession;
+    final prominentHomeTitle =
+        homeScreen && theme.brightness == ui.Brightness.light;
 
     return Scaffold(
       floatingHeader: homeScreen,
@@ -311,7 +314,11 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                         letterSpacing: 0.4,
-                        color: Theme.of(context).colorScheme.mutedForeground,
+                        color: prominentHomeTitle
+                            ? theme.colorScheme.foreground.withValues(
+                                alpha: 0.60,
+                              )
+                            : theme.colorScheme.mutedForeground,
                       ),
                     ),
                   ),
