@@ -6411,14 +6411,29 @@ class _EmptyState extends ConsumerWidget {
         final wide = contentWidth >= 920;
         final wideHero = contentWidth >= 760;
 
-        final hero = _HomeAcrylicSurface(
-          borderRadius: theme.borderRadiusXxl,
-          blurSigma: 24,
-          backgroundAlpha: 0.50,
-          tintAlpha: 0.16,
-          shadowAlpha: 0.10,
-          shadowBlur: 42,
-          shadowOffset: const Offset(0, 18),
+        final hero = Container(
+          decoration: BoxDecoration(
+            borderRadius: theme.borderRadiusXxl,
+            border: Border.all(
+              color: theme.colorScheme.border.withValues(alpha: 0.7),
+            ),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                theme.colorScheme.background,
+                theme.colorScheme.primary.withValues(alpha: 0.06),
+                theme.colorScheme.secondary.withValues(alpha: 0.42),
+              ],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                blurRadius: 42,
+                offset: const Offset(0, 18),
+              ),
+            ],
+          ),
           child: Stack(
             children: [
               Positioned(
@@ -6981,9 +6996,6 @@ class _HomeAcrylicSurface extends StatelessWidget {
     this.blurSigma = 20,
     this.backgroundAlpha = 0.52,
     this.tintAlpha = 0.12,
-    this.shadowAlpha = 0.07,
-    this.shadowBlur = 26,
-    this.shadowOffset = const Offset(0, 12),
   });
 
   final Widget child;
@@ -6991,9 +7003,6 @@ class _HomeAcrylicSurface extends StatelessWidget {
   final double blurSigma;
   final double backgroundAlpha;
   final double tintAlpha;
-  final double shadowAlpha;
-  final double shadowBlur;
-  final Offset shadowOffset;
 
   @override
   Widget build(BuildContext context) {
@@ -7024,11 +7033,9 @@ class _HomeAcrylicSurface extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: theme.colorScheme.foreground.withValues(
-                  alpha: shadowAlpha,
-                ),
-                blurRadius: shadowBlur,
-                offset: shadowOffset,
+                color: theme.colorScheme.foreground.withValues(alpha: 0.07),
+                blurRadius: 26,
+                offset: const Offset(0, 12),
               ),
             ],
           ),
