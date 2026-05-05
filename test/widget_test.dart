@@ -3338,7 +3338,20 @@ void main() {
 
     await tester.tap(settingsButton);
     await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('title-bar-settings-label')),
+      findsOneWidget,
+    );
     expect(find.text('Theme: System'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('title-bar-community-label')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('title-bar-bug-tracker-button')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('title-bar-blog-button')), findsOneWidget);
     expect(
       find.byKey(const ValueKey('title-bar-app-name-label')),
       findsOneWidget,

@@ -3868,6 +3868,13 @@ class _TitleBarSettingsButton extends ConsumerWidget {
                           return DropdownMenu(
                             children: [
                               MenuButton(
+                                enabled: false,
+                                key: const ValueKey('title-bar-settings-label'),
+                                child: const Text(
+                                  'Settings',
+                                ).xSmall().medium().muted(),
+                              ),
+                              MenuButton(
                                 key: const ValueKey('title-bar-theme-toggle'),
                                 autoClose: false,
                                 trailing: Icon(
@@ -3886,6 +3893,44 @@ class _TitleBarSettingsButton extends ConsumerWidget {
                                 child: Text(
                                   'Theme: ${settings.themePreference.label}',
                                 ),
+                              ),
+                              const MenuDivider(),
+                              MenuButton(
+                                enabled: false,
+                                key: const ValueKey(
+                                  'title-bar-community-label',
+                                ),
+                                child: const Text(
+                                  'Community',
+                                ).xSmall().medium().muted(),
+                              ),
+                              MenuButton(
+                                key: const ValueKey(
+                                  'title-bar-bug-tracker-button',
+                                ),
+                                child: const Text('Bug Tracker'),
+                                onPressed: (context) {
+                                  unawaited(
+                                    launchUrl(
+                                      Uri.parse(
+                                        'https://github.com/oimg/issues',
+                                      ),
+                                      mode: LaunchMode.externalApplication,
+                                    ),
+                                  );
+                                },
+                              ),
+                              MenuButton(
+                                key: const ValueKey('title-bar-blog-button'),
+                                child: const Text('Blog'),
+                                onPressed: (context) {
+                                  unawaited(
+                                    launchUrl(
+                                      Uri.parse('https://oimg.substack.com'),
+                                      mode: LaunchMode.externalApplication,
+                                    ),
+                                  );
+                                },
                               ),
                               const MenuDivider(),
                               const MenuLabel(
