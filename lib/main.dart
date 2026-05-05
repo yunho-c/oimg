@@ -6711,8 +6711,15 @@ class _EmptyState extends ConsumerWidget {
 class _HomeShaderBackdrop extends StatefulWidget {
   const _HomeShaderBackdrop({required this.borderRadius});
 
-  static final _programFuture = ui.FragmentProgram.fromAsset(
-    'assets/shaders/home_wavy_background.frag',
+  static const _lightShaderAsset = 'assets/shaders/home_wavy_background.frag';
+  static const _darkShaderAsset =
+      'assets/shaders/home_wavy_background_dark.frag';
+
+  static final _lightProgramFuture = ui.FragmentProgram.fromAsset(
+    _lightShaderAsset,
+  );
+  static final _darkProgramFuture = ui.FragmentProgram.fromAsset(
+    _darkShaderAsset,
   );
 
   final BorderRadiusGeometry borderRadius;
@@ -6757,9 +6764,18 @@ class _HomeShaderBackdropState extends State<_HomeShaderBackdrop>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final darkMode = theme.brightness == ui.Brightness.dark;
+    final shaderAsset = darkMode
+        ? _HomeShaderBackdrop._darkShaderAsset
+        : _HomeShaderBackdrop._lightShaderAsset;
+    final programFuture = darkMode
+        ? _HomeShaderBackdrop._darkProgramFuture
+        : _HomeShaderBackdrop._lightProgramFuture;
     final fallback = _HomeShaderFallback(borderRadius: widget.borderRadius);
     return FutureBuilder<ui.FragmentProgram>(
-      future: _HomeShaderBackdrop._programFuture,
+      key: ValueKey(shaderAsset),
+      future: programFuture,
       builder: (context, snapshot) {
         final program = snapshot.data;
         if (program == null) {

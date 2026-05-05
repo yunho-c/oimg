@@ -96,6 +96,7 @@ flutter:
 
   shaders:
     - assets/shaders/home_wavy_background.frag
+    - assets/shaders/home_wavy_background_dark.frag
 
   # To add assets to your application, add an assets section, like this:
   # assets:
