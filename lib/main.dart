@@ -3976,17 +3976,19 @@ class _TitleBarSettingsButton extends ConsumerWidget {
                                 },
                               ),
                               const MenuDivider(),
-                              const MenuLabel(
-                                key: ValueKey('title-bar-app-name-label'),
-                                child: Text('OIMG'),
-                              ),
                               MenuLabel(
-                                key: const ValueKey('title-bar-version-label'),
-                                child: Text(
-                                  packageVersion == null
-                                      ? 'Version'
-                                      : 'Version $packageVersion',
-                                ).xSmall().muted(),
+                                key: const ValueKey('title-bar-app-name-label'),
+                                trailing: KeyedSubtree(
+                                  key: const ValueKey(
+                                    'title-bar-version-label',
+                                  ),
+                                  child: Text(
+                                    packageVersion == null
+                                        ? 'v'
+                                        : 'v$packageVersion',
+                                  ).xSmall().muted(),
+                                ),
+                                child: const Text('OIMG'),
                               ),
                               MenuButton(
                                 key: const ValueKey('title-bar-donate-button'),
@@ -6989,23 +6991,21 @@ class _EmptyStateHeroPanel extends StatelessWidget {
   }
 }
 
-class _EmptyStateCredit extends ConsumerWidget {
+class _EmptyStateCredit extends StatelessWidget {
   const _EmptyStateCredit();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final packageVersion = ref.watch(_packageVersionProvider).asData?.value;
     final color = theme.colorScheme.mutedForeground.withValues(
       alpha: theme.brightness == ui.Brightness.dark ? 0.86 : 0.80,
     );
     final style = TextStyle(color: color, fontSize: 11.5, height: 1.2);
-    final prefix = packageVersion == null ? '' : 'v$packageVersion · ';
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('${prefix}Built with care by ', style: style),
+        Text('Built with care by ', style: style),
         MouseRegion(
           cursor: SystemMouseCursors.click,
           child: GestureDetector(

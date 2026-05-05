@@ -51,6 +51,8 @@ void main() {
     expect(appBar.surfaceOpacity, 0.10);
     expect(appBar.surfaceBlur, 4);
     expect(find.text('Optimize images easily'), findsOneWidget);
+    expect(find.text('Built with care by '), findsOneWidget);
+    expect(find.text('v0.1.2 · Built with care by '), findsNothing);
     expect(
       find.byKey(const ValueKey('empty-state-browse-button')),
       findsOneWidget,
@@ -3426,7 +3428,7 @@ void main() {
       find.byKey(const ValueKey('title-bar-version-label')),
       findsOneWidget,
     );
-    expect(find.text('Version 0.1.2'), findsOneWidget);
+    expect(find.text('v0.1.2'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('title-bar-donate-button')),
       findsOneWidget,
