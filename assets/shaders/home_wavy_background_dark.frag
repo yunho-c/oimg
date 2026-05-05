@@ -15,7 +15,8 @@ void main() {
   vec2 pos = uv;
   pos.x *= safeSize.x / safeSize.y;
 
-  vec3 col = vec3(0.025, 0.030, 0.038);
+  // vec3 col = vec3(0.265, 0.318, 0.398);
+  vec3 col = vec3(0.165, 0.188, 0.228);
   float t = uTime * 0.5;
 
   const int numLayers = 6;
@@ -31,13 +32,15 @@ void main() {
     float waveShape = 0.30 * sin(pos.x * 1.2 + t + phaseInterval);
     float h = 1.05 - tilt - levelTilt - heightInterval + waveShape;
 
-    vec3 layerTopColor = vec3(
-      0.18 - fi * 0.018,
-      0.21 - fi * 0.022,
-      0.25 - fi * 0.024
+    float levelMix = fi / float(numLayers - 1);
+    vec3 layerHue = vec3(0.13, 0.16, 0.20);
+    vec3 layerTopColor = layerHue * mix(1.72, 0.82, levelMix);
+    vec3 layerBotColor = layerHue * mix(0.94, 0.42, levelMix);
+    vec3 layerCol = mix(
+      layerBotColor,
+      layerTopColor,
+      uv.y / max(h, 0.001)
     );
-    vec3 layerBotColor = layerTopColor - vec3(0.090, 0.080, 0.070);
-    vec3 layerCol = mix(layerBotColor, layerTopColor, uv.y / max(h, 0.001));
 
     col = mix(col, layerCol, step(uv.y, h));
   }
