@@ -6566,6 +6566,7 @@ class _EmptyState extends ConsumerWidget {
             icon: LucideIcons.sparkles,
             title: 'Preview',
             description: 'Inspect optimized images before you hit save.',
+            previewVideoUrl: 'https://media.oimg.org/videos/preview_demo.mp4',
           ),
           _EmptyStateFeatureCard(
             cardKey: ValueKey('empty-state-feature-compare'),
@@ -6573,6 +6574,7 @@ class _EmptyState extends ConsumerWidget {
             title: 'Compare',
             description:
                 'See how different image formats compare in savings, quality, and compatibility.',
+            previewVideoUrl: 'https://media.oimg.org/videos/compare_demo.mp4',
           ),
           _EmptyStateFeatureCard(
             cardKey: ValueKey('empty-state-feature-analyze'),
