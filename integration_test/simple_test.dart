@@ -40,7 +40,7 @@ void main() {
         child: const MyApp(),
       ),
     );
-    expect(find.text('Optimize your images easily'), findsOneWidget);
+    expect(find.text('Optimize images easily'), findsOneWidget);
   });
 }
 

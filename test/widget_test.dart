@@ -36,7 +36,7 @@ void main() {
     await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
     await tester.pumpAndSettle();
 
-    expect(find.text('Optimize your images easily'), findsOneWidget);
+    expect(find.text('Optimize images easily'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('empty-state-browse-button')),
       findsOneWidget,
@@ -3249,7 +3249,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('title-bar-home-button')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Optimize your images easily'), findsOneWidget);
+    expect(find.text('Optimize images easily'), findsOneWidget);
     expect(find.text('first.png'), findsNothing);
   });
 
@@ -3288,7 +3288,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('first.png'), findsWidgets);
-    expect(find.text('Optimize your images easily'), findsNothing);
+    expect(find.text('Optimize images easily'), findsNothing);
 
     await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();

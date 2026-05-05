@@ -6466,7 +6466,7 @@ class _EmptyState extends ConsumerWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Text(
-                          'Optimize your images easily',
+                          'Optimize images easily',
                           style: TextStyle(
                             fontSize: 31,
                             height: 1.08,
