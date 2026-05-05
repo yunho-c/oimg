@@ -6676,34 +6676,24 @@ class _EmptyState extends ConsumerWidget {
                 runSpacing: 10,
                 alignment: WrapAlignment.end,
                 children: [
-                  OutlineButton(
+                  _EmptyStateFooterButton(
                     key: const ValueKey('empty-state-github-button'),
+                    hoverColor: const Color(0xFF7C3AED),
+                    icon: LucideIcons.github,
+                    label: 'GitHub',
                     onPressed: () async {
                       await launchUrl(
                         Uri.parse('https://github.com/yunho-c/oimg'),
                         mode: LaunchMode.externalApplication,
                       );
                     },
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(LucideIcons.github, size: 15),
-                        SizedBox(width: 8),
-                        Text('GitHub'),
-                      ],
-                    ),
                   ),
-                  OutlineButton(
+                  _EmptyStateFooterButton(
                     key: const ValueKey('empty-state-feedback-button'),
+                    hoverColor: const Color(0xFFF97316),
+                    icon: LucideIcons.messageSquare,
+                    label: 'Feedback',
                     onPressed: () {},
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(LucideIcons.messageSquare, size: 15),
-                        SizedBox(width: 8),
-                        Text('Feedback'),
-                      ],
-                    ),
                   ),
                 ],
               ),
@@ -6711,6 +6701,60 @@ class _EmptyState extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _EmptyStateFooterButton extends StatelessWidget {
+  const _EmptyStateFooterButton({
+    super.key,
+    required this.hoverColor,
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final Color hoverColor;
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = ButtonStyle(
+      variance: ButtonVariance.outline.copyWith(
+        decoration: (context, states, decoration) {
+          if (decoration is BoxDecoration &&
+              states.contains(WidgetState.hovered)) {
+            return decoration.copyWith(
+              color: hoverColor,
+              border: Border.all(color: hoverColor),
+            );
+          }
+          return decoration;
+        },
+        textStyle: (context, states, textStyle) {
+          if (states.contains(WidgetState.hovered)) {
+            return textStyle.copyWith(color: const Color(0xFFFFFFFF));
+          }
+          return textStyle;
+        },
+        iconTheme: (context, states, iconTheme) {
+          if (states.contains(WidgetState.hovered)) {
+            return iconTheme.copyWith(color: const Color(0xFFFFFFFF));
+          }
+          return iconTheme;
+        },
+      ),
+    );
+
+    return Button(
+      style: style,
+      onPressed: onPressed,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [Icon(icon, size: 15), const SizedBox(width: 8), Text(label)],
+      ),
     );
   }
 }
