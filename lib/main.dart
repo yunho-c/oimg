@@ -6608,18 +6608,8 @@ class _EmptyState extends ConsumerWidget {
               return Stack(
                 children: [
                   Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        borderRadius: theme.borderRadiusXxl,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            theme.colorScheme.background,
-                            theme.colorScheme.secondary.withValues(alpha: 0.32),
-                          ],
-                        ),
-                      ),
+                    child: _HomeShaderBackdrop(
+                      borderRadius: theme.borderRadiusXxl,
                     ),
                   ),
                   Positioned(
@@ -6719,6 +6709,148 @@ class _EmptyState extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+class _HomeShaderBackdrop extends StatefulWidget {
+  const _HomeShaderBackdrop({required this.borderRadius});
+
+  static final _programFuture = ui.FragmentProgram.fromAsset(
+    'assets/shaders/home_wavy_background.frag',
+  );
+
+  final BorderRadiusGeometry borderRadius;
+
+  @override
+  State<_HomeShaderBackdrop> createState() => _HomeShaderBackdropState();
+}
+
+class _HomeShaderBackdropState extends State<_HomeShaderBackdrop>
+    with SingleTickerProviderStateMixin {
+  AnimationController? _animationController;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_shouldAnimateHomeShader) {
+      _animationController = AnimationController(
+        vsync: this,
+        duration: const Duration(seconds: 18),
+      )..repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _animationController?.dispose();
+    super.dispose();
+  }
+
+  bool get _shouldAnimateHomeShader {
+    var isWidgetTest = false;
+    assert(() {
+      isWidgetTest = WidgetsBinding.instance.runtimeType.toString().contains(
+        'TestWidgetsFlutterBinding',
+      );
+      return true;
+    }());
+    return !isWidgetTest;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = _HomeShaderFallback(borderRadius: widget.borderRadius);
+    return FutureBuilder<ui.FragmentProgram>(
+      future: _HomeShaderBackdrop._programFuture,
+      builder: (context, snapshot) {
+        final program = snapshot.data;
+        if (program == null) {
+          return fallback;
+        }
+
+        final animationController = _animationController;
+        final shaderPaint = ClipRRect(
+          borderRadius: widget.borderRadius.resolve(Directionality.of(context)),
+          child: CustomPaint(
+            painter: _HomeShaderPainter(
+              program: program,
+              time: (animationController?.value ?? 0) * 18,
+            ),
+          ),
+        );
+
+        if (animationController == null) {
+          return shaderPaint;
+        }
+
+        return AnimatedBuilder(
+          animation: animationController,
+          builder: (context, child) {
+            return ClipRRect(
+              borderRadius: widget.borderRadius.resolve(
+                Directionality.of(context),
+              ),
+              child: CustomPaint(
+                painter: _HomeShaderPainter(
+                  program: program,
+                  time: animationController.value * 18,
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _HomeShaderFallback extends StatelessWidget {
+  const _HomeShaderFallback({required this.borderRadius});
+
+  final BorderRadiusGeometry borderRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: borderRadius,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.background,
+            theme.colorScheme.secondary.withValues(alpha: 0.32),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeShaderPainter extends CustomPainter {
+  const _HomeShaderPainter({required this.program, required this.time});
+
+  final ui.FragmentProgram program;
+  final double time;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) {
+      return;
+    }
+
+    final shader = program.fragmentShader()
+      ..setFloat(0, size.width)
+      ..setFloat(1, size.height)
+      ..setFloat(2, time);
+
+    canvas.drawRect(Offset.zero & size, Paint()..shader = shader);
+  }
+
+  @override
+  bool shouldRepaint(covariant _HomeShaderPainter oldDelegate) {
+    return oldDelegate.program != program || oldDelegate.time != time;
   }
 }
 
