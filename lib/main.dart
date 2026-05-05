@@ -6411,29 +6411,14 @@ class _EmptyState extends ConsumerWidget {
         final wide = contentWidth >= 920;
         final wideHero = contentWidth >= 760;
 
-        final hero = Container(
-          decoration: BoxDecoration(
-            borderRadius: theme.borderRadiusXxl,
-            border: Border.all(
-              color: theme.colorScheme.border.withValues(alpha: 0.7),
-            ),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                theme.colorScheme.background,
-                theme.colorScheme.primary.withValues(alpha: 0.06),
-                theme.colorScheme.secondary.withValues(alpha: 0.42),
-              ],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                blurRadius: 42,
-                offset: const Offset(0, 18),
-              ),
-            ],
-          ),
+        final hero = _HomeAcrylicSurface(
+          borderRadius: theme.borderRadiusXxl,
+          blurSigma: 24,
+          backgroundAlpha: 0.50,
+          tintAlpha: 0.16,
+          shadowAlpha: 0.10,
+          shadowBlur: 42,
+          shadowOffset: const Offset(0, 18),
           child: Stack(
             children: [
               Positioned(
@@ -6988,6 +6973,72 @@ class _SettingsWarningBlock extends StatelessWidget {
   }
 }
 
+class _HomeAcrylicSurface extends StatelessWidget {
+  const _HomeAcrylicSurface({
+    super.key,
+    required this.child,
+    required this.borderRadius,
+    this.blurSigma = 20,
+    this.backgroundAlpha = 0.52,
+    this.tintAlpha = 0.12,
+    this.shadowAlpha = 0.07,
+    this.shadowBlur = 26,
+    this.shadowOffset = const Offset(0, 12),
+  });
+
+  final Widget child;
+  final BorderRadiusGeometry borderRadius;
+  final double blurSigma;
+  final double backgroundAlpha;
+  final double tintAlpha;
+  final double shadowAlpha;
+  final double shadowBlur;
+  final Offset shadowOffset;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final resolvedRadius = borderRadius.resolve(Directionality.of(context));
+
+    return ClipRRect(
+      borderRadius: resolvedRadius,
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: borderRadius,
+            border: Border.all(
+              color: theme.colorScheme.border.withValues(alpha: 0.62),
+            ),
+            color: theme.colorScheme.background.withValues(
+              alpha: backgroundAlpha,
+            ),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                theme.colorScheme.background.withValues(alpha: backgroundAlpha),
+                theme.colorScheme.primary.withValues(alpha: tintAlpha * 0.55),
+                theme.colorScheme.secondary.withValues(alpha: tintAlpha),
+              ],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: theme.colorScheme.foreground.withValues(
+                  alpha: shadowAlpha,
+                ),
+                blurRadius: shadowBlur,
+                offset: shadowOffset,
+              ),
+            ],
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
 class _EmptyStateFeatureCard extends StatelessWidget {
   const _EmptyStateFeatureCard({
     required this.cardKey,
@@ -7007,48 +7058,39 @@ class _EmptyStateFeatureCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final card = ClipRRect(
+    final card = _HomeAcrylicSurface(
       key: cardKey,
-      borderRadius: theme.borderRadiusXl.resolve(Directionality.of(context)),
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: theme.borderRadiusXl,
-            border: Border.all(
-              color: theme.colorScheme.border.withValues(alpha: 0.7),
+      borderRadius: theme.borderRadiusXl,
+      blurSigma: 20,
+      backgroundAlpha: 0.34,
+      tintAlpha: 0.08,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 1),
+              child: Icon(icon, size: 20, color: theme.colorScheme.primary),
             ),
-            color: theme.colorScheme.background.withValues(alpha: 0.58),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 1),
-                  child: Icon(icon, size: 20, color: theme.colorScheme.primary),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title).medium(),
-                      const SizedBox(height: 6),
-                      Text(
-                        description,
-                        style: TextStyle(
-                          color: theme.colorScheme.mutedForeground,
-                          height: 1.45,
-                        ),
-                      ).small(),
-                    ],
-                  ),
-                ),
-              ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title).medium(),
+                  const SizedBox(height: 6),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      color: theme.colorScheme.mutedForeground,
+                      height: 1.45,
+                    ),
+                  ).small(),
+                ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
