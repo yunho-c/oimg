@@ -6678,7 +6678,7 @@ class _EmptyState extends ConsumerWidget {
                 children: [
                   _EmptyStateFooterButton(
                     key: const ValueKey('empty-state-github-button'),
-                    hoverColor: const Color(0xFF7C3AED),
+                    hoverColor: const Color(0xFF7B4BDA),
                     icon: LucideIcons.github,
                     label: 'GitHub',
                     onPressed: () async {
@@ -6690,7 +6690,7 @@ class _EmptyState extends ConsumerWidget {
                   ),
                   _EmptyStateFooterButton(
                     key: const ValueKey('empty-state-feedback-button'),
-                    hoverColor: const Color(0xFFF97316),
+                    hoverColor: const Color(0xFFE9822E),
                     icon: LucideIcons.messageSquare,
                     label: 'Feedback',
                     onPressed: () {},
