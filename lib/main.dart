@@ -1966,7 +1966,14 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
                   onPressed: analyzeAvailability.isEnabled
                       ? analyzeController.startAnalyze
                       : null,
-                  child: const Text('Analyze'),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(LucideIcons.chartSpline, size: 15),
+                      SizedBox(width: 8),
+                      Text('Analyze'),
+                    ],
+                  ),
                 ),
         ),
       ],
