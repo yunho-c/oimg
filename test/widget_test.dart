@@ -3409,8 +3409,10 @@ void main() {
       find.byKey(const ValueKey('title-bar-settings-label')),
       findsOneWidget,
     );
-    expect(find.text('Theme: System'), findsOneWidget);
-    expect(find.text('Color: Slate'), findsOneWidget);
+    expect(find.text('Theme'), findsOneWidget);
+    expect(find.text('System'), findsNothing);
+    expect(find.text('Color'), findsOneWidget);
+    expect(find.text('Slate'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('title-bar-community-label')),
       findsOneWidget,
@@ -3444,7 +3446,7 @@ void main() {
       find.byKey(const ValueKey('title-bar-theme-toggle')),
       findsOneWidget,
     );
-    expect(find.text('Theme: Light'), findsOneWidget);
+    expect(find.text('Light'), findsNothing);
     expect(
       AppSettings.fromJsonString((await store.read())!).themePreference,
       AppThemePreference.light,
@@ -3454,7 +3456,7 @@ void main() {
       find.byKey(const ValueKey('title-bar-color-scheme-toggle')),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Color: Zinc'), findsOneWidget);
+    expect(find.text('Zinc'), findsOneWidget);
     expect(
       AppSettings.fromJsonString((await store.read())!).colorSchemePreference,
       AppColorSchemePreference.zinc,
@@ -3466,7 +3468,7 @@ void main() {
       find.byKey(const ValueKey('title-bar-theme-toggle')),
       findsOneWidget,
     );
-    expect(find.text('Theme: Dark'), findsOneWidget);
+    expect(find.text('Dark'), findsNothing);
     expect(
       AppSettings.fromJsonString((await store.read())!).themePreference,
       AppThemePreference.dark,
@@ -3478,7 +3480,7 @@ void main() {
       find.byKey(const ValueKey('title-bar-theme-toggle')),
       findsOneWidget,
     );
-    expect(find.text('Theme: System'), findsOneWidget);
+    expect(find.text('System'), findsNothing);
     expect(
       AppSettings.fromJsonString((await store.read())!).themePreference,
       AppThemePreference.system,

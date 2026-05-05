@@ -3917,15 +3917,16 @@ class _TitleBarSettingsButton extends ConsumerWidget {
                                         .cycleThemePreference(),
                                   );
                                 },
-                                child: Text(
-                                  'Theme: ${settings.themePreference.label}',
-                                ),
+                                child: const Text('Theme'),
                               ),
                               MenuButton(
                                 key: const ValueKey(
                                   'title-bar-color-scheme-toggle',
                                 ),
                                 autoClose: false,
+                                trailing: Text(
+                                  settings.colorSchemePreference.label,
+                                ).xSmall().muted(),
                                 onPressed: (context) {
                                   unawaited(
                                     ref
@@ -3933,9 +3934,7 @@ class _TitleBarSettingsButton extends ConsumerWidget {
                                         .cycleColorSchemePreference(),
                                   );
                                 },
-                                child: Text(
-                                  'Color: ${settings.colorSchemePreference.label}',
-                                ),
+                                child: const Text('Color'),
                               ),
                               const MenuDivider(),
                               MenuButton(
