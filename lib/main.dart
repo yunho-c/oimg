@@ -7121,6 +7121,16 @@ class _EmptyStateFeaturePreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final viewportSize = MediaQuery.sizeOf(context);
+    const aspectRatio = 16 / 9;
+    final maxPreviewWidth = math.max(0.0, viewportSize.width - 96);
+    final maxPreviewHeight = math.max(0.0, viewportSize.height - 180);
+    var previewWidth = math.min(760.0, maxPreviewWidth);
+    var previewHeight = previewWidth / aspectRatio;
+    if (previewHeight > maxPreviewHeight) {
+      previewHeight = maxPreviewHeight;
+      previewWidth = previewHeight * aspectRatio;
+    }
 
     return ClipRRect(
       key: const ValueKey('empty-state-feature-preview-panel'),
@@ -7143,8 +7153,8 @@ class _EmptyStateFeaturePreview extends StatelessWidget {
             ],
           ),
           child: SizedBox(
-            width: 520,
-            height: 292,
+            width: previewWidth,
+            height: previewHeight,
             child: Padding(
               padding: const EdgeInsets.all(6),
               child: videoUrl == null
