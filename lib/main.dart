@@ -7405,7 +7405,7 @@ class _EmptyStateFeatureCard extends StatelessWidget {
       backgroundAlpha: 0.24,
       tintAlpha: darkMode ? 0.06 : 0.12,
       tintColor: darkMode ? null : Colors.white,
-      borderAlpha: darkMode ? 0.62 : 0.36,
+      borderAlpha: darkMode ? 0.62 : 0.40,
       shadowColor: darkMode ? null : Colors.white,
       shadowAlpha: darkMode ? 0.07 : 0.25,
       child: Padding(
