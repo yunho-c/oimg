@@ -15,7 +15,7 @@ void main() {
   vec2 pos = uv;
   pos.x *= safeSize.x / safeSize.y;
 
-  vec3 col = vec3(0.1588, 0.1706, 0.2020);
+  vec3 col = vec3(0.1739, 0.1875, 0.2220);
   float t = uTime * 0.5;
 
   const int numLayers = 6;
