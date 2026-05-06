@@ -15,7 +15,7 @@ void main() {
   vec2 pos = uv;
   pos.x *= safeSize.x / safeSize.y;
 
-  vec3 col = vec3(0.145, 0.145, 0.155);
+  vec3 col = vec3(0.155, 0.1665, 0.1915);
   float t = uTime * 0.5;
 
   const int numLayers = 6;
@@ -32,7 +32,7 @@ void main() {
     float h = 1.05 - tilt - levelTilt - heightInterval + waveShape;
 
     float levelMix = fi / float(numLayers - 1);
-    vec3 layerHue = vec3(0.135, 0.135, 0.148);
+    vec3 layerHue = vec3(0.1325, 0.1475, 0.174);
     vec3 layerTopColor = layerHue * mix(1.72, 0.82, levelMix);
     vec3 layerBotColor = layerHue * mix(0.94, 0.42, levelMix);
     vec3 layerCol = mix(
@@ -46,8 +46,8 @@ void main() {
 
   float cyanGlow = smoothstep(0.0, 1.0, 1.0 - distance(uv, vec2(0.18, 0.18)));
   float violetGlow = smoothstep(0.0, 1.0, 1.0 - distance(uv, vec2(0.88, 0.78)));
-  col += vec3(0.02, 0.025, 0.03) * cyanGlow * 0.14;
-  col += vec3(0.045, 0.035, 0.055) * violetGlow * 0.16;
+  col += vec3(0.01, 0.0375, 0.05) * cyanGlow * 0.20;
+  col += vec3(0.0525, 0.0325, 0.0675) * violetGlow * 0.18;
 
   fragColor = vec4(col, 1.0);
 }
