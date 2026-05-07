@@ -351,6 +351,7 @@ fn run_operation(
             Ok(PipelineOptions {
                 format: resolve_optional_target_format(options.target_format.as_deref(), source)?,
                 quality: validate_quality(options.quality)?,
+                effort: validate_effort(options.effort)?,
                 threads,
                 resize: Some(map_resize_spec(&options.resize)?),
                 crop: None,
@@ -362,6 +363,7 @@ fn run_operation(
             Ok(PipelineOptions {
                 format: resolve_optional_target_format(options.target_format.as_deref(), source)?,
                 quality: validate_quality(options.quality)?,
+                effort: validate_effort(options.effort)?,
                 threads,
                 resize: None,
                 crop: Some(map_crop_spec(&options.crop)?),
@@ -373,6 +375,7 @@ fn run_operation(
             Ok(PipelineOptions {
                 format: resolve_optional_target_format(options.target_format.as_deref(), source)?,
                 quality: validate_quality(options.quality)?,
+                effort: validate_effort(options.effort)?,
                 threads,
                 resize: None,
                 crop: None,
@@ -392,6 +395,7 @@ pub(crate) fn run_preview_operation(
     let output = match operation {
         ImageOperation::Convert(options) => {
             let quality = validate_quality(options.quality)?;
+            let effort = validate_effort(options.effort)?;
             let target_format = crate::codec::parse_format(&options.target_format)?;
             let encode_threads = encode_threads_for_format(target_format, threads);
             let result = core_convert(
@@ -399,6 +403,7 @@ pub(crate) fn run_preview_operation(
                 &PipelineOptions {
                     format: target_format,
                     quality,
+                    effort,
                     threads: encode_threads,
                     resize: None,
                     crop: None,
@@ -410,11 +415,13 @@ pub(crate) fn run_preview_operation(
         }
         ImageOperation::Optimize(options) => {
             let quality = validate_quality(options.quality)?;
+            let effort = validate_effort(options.effort)?;
             let codec = get_codec(source_format);
             let encoded = codec.encode(
                 image,
                 &EncodeOptions {
                     quality,
+                    effort,
                     threads: encode_threads_for_format(source_format, threads),
                 },
             )?;
@@ -428,6 +435,7 @@ pub(crate) fn run_preview_operation(
                 &PipelineOptions {
                     format: target_format,
                     quality: validate_quality(options.quality)?,
+                    effort: validate_effort(options.effort)?,
                     threads: encode_threads_for_format(target_format, threads),
                     resize: Some(map_resize_spec(&options.resize)?),
                     crop: None,
@@ -445,6 +453,7 @@ pub(crate) fn run_preview_operation(
                 &PipelineOptions {
                     format: target_format,
                     quality: validate_quality(options.quality)?,
+                    effort: validate_effort(options.effort)?,
                     threads: encode_threads_for_format(target_format, threads),
                     resize: None,
                     crop: Some(map_crop_spec(&options.crop)?),
@@ -462,6 +471,7 @@ pub(crate) fn run_preview_operation(
                 &PipelineOptions {
                     format: target_format,
                     quality: validate_quality(options.quality)?,
+                    effort: validate_effort(options.effort)?,
                     threads: encode_threads_for_format(target_format, threads),
                     resize: None,
                     crop: None,
@@ -489,6 +499,7 @@ fn convert_bytes(
     threads: Option<usize>,
 ) -> Result<OperationOutput> {
     let quality = validate_quality(options.quality)?;
+    let effort = validate_effort(options.effort)?;
     let target_format = crate::codec::parse_format(&options.target_format)?;
     let (image, _) = decode(data)?;
     let result = core_convert(
@@ -496,6 +507,7 @@ fn convert_bytes(
         &PipelineOptions {
             format: target_format,
             quality,
+            effort,
             threads: encode_threads_for_format(target_format, threads),
             resize: None,
             crop: None,
@@ -518,6 +530,7 @@ fn optimize_bytes(
     threads: Option<usize>,
 ) -> Result<OperationOutput> {
     let quality = validate_quality(options.quality)?;
+    let effort = validate_effort(options.effort)?;
     let total_start = Instant::now();
 
     let decode_start = Instant::now();
@@ -530,6 +543,7 @@ fn optimize_bytes(
         &image,
         &EncodeOptions {
             quality,
+            effort,
             threads: encode_threads_for_format(format, threads),
         },
     )?;
@@ -717,6 +731,15 @@ fn validate_quality(quality: u8) -> Result<u8> {
     Ok(quality)
 }
 
+fn validate_effort(effort: Option<u8>) -> Result<Option<u8>> {
+    if effort.is_some_and(|value| value > 100) {
+        return Err(SlimgBridgeError::invalid_request(
+            "effort must be between 0 and 100",
+        ));
+    }
+    Ok(effort)
+}
+
 fn require_non_zero(value: u32, message: &str) -> Result<()> {
     if value == 0 {
         return Err(SlimgBridgeError::invalid_request(message));
@@ -762,6 +785,7 @@ mod tests {
             &PipelineOptions {
                 format: Format::Png,
                 quality: 80,
+                effort: None,
                 threads: None,
                 resize: None,
                 crop: None,
@@ -805,6 +829,7 @@ mod tests {
             operation: ImageOperation::Convert(ConvertOptions {
                 target_format: "webp".to_string(),
                 quality: 80,
+                effort: None,
             }),
         })
         .unwrap();
@@ -820,6 +845,7 @@ mod tests {
             operation: ImageOperation::Convert(ConvertOptions {
                 target_format: "avif".to_string(),
                 quality: 80,
+                effort: None,
             }),
         })
         .unwrap();
@@ -837,6 +863,7 @@ mod tests {
             &ImageOperation::Convert(ConvertOptions {
                 target_format: "avif".to_string(),
                 quality: 80,
+                effort: None,
             }),
             None,
         )
@@ -859,6 +886,7 @@ mod tests {
             &ImageOperation::Convert(ConvertOptions {
                 target_format: "avif".to_string(),
                 quality: 0,
+                effort: None,
             }),
             None,
         )
@@ -889,6 +917,7 @@ mod tests {
                 resize: ResizeSpec::Scale { factor: 0.0 },
                 target_format: None,
                 quality: 80,
+                effort: None,
             }),
         })
         .unwrap_err();

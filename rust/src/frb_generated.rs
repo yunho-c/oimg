@@ -1063,9 +1063,11 @@ impl SseDecode for crate::types::ConvertOptions {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_targetFormat = <String>::sse_decode(deserializer);
         let mut var_quality = <u8>::sse_decode(deserializer);
+        let mut var_effort = <Option<u8>>::sse_decode(deserializer);
         return crate::types::ConvertOptions {
             target_format: var_targetFormat,
             quality: var_quality,
+            effort: var_effort,
         };
     }
 }
@@ -1076,10 +1078,12 @@ impl SseDecode for crate::types::CropOptions {
         let mut var_crop = <crate::types::CropSpec>::sse_decode(deserializer);
         let mut var_targetFormat = <Option<String>>::sse_decode(deserializer);
         let mut var_quality = <u8>::sse_decode(deserializer);
+        let mut var_effort = <Option<u8>>::sse_decode(deserializer);
         return crate::types::CropOptions {
             crop: var_crop,
             target_format: var_targetFormat,
             quality: var_quality,
+            effort: var_effort,
         };
     }
 }
@@ -1141,11 +1145,13 @@ impl SseDecode for crate::types::ExtendOptions {
         let mut var_fill = <Option<crate::types::FillSpec>>::sse_decode(deserializer);
         let mut var_targetFormat = <Option<String>>::sse_decode(deserializer);
         let mut var_quality = <u8>::sse_decode(deserializer);
+        let mut var_effort = <Option<u8>>::sse_decode(deserializer);
         return crate::types::ExtendOptions {
             extend: var_extend,
             fill: var_fill,
             target_format: var_targetFormat,
             quality: var_quality,
+            effort: var_effort,
         };
     }
 }
@@ -1449,9 +1455,11 @@ impl SseDecode for crate::types::OptimizeOptions {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_quality = <u8>::sse_decode(deserializer);
+        let mut var_effort = <Option<u8>>::sse_decode(deserializer);
         let mut var_writeOnlyIfSmaller = <bool>::sse_decode(deserializer);
         return crate::types::OptimizeOptions {
             quality: var_quality,
+            effort: var_effort,
             write_only_if_smaller: var_writeOnlyIfSmaller,
         };
     }
@@ -1587,10 +1595,12 @@ impl SseDecode for crate::types::ResizeOptions {
         let mut var_resize = <crate::types::ResizeSpec>::sse_decode(deserializer);
         let mut var_targetFormat = <Option<String>>::sse_decode(deserializer);
         let mut var_quality = <u8>::sse_decode(deserializer);
+        let mut var_effort = <Option<u8>>::sse_decode(deserializer);
         return crate::types::ResizeOptions {
             resize: var_resize,
             target_format: var_targetFormat,
             quality: var_quality,
+            effort: var_effort,
         };
     }
 }
@@ -2053,6 +2063,7 @@ impl flutter_rust_bridge::IntoDart for crate::types::ConvertOptions {
         [
             self.target_format.into_into_dart().into_dart(),
             self.quality.into_into_dart().into_dart(),
+            self.effort.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2072,6 +2083,7 @@ impl flutter_rust_bridge::IntoDart for crate::types::CropOptions {
             self.crop.into_into_dart().into_dart(),
             self.target_format.into_into_dart().into_dart(),
             self.quality.into_into_dart().into_dart(),
+            self.effort.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2149,6 +2161,7 @@ impl flutter_rust_bridge::IntoDart for crate::types::ExtendOptions {
             self.fill.into_into_dart().into_dart(),
             self.target_format.into_into_dart().into_dart(),
             self.quality.into_into_dart().into_dart(),
+            self.effort.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2290,6 +2303,7 @@ impl flutter_rust_bridge::IntoDart for crate::types::OptimizeOptions {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.quality.into_into_dart().into_dart(),
+            self.effort.into_into_dart().into_dart(),
             self.write_only_if_smaller.into_into_dart().into_dart(),
         ]
         .into_dart()
@@ -2480,6 +2494,7 @@ impl flutter_rust_bridge::IntoDart for crate::types::ResizeOptions {
             self.resize.into_into_dart().into_dart(),
             self.target_format.into_into_dart().into_dart(),
             self.quality.into_into_dart().into_dart(),
+            self.effort.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2722,6 +2737,7 @@ impl SseEncode for crate::types::ConvertOptions {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.target_format, serializer);
         <u8>::sse_encode(self.quality, serializer);
+        <Option<u8>>::sse_encode(self.effort, serializer);
     }
 }
 
@@ -2731,6 +2747,7 @@ impl SseEncode for crate::types::CropOptions {
         <crate::types::CropSpec>::sse_encode(self.crop, serializer);
         <Option<String>>::sse_encode(self.target_format, serializer);
         <u8>::sse_encode(self.quality, serializer);
+        <Option<u8>>::sse_encode(self.effort, serializer);
     }
 }
 
@@ -2780,6 +2797,7 @@ impl SseEncode for crate::types::ExtendOptions {
         <Option<crate::types::FillSpec>>::sse_encode(self.fill, serializer);
         <Option<String>>::sse_encode(self.target_format, serializer);
         <u8>::sse_encode(self.quality, serializer);
+        <Option<u8>>::sse_encode(self.effort, serializer);
     }
 }
 
@@ -3034,6 +3052,7 @@ impl SseEncode for crate::types::OptimizeOptions {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <u8>::sse_encode(self.quality, serializer);
+        <Option<u8>>::sse_encode(self.effort, serializer);
         <bool>::sse_encode(self.write_only_if_smaller, serializer);
     }
 }
@@ -3122,6 +3141,7 @@ impl SseEncode for crate::types::ResizeOptions {
         <crate::types::ResizeSpec>::sse_encode(self.resize, serializer);
         <Option<String>>::sse_encode(self.target_format, serializer);
         <u8>::sse_encode(self.quality, serializer);
+        <Option<u8>>::sse_encode(self.effort, serializer);
     }
 }
 

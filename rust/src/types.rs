@@ -180,11 +180,13 @@ pub struct PreviewFileRequest {
 pub struct ConvertOptions {
     pub target_format: String,
     pub quality: u8,
+    pub effort: Option<u8>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OptimizeOptions {
     pub quality: u8,
+    pub effort: Option<u8>,
     pub write_only_if_smaller: bool,
 }
 
@@ -202,6 +204,7 @@ pub struct ResizeOptions {
     pub resize: ResizeSpec,
     pub target_format: Option<String>,
     pub quality: u8,
+    pub effort: Option<u8>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -223,6 +226,7 @@ pub struct CropOptions {
     pub crop: CropSpec,
     pub target_format: Option<String>,
     pub quality: u8,
+    pub effort: Option<u8>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -243,6 +247,7 @@ pub struct ExtendOptions {
     pub fill: Option<FillSpec>,
     pub target_format: Option<String>,
     pub quality: u8,
+    pub effort: Option<u8>,
 }
 
 impl ImageOperation {
@@ -261,26 +266,31 @@ impl ImageOperation {
             Self::Convert(options) => Self::Convert(ConvertOptions {
                 target_format: options.target_format.clone(),
                 quality,
+                effort: options.effort,
             }),
             Self::Optimize(options) => Self::Optimize(OptimizeOptions {
                 quality,
+                effort: options.effort,
                 write_only_if_smaller: options.write_only_if_smaller,
             }),
             Self::Resize(options) => Self::Resize(ResizeOptions {
                 resize: options.resize.clone(),
                 target_format: options.target_format.clone(),
                 quality,
+                effort: options.effort,
             }),
             Self::Crop(options) => Self::Crop(CropOptions {
                 crop: options.crop.clone(),
                 target_format: options.target_format.clone(),
                 quality,
+                effort: options.effort,
             }),
             Self::Extend(options) => Self::Extend(ExtendOptions {
                 extend: options.extend.clone(),
                 fill: options.fill.clone(),
                 target_format: options.target_format.clone(),
                 quality,
+                effort: options.effort,
             }),
         }
     }

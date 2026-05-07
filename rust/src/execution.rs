@@ -304,6 +304,7 @@ mod tests {
                 operation: ImageOperation::Convert(ConvertOptions {
                     target_format: "avif".to_string(),
                     quality: 80,
+                    effort: None,
                 }),
             }],
             continue_on_error: true,
@@ -329,6 +330,7 @@ mod tests {
                 preserve_color_profile: false,
                 operation: ImageOperation::Optimize(OptimizeOptions {
                     quality: 80,
+                    effort: None,
                     write_only_if_smaller: true,
                 }),
             }],
@@ -351,6 +353,7 @@ mod tests {
             overwrite: true,
             operation: ImageOperation::Optimize(OptimizeOptions {
                 quality: 80,
+                effort: None,
                 write_only_if_smaller: true,
             }),
             continue_on_error: true,

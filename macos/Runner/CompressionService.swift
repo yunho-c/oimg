@@ -34,13 +34,50 @@ private struct CompressionServiceSettings: Codable {
   let advancedMode: Bool
   let preferredCodec: String
   let quality: Int
+  let effort: Int
+
+  private enum CodingKeys: String, CodingKey {
+    case compressionMethod
+    case compressionPriority
+    case advancedMode
+    case preferredCodec
+    case quality
+    case effort
+  }
+
+  init(
+    compressionMethod: String,
+    compressionPriority: String,
+    advancedMode: Bool,
+    preferredCodec: String,
+    quality: Int,
+    effort: Int
+  ) {
+    self.compressionMethod = compressionMethod
+    self.compressionPriority = compressionPriority
+    self.advancedMode = advancedMode
+    self.preferredCodec = preferredCodec
+    self.quality = quality
+    self.effort = effort
+  }
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    compressionMethod = try container.decode(String.self, forKey: .compressionMethod)
+    compressionPriority = try container.decode(String.self, forKey: .compressionPriority)
+    advancedMode = try container.decode(Bool.self, forKey: .advancedMode)
+    preferredCodec = try container.decode(String.self, forKey: .preferredCodec)
+    quality = try container.decode(Int.self, forKey: .quality)
+    effort = try container.decodeIfPresent(Int.self, forKey: .effort) ?? Self.defaults.effort
+  }
 
   static let defaults = CompressionServiceSettings(
     compressionMethod: "lossy",
     compressionPriority: "compatibility",
     advancedMode: false,
     preferredCodec: "jpeg",
-    quality: 80
+    quality: 80,
+    effort: 50
   )
 }
 

@@ -190,6 +190,7 @@ mod tests {
             false,
             &ImageOperation::Optimize(OptimizeOptions {
                 quality: 80,
+                effort: None,
                 write_only_if_smaller: true,
             }),
             Format::Jpeg,
@@ -208,6 +209,7 @@ mod tests {
             &ImageOperation::Convert(ConvertOptions {
                 target_format: "webp".to_string(),
                 quality: 80,
+                effort: None,
             }),
             Format::WebP,
         )
@@ -226,6 +228,7 @@ mod tests {
                 resize: crate::types::ResizeSpec::Width { value: 100 },
                 target_format: None,
                 quality: 80,
+                effort: None,
             }),
             Format::Jpeg,
         )

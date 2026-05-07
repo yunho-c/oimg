@@ -40,6 +40,7 @@ void main() {
       await notifier.setAdvancedMode(true);
       await notifier.setPreferredCodec(PreferredCodec.webp);
       await notifier.setQuality(92);
+      await notifier.setEffort(74);
       await notifier.setStorageDestinationMode(
         StorageDestinationMode.differentLocation,
       );
@@ -75,6 +76,7 @@ void main() {
           advancedMode: true,
           preferredCodec: PreferredCodec.webp,
           quality: 92,
+          effort: 74,
           storageDestinationMode: StorageDestinationMode.differentLocation,
           sameFolderAction: SameFolderAction.keepSource,
           keepSourceNaming: KeepSourceNaming.renameOriginal,

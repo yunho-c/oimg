@@ -2338,6 +2338,32 @@ class _SettingsSidebar extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
           ],
+          _SettingsLabel('Effort'),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Text('0').xSmall().muted(),
+              const Spacer(),
+              Text('${settings.effort}').xSmall().medium().muted(),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _HoverValueSlider(
+            key: const ValueKey('effort-slider'),
+            value: settings.effort.toDouble(),
+            min: 0,
+            max: 100,
+            divisions: 100,
+            hoverEnabled: !controlsLocked,
+            hoverOpacityKey: const ValueKey('effort-slider-hover-opacity'),
+            hoverValueKey: const ValueKey('effort-slider-hover-value'),
+            onChanged: controlsLocked
+                ? null
+                : (value) {
+                    notifier.setEffort(value.round());
+                  },
+          ),
+          const SizedBox(height: 12),
           if (transparencyWarning case final warning?) ...[
             _SettingsWarningBlock(
               icon: LucideIcons.triangleAlert,
@@ -2570,6 +2596,8 @@ class _HoverValueSlider extends StatefulWidget {
     required this.max,
     required this.divisions,
     required this.hoverEnabled,
+    this.hoverOpacityKey = const ValueKey('quality-slider-hover-opacity'),
+    this.hoverValueKey = const ValueKey('quality-slider-hover-value'),
     this.onChanged,
   });
 
@@ -2578,6 +2606,8 @@ class _HoverValueSlider extends StatefulWidget {
   final double max;
   final int? divisions;
   final bool hoverEnabled;
+  final Key hoverOpacityKey;
+  final Key hoverValueKey;
   final ValueChanged<double>? onChanged;
 
   @override
@@ -2725,15 +2755,12 @@ class _HoverValueSliderState extends State<_HoverValueSlider> {
                       curve: Curves.easeOutCubic,
                       offset: showLabel ? Offset.zero : const Offset(0, -0.12),
                       child: AnimatedOpacity(
-                        key: const ValueKey('quality-slider-hover-opacity'),
+                        key: widget.hoverOpacityKey,
                         duration: _showDuration,
                         curve: Curves.easeOutCubic,
                         opacity: showLabel ? 1 : 0,
                         child: TooltipContainer(
-                          child: Text(
-                            labelText,
-                            key: const ValueKey('quality-slider-hover-value'),
-                          ),
+                          child: Text(labelText, key: widget.hoverValueKey),
                         ),
                       ),
                     ),

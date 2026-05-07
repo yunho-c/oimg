@@ -39,6 +39,7 @@ struct CompressionServiceSettings {
     advanced_mode: bool,
     preferred_codec: PreferredCodec,
     quality: u8,
+    effort: Option<u8>,
 }
 
 #[derive(Debug, Deserialize, Clone, Copy)]
@@ -223,12 +224,14 @@ fn build_batch_request(request: CompressionServiceRequest) -> Result<ProcessFile
         let operation = if same_format {
             ImageOperation::Optimize(OptimizeOptions {
                 quality: settings.quality,
+                effort: settings.effort,
                 write_only_if_smaller: true,
             })
         } else {
             ImageOperation::Convert(ConvertOptions {
                 target_format: target_codec.clone(),
                 quality: settings.quality,
+                effort: settings.effort,
             })
         };
 
@@ -300,6 +303,7 @@ fn process_save_as_path(
                 operation: ImageOperation::Convert(ConvertOptions {
                     target_format: target_format.to_string(),
                     quality: 80,
+                    effort: None,
                 }),
             },
             None,
@@ -337,6 +341,7 @@ fn process_save_as_jpg(
         &flattened,
         &EncodeOptions {
             quality: settings.quality,
+            effort: settings.effort,
             threads: None,
         },
     )?;
@@ -478,6 +483,7 @@ mod tests {
             &PipelineOptions {
                 format: Format::Png,
                 quality: 80,
+                effort: None,
                 threads: None,
                 resize: None,
                 crop: None,
@@ -496,6 +502,7 @@ mod tests {
             &PipelineOptions {
                 format: Format::Png,
                 quality: 80,
+                effort: None,
                 threads: None,
                 resize: None,
                 crop: None,
@@ -579,6 +586,7 @@ mod tests {
             &PipelineOptions {
                 format: Format::WebP,
                 quality: 80,
+                effort: None,
                 threads: None,
                 resize: None,
                 crop: None,

@@ -42,6 +42,7 @@ OptimizationPlan buildOptimizationPlan({
   final effectiveQuality = settings.showsQualityControl
       ? settings.quality
       : 100;
+  final effort = settings.effort;
   final useSourceImageForPreview = switch (targetCodec) {
     PreferredCodec.png => true,
     PreferredCodec.webp => effectiveQuality == 100,
@@ -50,10 +51,18 @@ OptimizationPlan buildOptimizationPlan({
   };
   final operation = usesSourceCodec
       ? ImageOperation.optimize(
-          OptimizeOptions(quality: effectiveQuality, writeOnlyIfSmaller: true),
+          OptimizeOptions(
+            quality: effectiveQuality,
+            effort: effort,
+            writeOnlyIfSmaller: true,
+          ),
         )
       : ImageOperation.convert(
-          ConvertOptions(targetFormat: targetFormat, quality: effectiveQuality),
+          ConvertOptions(
+            targetFormat: targetFormat,
+            quality: effectiveQuality,
+            effort: effort,
+          ),
         );
   final storageDecision = _resolveStorageDecision(
     file: file,

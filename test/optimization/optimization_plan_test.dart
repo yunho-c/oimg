@@ -30,6 +30,7 @@ void main() {
         convert: (_) => fail('expected optimize'),
         optimize: (options) {
           expect(options.quality, 80);
+          expect(options.effort, AppSettings.defaults.effort);
           expect(options.writeOnlyIfSmaller, isTrue);
         },
         resize: (_) => fail('unexpected resize'),
@@ -61,6 +62,7 @@ void main() {
         convert: (options) {
           expect(options.targetFormat, 'jpeg');
           expect(options.quality, 80);
+          expect(options.effort, AppSettings.defaults.effort);
         },
         optimize: (_) => fail('expected convert'),
         resize: (_) => fail('unexpected resize'),

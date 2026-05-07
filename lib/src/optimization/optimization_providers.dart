@@ -398,11 +398,16 @@ class AnalyzeConfig {
 ImageOperation _normalizeAnalyzeOperation(ImageOperation operation) {
   return operation.when(
     convert: (options) => ImageOperation.convert(
-      ConvertOptions(targetFormat: options.targetFormat, quality: 0),
+      ConvertOptions(
+        targetFormat: options.targetFormat,
+        quality: 0,
+        effort: options.effort,
+      ),
     ),
     optimize: (options) => ImageOperation.optimize(
       OptimizeOptions(
         quality: 0,
+        effort: options.effort,
         writeOnlyIfSmaller: options.writeOnlyIfSmaller,
       ),
     ),
@@ -411,6 +416,7 @@ ImageOperation _normalizeAnalyzeOperation(ImageOperation operation) {
         resize: options.resize,
         targetFormat: options.targetFormat,
         quality: 0,
+        effort: options.effort,
       ),
     ),
     crop: (options) => ImageOperation.crop(
@@ -418,6 +424,7 @@ ImageOperation _normalizeAnalyzeOperation(ImageOperation operation) {
         crop: options.crop,
         targetFormat: options.targetFormat,
         quality: 0,
+        effort: options.effort,
       ),
     ),
     extend: (options) => ImageOperation.extend(
@@ -426,6 +433,7 @@ ImageOperation _normalizeAnalyzeOperation(ImageOperation operation) {
         fill: options.fill,
         targetFormat: options.targetFormat,
         quality: 0,
+        effort: options.effort,
       ),
     ),
   );

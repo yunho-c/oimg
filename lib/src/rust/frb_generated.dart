@@ -1169,11 +1169,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ConvertOptions dco_decode_convert_options(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
     return ConvertOptions(
       targetFormat: dco_decode_String(arr[0]),
       quality: dco_decode_u_8(arr[1]),
+      effort: dco_decode_opt_box_autoadd_u_8(arr[2]),
     );
   }
 
@@ -1181,12 +1182,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   CropOptions dco_decode_crop_options(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return CropOptions(
       crop: dco_decode_crop_spec(arr[0]),
       targetFormat: dco_decode_opt_String(arr[1]),
       quality: dco_decode_u_8(arr[2]),
+      effort: dco_decode_opt_box_autoadd_u_8(arr[3]),
     );
   }
 
@@ -1230,13 +1232,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ExtendOptions dco_decode_extend_options(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
     return ExtendOptions(
       extend: dco_decode_extend_spec(arr[0]),
       fill: dco_decode_opt_box_autoadd_fill_spec(arr[1]),
       targetFormat: dco_decode_opt_String(arr[2]),
       quality: dco_decode_u_8(arr[3]),
+      effort: dco_decode_opt_box_autoadd_u_8(arr[4]),
     );
   }
 
@@ -1440,11 +1443,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   OptimizeOptions dco_decode_optimize_options(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
     return OptimizeOptions(
       quality: dco_decode_u_8(arr[0]),
-      writeOnlyIfSmaller: dco_decode_bool(arr[1]),
+      effort: dco_decode_opt_box_autoadd_u_8(arr[1]),
+      writeOnlyIfSmaller: dco_decode_bool(arr[2]),
     );
   }
 
@@ -1560,12 +1564,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ResizeOptions dco_decode_resize_options(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return ResizeOptions(
       resize: dco_decode_resize_spec(arr[0]),
       targetFormat: dco_decode_opt_String(arr[1]),
       quality: dco_decode_u_8(arr[2]),
+      effort: dco_decode_opt_box_autoadd_u_8(arr[3]),
     );
   }
 
@@ -1974,7 +1979,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_targetFormat = sse_decode_String(deserializer);
     var var_quality = sse_decode_u_8(deserializer);
-    return ConvertOptions(targetFormat: var_targetFormat, quality: var_quality);
+    var var_effort = sse_decode_opt_box_autoadd_u_8(deserializer);
+    return ConvertOptions(
+      targetFormat: var_targetFormat,
+      quality: var_quality,
+      effort: var_effort,
+    );
   }
 
   @protected
@@ -1983,10 +1993,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_crop = sse_decode_crop_spec(deserializer);
     var var_targetFormat = sse_decode_opt_String(deserializer);
     var var_quality = sse_decode_u_8(deserializer);
+    var var_effort = sse_decode_opt_box_autoadd_u_8(deserializer);
     return CropOptions(
       crop: var_crop,
       targetFormat: var_targetFormat,
       quality: var_quality,
+      effort: var_effort,
     );
   }
 
@@ -2042,11 +2054,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_fill = sse_decode_opt_box_autoadd_fill_spec(deserializer);
     var var_targetFormat = sse_decode_opt_String(deserializer);
     var var_quality = sse_decode_u_8(deserializer);
+    var var_effort = sse_decode_opt_box_autoadd_u_8(deserializer);
     return ExtendOptions(
       extend: var_extend,
       fill: var_fill,
       targetFormat: var_targetFormat,
       quality: var_quality,
+      effort: var_effort,
     );
   }
 
@@ -2334,9 +2348,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   OptimizeOptions sse_decode_optimize_options(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_quality = sse_decode_u_8(deserializer);
+    var var_effort = sse_decode_opt_box_autoadd_u_8(deserializer);
     var var_writeOnlyIfSmaller = sse_decode_bool(deserializer);
     return OptimizeOptions(
       quality: var_quality,
+      effort: var_effort,
       writeOnlyIfSmaller: var_writeOnlyIfSmaller,
     );
   }
@@ -2468,10 +2484,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_resize = sse_decode_resize_spec(deserializer);
     var var_targetFormat = sse_decode_opt_String(deserializer);
     var var_quality = sse_decode_u_8(deserializer);
+    var var_effort = sse_decode_opt_box_autoadd_u_8(deserializer);
     return ResizeOptions(
       resize: var_resize,
       targetFormat: var_targetFormat,
       quality: var_quality,
+      effort: var_effort,
     );
   }
 
@@ -2877,6 +2895,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.targetFormat, serializer);
     sse_encode_u_8(self.quality, serializer);
+    sse_encode_opt_box_autoadd_u_8(self.effort, serializer);
   }
 
   @protected
@@ -2885,6 +2904,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_crop_spec(self.crop, serializer);
     sse_encode_opt_String(self.targetFormat, serializer);
     sse_encode_u_8(self.quality, serializer);
+    sse_encode_opt_box_autoadd_u_8(self.effort, serializer);
   }
 
   @protected
@@ -2929,6 +2949,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_box_autoadd_fill_spec(self.fill, serializer);
     sse_encode_opt_String(self.targetFormat, serializer);
     sse_encode_u_8(self.quality, serializer);
+    sse_encode_opt_box_autoadd_u_8(self.effort, serializer);
   }
 
   @protected
@@ -3194,6 +3215,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_u_8(self.quality, serializer);
+    sse_encode_opt_box_autoadd_u_8(self.effort, serializer);
     sse_encode_bool(self.writeOnlyIfSmaller, serializer);
   }
 
@@ -3291,6 +3313,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_resize_spec(self.resize, serializer);
     sse_encode_opt_String(self.targetFormat, serializer);
     sse_encode_u_8(self.quality, serializer);
+    sse_encode_opt_box_autoadd_u_8(self.effort, serializer);
   }
 
   @protected

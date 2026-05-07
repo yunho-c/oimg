@@ -279,11 +279,17 @@ class BatchProcessRequest {
 class ConvertOptions {
   final String targetFormat;
   final int quality;
+  final int? effort;
 
-  const ConvertOptions({required this.targetFormat, required this.quality});
+  const ConvertOptions({
+    required this.targetFormat,
+    required this.quality,
+    this.effort,
+  });
 
   @override
-  int get hashCode => targetFormat.hashCode ^ quality.hashCode;
+  int get hashCode =>
+      targetFormat.hashCode ^ quality.hashCode ^ effort.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -291,22 +297,29 @@ class ConvertOptions {
       other is ConvertOptions &&
           runtimeType == other.runtimeType &&
           targetFormat == other.targetFormat &&
-          quality == other.quality;
+          quality == other.quality &&
+          effort == other.effort;
 }
 
 class CropOptions {
   final CropSpec crop;
   final String? targetFormat;
   final int quality;
+  final int? effort;
 
   const CropOptions({
     required this.crop,
     this.targetFormat,
     required this.quality,
+    this.effort,
   });
 
   @override
-  int get hashCode => crop.hashCode ^ targetFormat.hashCode ^ quality.hashCode;
+  int get hashCode =>
+      crop.hashCode ^
+      targetFormat.hashCode ^
+      quality.hashCode ^
+      effort.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -315,7 +328,8 @@ class CropOptions {
           runtimeType == other.runtimeType &&
           crop == other.crop &&
           targetFormat == other.targetFormat &&
-          quality == other.quality;
+          quality == other.quality &&
+          effort == other.effort;
 }
 
 @freezed
@@ -374,12 +388,14 @@ class ExtendOptions {
   final FillSpec? fill;
   final String? targetFormat;
   final int quality;
+  final int? effort;
 
   const ExtendOptions({
     required this.extend,
     this.fill,
     this.targetFormat,
     required this.quality,
+    this.effort,
   });
 
   @override
@@ -387,7 +403,8 @@ class ExtendOptions {
       extend.hashCode ^
       fill.hashCode ^
       targetFormat.hashCode ^
-      quality.hashCode;
+      quality.hashCode ^
+      effort.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -397,7 +414,8 @@ class ExtendOptions {
           extend == other.extend &&
           fill == other.fill &&
           targetFormat == other.targetFormat &&
-          quality == other.quality;
+          quality == other.quality &&
+          effort == other.effort;
 }
 
 @freezed
@@ -501,15 +519,18 @@ sealed class ImageOperation with _$ImageOperation {
 
 class OptimizeOptions {
   final int quality;
+  final int? effort;
   final bool writeOnlyIfSmaller;
 
   const OptimizeOptions({
     required this.quality,
+    this.effort,
     required this.writeOnlyIfSmaller,
   });
 
   @override
-  int get hashCode => quality.hashCode ^ writeOnlyIfSmaller.hashCode;
+  int get hashCode =>
+      quality.hashCode ^ effort.hashCode ^ writeOnlyIfSmaller.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -517,6 +538,7 @@ class OptimizeOptions {
       other is OptimizeOptions &&
           runtimeType == other.runtimeType &&
           quality == other.quality &&
+          effort == other.effort &&
           writeOnlyIfSmaller == other.writeOnlyIfSmaller;
 }
 
@@ -746,16 +768,21 @@ class ResizeOptions {
   final ResizeSpec resize;
   final String? targetFormat;
   final int quality;
+  final int? effort;
 
   const ResizeOptions({
     required this.resize,
     this.targetFormat,
     required this.quality,
+    this.effort,
   });
 
   @override
   int get hashCode =>
-      resize.hashCode ^ targetFormat.hashCode ^ quality.hashCode;
+      resize.hashCode ^
+      targetFormat.hashCode ^
+      quality.hashCode ^
+      effort.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -764,7 +791,8 @@ class ResizeOptions {
           runtimeType == other.runtimeType &&
           resize == other.resize &&
           targetFormat == other.targetFormat &&
-          quality == other.quality;
+          quality == other.quality &&
+          effort == other.effort;
 }
 
 @freezed

@@ -52,6 +52,10 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     await _update((settings) => settings.copyWith(quality: quality));
   }
 
+  Future<void> setEffort(int effort) async {
+    await _update((settings) => settings.copyWith(effort: effort));
+  }
+
   Future<void> setStorageDestinationMode(
     StorageDestinationMode storageDestinationMode,
   ) async {

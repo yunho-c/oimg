@@ -84,6 +84,7 @@ class AppSettings {
     required this.advancedMode,
     required this.preferredCodec,
     required this.quality,
+    this.effort = 50,
     required this.storageDestinationMode,
     required this.sameFolderAction,
     this.keepSourceNaming = KeepSourceNaming.renameOptimized,
@@ -116,6 +117,7 @@ class AppSettings {
   final bool advancedMode;
   final PreferredCodec preferredCodec;
   final int quality;
+  final int effort;
   final StorageDestinationMode storageDestinationMode;
   final SameFolderAction sameFolderAction;
   final KeepSourceNaming keepSourceNaming;
@@ -152,6 +154,7 @@ class AppSettings {
     advancedMode: false,
     preferredCodec: PreferredCodec.jpeg,
     quality: 80,
+    effort: 50,
     storageDestinationMode: StorageDestinationMode.sameFolder,
     sameFolderAction: SameFolderAction.replaceSource,
     keepSourceNaming: KeepSourceNaming.renameOptimized,
@@ -227,6 +230,7 @@ class AppSettings {
     bool? advancedMode,
     PreferredCodec? preferredCodec,
     int? quality,
+    int? effort,
     StorageDestinationMode? storageDestinationMode,
     SameFolderAction? sameFolderAction,
     KeepSourceNaming? keepSourceNaming,
@@ -259,6 +263,7 @@ class AppSettings {
       advancedMode: advancedMode ?? this.advancedMode,
       preferredCodec: preferredCodec ?? this.preferredCodec,
       quality: quality ?? this.quality,
+      effort: effort ?? this.effort,
       storageDestinationMode:
           storageDestinationMode ?? this.storageDestinationMode,
       sameFolderAction: sameFolderAction ?? this.sameFolderAction,
@@ -312,6 +317,7 @@ class AppSettings {
       'advancedMode': advancedMode,
       'preferredCodec': preferredCodec.name,
       'quality': quality,
+      'effort': effort,
       'storageDestinationMode': storageDestinationMode.name,
       'sameFolderAction': sameFolderAction.name,
       'keepSourceNaming': keepSourceNaming.name,
@@ -363,6 +369,7 @@ class AppSettings {
         json['preferredCodec'] as String,
       ),
       quality: json['quality'] as int? ?? defaults.quality,
+      effort: json['effort'] as int? ?? defaults.effort,
       storageDestinationMode: StorageDestinationMode.values.byName(
         json['storageDestinationMode'] as String? ??
             defaults.storageDestinationMode.name,
@@ -448,6 +455,7 @@ class AppSettings {
         other.advancedMode == advancedMode &&
         other.preferredCodec == preferredCodec &&
         other.quality == quality &&
+        other.effort == effort &&
         other.storageDestinationMode == storageDestinationMode &&
         other.sameFolderAction == sameFolderAction &&
         other.keepSourceNaming == keepSourceNaming &&
@@ -483,6 +491,7 @@ class AppSettings {
     advancedMode,
     preferredCodec,
     quality,
+    effort,
     storageDestinationMode,
     sameFolderAction,
     keepSourceNaming,
