@@ -2375,23 +2375,19 @@ class _SettingsSidebar extends ConsumerWidget {
                       notifier.setPngPaletteMode(value);
                     },
               child: Row(
-                children: PngPalettePreference.values
-                    .map(
-                      (mode) => Expanded(
-                        child: Padding(
-                          padding: EdgeInsets.only(
-                            right: mode == PngPalettePreference.values.last
-                                ? 0
-                                : 8,
-                          ),
-                          child: RadioCard<PngPalettePreference>(
-                            value: mode,
-                            child: _ChoiceCard(title: _pngPaletteLabel(mode)),
-                          ),
-                        ),
+                children: [
+                  for (final mode in PngPalettePreference.values) ...[
+                    Expanded(
+                      child: RadioItem<PngPalettePreference>(
+                        value: mode,
+                        enabled: !controlsLocked,
+                        trailing: Text(_pngPaletteLabel(mode)).xSmall(),
                       ),
-                    )
-                    .toList(growable: false),
+                    ),
+                    if (mode != PngPalettePreference.values.last)
+                      const SizedBox(width: 8),
+                  ],
+                ],
               ),
             ),
             if (_paletteSuggestionLabel(fileController.currentFile)
