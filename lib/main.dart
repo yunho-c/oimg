@@ -6608,7 +6608,14 @@ class _OptimizationCollapsibleState
                             const Spacer(),
                             if (_paletteSuggestionLabel(currentFile)
                                 case final suggestion?)
-                              Text(suggestion).xSmall().muted(),
+                              Tooltip(
+                                tooltip: (context) => TooltipContainer(
+                                  child: Text(
+                                    _paletteSuggestionTooltip(currentFile)!,
+                                  ),
+                                ),
+                                child: Text(suggestion).xSmall().muted(),
+                              ),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -6778,6 +6785,31 @@ String? _paletteSuggestionLabel(OpenedImageFile? file) {
     PaletteRecommendation.review => '(Suggested: On)',
     PaletteRecommendation.off => '(Suggested: Off)',
   };
+}
+
+String? _paletteSuggestionTooltip(OpenedImageFile? file) {
+  final suitability = file?.metadata.paletteSuitability;
+  if (suitability == null) {
+    return null;
+  }
+
+  final uniqueColors = suitability.uniqueColorCountExceeded
+      ? '>${_formatInteger(suitability.uniqueColorCount)}'
+      : _formatInteger(suitability.uniqueColorCount);
+  return 'Unique colors: $uniqueColors';
+}
+
+String _formatInteger(int value) {
+  final digits = value.toString();
+  final buffer = StringBuffer();
+  for (var i = 0; i < digits.length; i += 1) {
+    final remaining = digits.length - i;
+    if (i > 0 && remaining % 3 == 0) {
+      buffer.write(',');
+    }
+    buffer.write(digits[i]);
+  }
+  return buffer.toString();
 }
 
 class _EmptyState extends ConsumerWidget {
