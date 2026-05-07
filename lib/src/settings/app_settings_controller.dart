@@ -56,6 +56,12 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     await _update((settings) => settings.copyWith(effort: effort));
   }
 
+  Future<void> setPngPaletteMode(PngPalettePreference pngPaletteMode) async {
+    await _update(
+      (settings) => settings.copyWith(pngPaletteMode: pngPaletteMode),
+    );
+  }
+
   Future<void> setStorageDestinationMode(
     StorageDestinationMode storageDestinationMode,
   ) async {

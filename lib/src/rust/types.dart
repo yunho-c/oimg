@@ -280,16 +280,21 @@ class ConvertOptions {
   final String targetFormat;
   final int quality;
   final int? effort;
+  final PngPaletteMode? pngPalette;
 
   const ConvertOptions({
     required this.targetFormat,
     required this.quality,
     this.effort,
+    this.pngPalette,
   });
 
   @override
   int get hashCode =>
-      targetFormat.hashCode ^ quality.hashCode ^ effort.hashCode;
+      targetFormat.hashCode ^
+      quality.hashCode ^
+      effort.hashCode ^
+      pngPalette.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -298,7 +303,8 @@ class ConvertOptions {
           runtimeType == other.runtimeType &&
           targetFormat == other.targetFormat &&
           quality == other.quality &&
-          effort == other.effort;
+          effort == other.effort &&
+          pngPalette == other.pngPalette;
 }
 
 class CropOptions {
@@ -306,12 +312,14 @@ class CropOptions {
   final String? targetFormat;
   final int quality;
   final int? effort;
+  final PngPaletteMode? pngPalette;
 
   const CropOptions({
     required this.crop,
     this.targetFormat,
     required this.quality,
     this.effort,
+    this.pngPalette,
   });
 
   @override
@@ -319,7 +327,8 @@ class CropOptions {
       crop.hashCode ^
       targetFormat.hashCode ^
       quality.hashCode ^
-      effort.hashCode;
+      effort.hashCode ^
+      pngPalette.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -329,7 +338,8 @@ class CropOptions {
           crop == other.crop &&
           targetFormat == other.targetFormat &&
           quality == other.quality &&
-          effort == other.effort;
+          effort == other.effort &&
+          pngPalette == other.pngPalette;
 }
 
 @freezed
@@ -389,6 +399,7 @@ class ExtendOptions {
   final String? targetFormat;
   final int quality;
   final int? effort;
+  final PngPaletteMode? pngPalette;
 
   const ExtendOptions({
     required this.extend,
@@ -396,6 +407,7 @@ class ExtendOptions {
     this.targetFormat,
     required this.quality,
     this.effort,
+    this.pngPalette,
   });
 
   @override
@@ -404,7 +416,8 @@ class ExtendOptions {
       fill.hashCode ^
       targetFormat.hashCode ^
       quality.hashCode ^
-      effort.hashCode;
+      effort.hashCode ^
+      pngPalette.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -415,7 +428,8 @@ class ExtendOptions {
           fill == other.fill &&
           targetFormat == other.targetFormat &&
           quality == other.quality &&
-          effort == other.effort;
+          effort == other.effort &&
+          pngPalette == other.pngPalette;
 }
 
 @freezed
@@ -473,6 +487,7 @@ class ImageMetadata {
   final String format;
   final BigInt? fileSize;
   final bool hasTransparency;
+  final PaletteSuitability? paletteSuitability;
 
   const ImageMetadata({
     required this.width,
@@ -480,6 +495,7 @@ class ImageMetadata {
     required this.format,
     this.fileSize,
     required this.hasTransparency,
+    this.paletteSuitability,
   });
 
   @override
@@ -488,7 +504,8 @@ class ImageMetadata {
       height.hashCode ^
       format.hashCode ^
       fileSize.hashCode ^
-      hasTransparency.hashCode;
+      hasTransparency.hashCode ^
+      paletteSuitability.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -499,7 +516,8 @@ class ImageMetadata {
           height == other.height &&
           format == other.format &&
           fileSize == other.fileSize &&
-          hasTransparency == other.hasTransparency;
+          hasTransparency == other.hasTransparency &&
+          paletteSuitability == other.paletteSuitability;
 }
 
 @freezed
@@ -520,17 +538,22 @@ sealed class ImageOperation with _$ImageOperation {
 class OptimizeOptions {
   final int quality;
   final int? effort;
+  final PngPaletteMode? pngPalette;
   final bool writeOnlyIfSmaller;
 
   const OptimizeOptions({
     required this.quality,
     this.effort,
+    this.pngPalette,
     required this.writeOnlyIfSmaller,
   });
 
   @override
   int get hashCode =>
-      quality.hashCode ^ effort.hashCode ^ writeOnlyIfSmaller.hashCode;
+      quality.hashCode ^
+      effort.hashCode ^
+      pngPalette.hashCode ^
+      writeOnlyIfSmaller.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -539,8 +562,48 @@ class OptimizeOptions {
           runtimeType == other.runtimeType &&
           quality == other.quality &&
           effort == other.effort &&
+          pngPalette == other.pngPalette &&
           writeOnlyIfSmaller == other.writeOnlyIfSmaller;
 }
+
+enum PaletteRecommendation { on_, review, off }
+
+class PaletteSuitability {
+  final int uniqueColorCount;
+  final bool uniqueColorCountExceeded;
+  final double top256ColorCoverage;
+  final bool hasAlpha;
+  final PaletteRecommendation recommendation;
+
+  const PaletteSuitability({
+    required this.uniqueColorCount,
+    required this.uniqueColorCountExceeded,
+    required this.top256ColorCoverage,
+    required this.hasAlpha,
+    required this.recommendation,
+  });
+
+  @override
+  int get hashCode =>
+      uniqueColorCount.hashCode ^
+      uniqueColorCountExceeded.hashCode ^
+      top256ColorCoverage.hashCode ^
+      hasAlpha.hashCode ^
+      recommendation.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PaletteSuitability &&
+          runtimeType == other.runtimeType &&
+          uniqueColorCount == other.uniqueColorCount &&
+          uniqueColorCountExceeded == other.uniqueColorCountExceeded &&
+          top256ColorCoverage == other.top256ColorCoverage &&
+          hasAlpha == other.hasAlpha &&
+          recommendation == other.recommendation;
+}
+
+enum PngPaletteMode { off, auto, on_ }
 
 class PreviewArtifactRequest {
   final String artifactId;
@@ -769,12 +832,14 @@ class ResizeOptions {
   final String? targetFormat;
   final int quality;
   final int? effort;
+  final PngPaletteMode? pngPalette;
 
   const ResizeOptions({
     required this.resize,
     this.targetFormat,
     required this.quality,
     this.effort,
+    this.pngPalette,
   });
 
   @override
@@ -782,7 +847,8 @@ class ResizeOptions {
       resize.hashCode ^
       targetFormat.hashCode ^
       quality.hashCode ^
-      effort.hashCode;
+      effort.hashCode ^
+      pngPalette.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -792,7 +858,8 @@ class ResizeOptions {
           resize == other.resize &&
           targetFormat == other.targetFormat &&
           quality == other.quality &&
-          effort == other.effort;
+          effort == other.effort &&
+          pngPalette == other.pngPalette;
 }
 
 @freezed

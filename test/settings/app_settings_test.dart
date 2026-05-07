@@ -239,6 +239,7 @@ void main() {
       expect(settings.homeShaderSpeed, AppSettings.defaultHomeShaderSpeed);
       expect(settings.homeAcrylicPanelEnabled, isFalse);
       expect(settings.effort, AppSettings.defaults.effort);
+      expect(settings.pngPaletteMode, AppSettings.defaults.pngPaletteMode);
       expect(
         settings.storageDestinationMode,
         StorageDestinationMode.sameFolder,

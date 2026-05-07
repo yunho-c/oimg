@@ -191,6 +191,7 @@ mod tests {
             &ImageOperation::Optimize(OptimizeOptions {
                 quality: 80,
                 effort: None,
+                png_palette: None,
                 write_only_if_smaller: true,
             }),
             Format::Jpeg,
@@ -210,6 +211,7 @@ mod tests {
                 target_format: "webp".to_string(),
                 quality: 80,
                 effort: None,
+                png_palette: None,
             }),
             Format::WebP,
         )
@@ -229,6 +231,7 @@ mod tests {
                 target_format: None,
                 quality: 80,
                 effort: None,
+                png_palette: None,
             }),
             Format::Jpeg,
         )

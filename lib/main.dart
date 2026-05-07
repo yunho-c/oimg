@@ -2364,6 +2364,43 @@ class _SettingsSidebar extends ConsumerWidget {
                   },
           ),
           const SizedBox(height: 12),
+          if (settings.effectiveCodec == PreferredCodec.png) ...[
+            _SettingsLabel('Palette'),
+            const SizedBox(height: 8),
+            RadioGroup<PngPalettePreference>(
+              value: settings.pngPaletteMode,
+              onChanged: controlsLocked
+                  ? null
+                  : (value) {
+                      notifier.setPngPaletteMode(value);
+                    },
+              child: Row(
+                children: PngPalettePreference.values
+                    .map(
+                      (mode) => Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            right: mode == PngPalettePreference.values.last
+                                ? 0
+                                : 8,
+                          ),
+                          child: RadioCard<PngPalettePreference>(
+                            value: mode,
+                            child: _ChoiceCard(title: _pngPaletteLabel(mode)),
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(growable: false),
+              ),
+            ),
+            if (_paletteSuggestionLabel(fileController.currentFile)
+                case final suggestion?) ...[
+              const SizedBox(height: 8),
+              Text(suggestion).xSmall().muted(),
+            ],
+            const SizedBox(height: 12),
+          ],
           if (transparencyWarning case final warning?) ...[
             _SettingsWarningBlock(
               icon: LucideIcons.triangleAlert,
@@ -6623,6 +6660,27 @@ String _qualityValueLabel(AppSettings settings) {
   }
 
   return '${settings.quality}';
+}
+
+String _pngPaletteLabel(PngPalettePreference mode) {
+  return switch (mode) {
+    PngPalettePreference.off => 'Off',
+    PngPalettePreference.auto => 'Auto',
+    PngPalettePreference.on => 'On',
+  };
+}
+
+String? _paletteSuggestionLabel(OpenedImageFile? file) {
+  final suitability = file?.metadata.paletteSuitability;
+  if (suitability == null) {
+    return null;
+  }
+
+  return switch (suitability.recommendation) {
+    PaletteRecommendation.on_ => 'Palette suggested',
+    PaletteRecommendation.review => 'Palette optional',
+    PaletteRecommendation.off => 'Palette not suggested',
+  };
 }
 
 class _EmptyState extends ConsumerWidget {

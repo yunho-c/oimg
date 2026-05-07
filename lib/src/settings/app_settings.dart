@@ -8,6 +8,8 @@ enum CompressionPriority { compatibility, efficiency }
 
 enum PreferredCodec { png, jpeg, webp, avif, jxl }
 
+enum PngPalettePreference { off, auto, on }
+
 enum StorageDestinationMode { sameFolder, differentLocation }
 
 enum SameFolderAction { replaceSource, keepSource }
@@ -85,6 +87,7 @@ class AppSettings {
     required this.preferredCodec,
     required this.quality,
     this.effort = 50,
+    this.pngPaletteMode = PngPalettePreference.off,
     required this.storageDestinationMode,
     required this.sameFolderAction,
     this.keepSourceNaming = KeepSourceNaming.renameOptimized,
@@ -118,6 +121,7 @@ class AppSettings {
   final PreferredCodec preferredCodec;
   final int quality;
   final int effort;
+  final PngPalettePreference pngPaletteMode;
   final StorageDestinationMode storageDestinationMode;
   final SameFolderAction sameFolderAction;
   final KeepSourceNaming keepSourceNaming;
@@ -155,6 +159,7 @@ class AppSettings {
     preferredCodec: PreferredCodec.jpeg,
     quality: 80,
     effort: 50,
+    pngPaletteMode: PngPalettePreference.off,
     storageDestinationMode: StorageDestinationMode.sameFolder,
     sameFolderAction: SameFolderAction.replaceSource,
     keepSourceNaming: KeepSourceNaming.renameOptimized,
@@ -231,6 +236,7 @@ class AppSettings {
     PreferredCodec? preferredCodec,
     int? quality,
     int? effort,
+    PngPalettePreference? pngPaletteMode,
     StorageDestinationMode? storageDestinationMode,
     SameFolderAction? sameFolderAction,
     KeepSourceNaming? keepSourceNaming,
@@ -264,6 +270,7 @@ class AppSettings {
       preferredCodec: preferredCodec ?? this.preferredCodec,
       quality: quality ?? this.quality,
       effort: effort ?? this.effort,
+      pngPaletteMode: pngPaletteMode ?? this.pngPaletteMode,
       storageDestinationMode:
           storageDestinationMode ?? this.storageDestinationMode,
       sameFolderAction: sameFolderAction ?? this.sameFolderAction,
@@ -318,6 +325,7 @@ class AppSettings {
       'preferredCodec': preferredCodec.name,
       'quality': quality,
       'effort': effort,
+      'pngPaletteMode': pngPaletteMode.name,
       'storageDestinationMode': storageDestinationMode.name,
       'sameFolderAction': sameFolderAction.name,
       'keepSourceNaming': keepSourceNaming.name,
@@ -370,6 +378,9 @@ class AppSettings {
       ),
       quality: json['quality'] as int? ?? defaults.quality,
       effort: json['effort'] as int? ?? defaults.effort,
+      pngPaletteMode: PngPalettePreference.values.byName(
+        json['pngPaletteMode'] as String? ?? defaults.pngPaletteMode.name,
+      ),
       storageDestinationMode: StorageDestinationMode.values.byName(
         json['storageDestinationMode'] as String? ??
             defaults.storageDestinationMode.name,
@@ -456,6 +467,7 @@ class AppSettings {
         other.preferredCodec == preferredCodec &&
         other.quality == quality &&
         other.effort == effort &&
+        other.pngPaletteMode == pngPaletteMode &&
         other.storageDestinationMode == storageDestinationMode &&
         other.sameFolderAction == sameFolderAction &&
         other.keepSourceNaming == keepSourceNaming &&
@@ -492,6 +504,7 @@ class AppSettings {
     preferredCodec,
     quality,
     effort,
+    pngPaletteMode,
     storageDestinationMode,
     sameFolderAction,
     keepSourceNaming,

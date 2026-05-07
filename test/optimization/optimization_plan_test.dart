@@ -89,6 +89,7 @@ void main() {
           advancedMode: false,
           preferredCodec: PreferredCodec.jpeg,
           quality: 80,
+          pngPaletteMode: PngPalettePreference.auto,
           storageDestinationMode: StorageDestinationMode.sameFolder,
           sameFolderAction: SameFolderAction.replaceSource,
           preserveFolderStructure: true,
@@ -128,7 +129,16 @@ void main() {
         ),
       );
 
-      expect(losslessPngPlan.useSourceImageForPreview, isTrue);
+      expect(losslessPngPlan.useSourceImageForPreview, isFalse);
+      losslessPngPlan.processRequest.operation.when(
+        convert: (options) {
+          expect(options.pngPalette, PngPaletteMode.auto);
+        },
+        optimize: (_) => fail('expected convert'),
+        resize: (_) => fail('unexpected resize'),
+        crop: (_) => fail('unexpected crop'),
+        extend: (_) => fail('unexpected extend'),
+      );
       expect(losslessWebpPlan.useSourceImageForPreview, isTrue);
     });
 

@@ -305,6 +305,7 @@ mod tests {
                     target_format: "avif".to_string(),
                     quality: 80,
                     effort: None,
+                    png_palette: None,
                 }),
             }],
             continue_on_error: true,
@@ -331,6 +332,7 @@ mod tests {
                 operation: ImageOperation::Optimize(OptimizeOptions {
                     quality: 80,
                     effort: None,
+                    png_palette: None,
                     write_only_if_smaller: true,
                 }),
             }],
@@ -354,6 +356,7 @@ mod tests {
             operation: ImageOperation::Optimize(OptimizeOptions {
                 quality: 80,
                 effort: None,
+                png_palette: None,
                 write_only_if_smaller: true,
             }),
             continue_on_error: true,

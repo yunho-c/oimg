@@ -35,6 +35,7 @@ fn png_bytes() -> Vec<u8> {
             format: Format::Png,
             quality: 80,
             effort: None,
+            png_palette: Default::default(),
             threads: None,
             resize: None,
             crop: None,
@@ -53,6 +54,7 @@ fn png_bytes_with_size(width: u32, height: u32) -> Vec<u8> {
             format: Format::Png,
             quality: 80,
             effort: None,
+            png_palette: Default::default(),
             threads: None,
             resize: None,
             crop: None,
@@ -117,6 +119,7 @@ fn process_bytes_converts_to_webp() {
             target_format: "webp".to_string(),
             quality: 80,
             effort: None,
+            png_palette: None,
         }),
     })
     .unwrap();
@@ -141,6 +144,7 @@ fn preview_file_crops_without_writing() {
             target_format: None,
             quality: 80,
             effort: None,
+            png_palette: None,
         }),
     })
     .unwrap();
@@ -163,6 +167,7 @@ fn preview_file_converts_to_avif_with_metrics() {
             target_format: "avif".to_string(),
             quality: 80,
             effort: None,
+            png_palette: None,
         }),
     })
     .unwrap();
@@ -190,6 +195,7 @@ fn preview_metric_rpcs_return_values_for_same_dimension_preview() {
             target_format: "jpeg".to_string(),
             quality: 80,
             effort: None,
+            png_palette: None,
         }),
     })
     .unwrap();
@@ -244,6 +250,7 @@ fn preview_metric_rpcs_return_none_when_metric_cannot_be_computed() {
             target_format: None,
             quality: 80,
             effort: None,
+            png_palette: None,
         }),
     })
     .unwrap();
@@ -283,6 +290,7 @@ fn dispose_preview_artifact_invalidates_followup_requests() {
             target_format: "jpeg".to_string(),
             quality: 80,
             effort: None,
+            png_palette: None,
         }),
     })
     .unwrap();
@@ -317,6 +325,7 @@ fn process_file_derives_suffixed_output_when_overwrite_is_false() {
             target_format: None,
             quality: 80,
             effort: None,
+            png_palette: None,
         }),
     })
     .unwrap();
@@ -348,6 +357,7 @@ fn process_file_reports_skipped_write_when_optimized_result_is_not_smaller() {
         operation: ImageOperation::Optimize(OptimizeOptions {
             quality: 100,
             effort: None,
+            png_palette: None,
             write_only_if_smaller: true,
         }),
     })
@@ -380,6 +390,7 @@ fn process_files_returns_ordered_partial_failures() {
             target_format: "webp".to_string(),
             quality: 80,
             effort: None,
+            png_palette: None,
         }),
         continue_on_error: true,
     })
@@ -416,6 +427,7 @@ fn process_file_batch_supports_mixed_operations() {
                 operation: ImageOperation::Optimize(OptimizeOptions {
                     quality: 80,
                     effort: None,
+                    png_palette: None,
                     write_only_if_smaller: true,
                 }),
             },
@@ -430,6 +442,7 @@ fn process_file_batch_supports_mixed_operations() {
                     target_format: "jpeg".to_string(),
                     quality: 80,
                     effort: None,
+                    png_palette: None,
                 }),
             },
         ],
@@ -471,6 +484,7 @@ fn process_file_batch_job_reports_progress_and_can_be_disposed() {
                     target_format: "jpeg".to_string(),
                     quality: 80,
                     effort: None,
+                    png_palette: None,
                 }),
             },
             ProcessFileRequest {
@@ -484,6 +498,7 @@ fn process_file_batch_job_reports_progress_and_can_be_disposed() {
                     target_format: "jpeg".to_string(),
                     quality: 80,
                     effort: None,
+                    png_palette: None,
                 }),
             },
         ],
@@ -538,6 +553,7 @@ fn cancel_process_file_batch_job_stops_remaining_files() {
                 target_format: "jpeg".to_string(),
                 quality: 90,
                 effort: None,
+                png_palette: None,
             }),
         });
     }
@@ -575,6 +591,7 @@ fn analyze_file_job_returns_sweep_samples() {
             target_format: "jpeg".to_string(),
             quality: 80,
             effort: None,
+            png_palette: None,
         }),
         qualities: vec![0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
     })
@@ -608,6 +625,7 @@ fn dispose_analyze_file_job_cleans_temp_outputs() {
         operation: ImageOperation::Optimize(OptimizeOptions {
             quality: 80,
             effort: None,
+            png_palette: None,
             write_only_if_smaller: true,
         }),
         qualities: vec![0, 50, 100],

@@ -5,9 +5,10 @@ use std::time::Instant;
 
 use img_parts::{DynImage, ImageEXIF, ImageICC};
 use slimg_core::{
+    analyze_palette_suitability,
     codec::{get_codec, EncodeOptions},
     convert as core_convert, decode, CropMode, ExtendMode, FillColor, Format, PipelineOptions,
-    ResizeMode,
+    PngPaletteMode as CorePngPaletteMode, ResizeMode,
 };
 use slimg_exec::{classify_format, HostResources, WorkloadClass};
 
@@ -41,6 +42,7 @@ pub(crate) fn inspect_bytes(data: Vec<u8>) -> Result<ImageMetadata> {
         format: format_to_string(format),
         file_size: None,
         has_transparency: image.data.chunks_exact(4).any(|pixel| pixel[3] < 255),
+        palette_suitability: Some(analyze_palette_suitability(&image).into()),
     })
 }
 
@@ -352,6 +354,7 @@ fn run_operation(
                 format: resolve_optional_target_format(options.target_format.as_deref(), source)?,
                 quality: validate_quality(options.quality)?,
                 effort: validate_effort(options.effort)?,
+                png_palette: map_png_palette(options.png_palette),
                 threads,
                 resize: Some(map_resize_spec(&options.resize)?),
                 crop: None,
@@ -364,6 +367,7 @@ fn run_operation(
                 format: resolve_optional_target_format(options.target_format.as_deref(), source)?,
                 quality: validate_quality(options.quality)?,
                 effort: validate_effort(options.effort)?,
+                png_palette: map_png_palette(options.png_palette),
                 threads,
                 resize: None,
                 crop: Some(map_crop_spec(&options.crop)?),
@@ -376,6 +380,7 @@ fn run_operation(
                 format: resolve_optional_target_format(options.target_format.as_deref(), source)?,
                 quality: validate_quality(options.quality)?,
                 effort: validate_effort(options.effort)?,
+                png_palette: map_png_palette(options.png_palette),
                 threads,
                 resize: None,
                 crop: None,
@@ -404,6 +409,7 @@ pub(crate) fn run_preview_operation(
                     format: target_format,
                     quality,
                     effort,
+                    png_palette: map_png_palette(options.png_palette),
                     threads: encode_threads,
                     resize: None,
                     crop: None,
@@ -422,6 +428,7 @@ pub(crate) fn run_preview_operation(
                 &EncodeOptions {
                     quality,
                     effort,
+                    png_palette: map_png_palette(options.png_palette),
                     threads: encode_threads_for_format(source_format, threads),
                 },
             )?;
@@ -436,6 +443,7 @@ pub(crate) fn run_preview_operation(
                     format: target_format,
                     quality: validate_quality(options.quality)?,
                     effort: validate_effort(options.effort)?,
+                    png_palette: map_png_palette(options.png_palette),
                     threads: encode_threads_for_format(target_format, threads),
                     resize: Some(map_resize_spec(&options.resize)?),
                     crop: None,
@@ -454,6 +462,7 @@ pub(crate) fn run_preview_operation(
                     format: target_format,
                     quality: validate_quality(options.quality)?,
                     effort: validate_effort(options.effort)?,
+                    png_palette: map_png_palette(options.png_palette),
                     threads: encode_threads_for_format(target_format, threads),
                     resize: None,
                     crop: Some(map_crop_spec(&options.crop)?),
@@ -472,6 +481,7 @@ pub(crate) fn run_preview_operation(
                     format: target_format,
                     quality: validate_quality(options.quality)?,
                     effort: validate_effort(options.effort)?,
+                    png_palette: map_png_palette(options.png_palette),
                     threads: encode_threads_for_format(target_format, threads),
                     resize: None,
                     crop: None,
@@ -508,6 +518,7 @@ fn convert_bytes(
             format: target_format,
             quality,
             effort,
+            png_palette: map_png_palette(options.png_palette),
             threads: encode_threads_for_format(target_format, threads),
             resize: None,
             crop: None,
@@ -544,6 +555,7 @@ fn optimize_bytes(
         &EncodeOptions {
             quality,
             effort,
+            png_palette: map_png_palette(options.png_palette),
             threads: encode_threads_for_format(format, threads),
         },
     )?;
@@ -740,6 +752,11 @@ fn validate_effort(effort: Option<u8>) -> Result<Option<u8>> {
     Ok(effort)
 }
 
+fn map_png_palette(mode: Option<crate::types::PngPaletteMode>) -> CorePngPaletteMode {
+    mode.map(crate::types::PngPaletteMode::to_core)
+        .unwrap_or_default()
+}
+
 fn require_non_zero(value: u32, message: &str) -> Result<()> {
     if value == 0 {
         return Err(SlimgBridgeError::invalid_request(message));
@@ -786,6 +803,7 @@ mod tests {
                 format: Format::Png,
                 quality: 80,
                 effort: None,
+                png_palette: Default::default(),
                 threads: None,
                 resize: None,
                 crop: None,
@@ -830,6 +848,7 @@ mod tests {
                 target_format: "webp".to_string(),
                 quality: 80,
                 effort: None,
+                png_palette: None,
             }),
         })
         .unwrap();
@@ -846,6 +865,7 @@ mod tests {
                 target_format: "avif".to_string(),
                 quality: 80,
                 effort: None,
+                png_palette: None,
             }),
         })
         .unwrap();
@@ -864,6 +884,7 @@ mod tests {
                 target_format: "avif".to_string(),
                 quality: 80,
                 effort: None,
+                png_palette: None,
             }),
             None,
         )
@@ -887,6 +908,7 @@ mod tests {
                 target_format: "avif".to_string(),
                 quality: 0,
                 effort: None,
+                png_palette: None,
             }),
             None,
         )
@@ -918,6 +940,7 @@ mod tests {
                 target_format: None,
                 quality: 80,
                 effort: None,
+                png_palette: None,
             }),
         })
         .unwrap_err();

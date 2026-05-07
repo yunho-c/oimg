@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use serde_json::{json, Value};
 
-const DEFAULT_SETTINGS: &str = r#"{"compressionMethod":"lossy","compressionPriority":"compatibility","advancedMode":false,"preferredCodec":"jpeg","quality":80,"effort":50}"#;
+const DEFAULT_SETTINGS: &str = r#"{"compressionMethod":"lossy","compressionPriority":"compatibility","advancedMode":false,"preferredCodec":"jpeg","quality":80,"effort":50,"pngPaletteMode":"off"}"#;
 
 fn main() {
     let mut args = env::args().skip(1);
@@ -28,6 +28,7 @@ fn main() {
                 "preferredCodec": "png",
                 "quality": 100,
                 "effort": 50,
+                "pngPaletteMode": "off",
             }),
         ),
         _ => print_usage_and_exit(),

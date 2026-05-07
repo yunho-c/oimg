@@ -1094,6 +1094,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PaletteSuitability dco_decode_box_autoadd_palette_suitability(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_palette_suitability(raw);
+  }
+
+  @protected
+  PngPaletteMode dco_decode_box_autoadd_png_palette_mode(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_png_palette_mode(raw);
+  }
+
+  @protected
   PreviewArtifactRequest dco_decode_box_autoadd_preview_artifact_request(
     dynamic raw,
   ) {
@@ -1169,12 +1181,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ConvertOptions dco_decode_convert_options(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return ConvertOptions(
       targetFormat: dco_decode_String(arr[0]),
       quality: dco_decode_u_8(arr[1]),
       effort: dco_decode_opt_box_autoadd_u_8(arr[2]),
+      pngPalette: dco_decode_opt_box_autoadd_png_palette_mode(arr[3]),
     );
   }
 
@@ -1182,13 +1195,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   CropOptions dco_decode_crop_options(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
     return CropOptions(
       crop: dco_decode_crop_spec(arr[0]),
       targetFormat: dco_decode_opt_String(arr[1]),
       quality: dco_decode_u_8(arr[2]),
       effort: dco_decode_opt_box_autoadd_u_8(arr[3]),
+      pngPalette: dco_decode_opt_box_autoadd_png_palette_mode(arr[4]),
     );
   }
 
@@ -1232,14 +1246,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ExtendOptions dco_decode_extend_options(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return ExtendOptions(
       extend: dco_decode_extend_spec(arr[0]),
       fill: dco_decode_opt_box_autoadd_fill_spec(arr[1]),
       targetFormat: dco_decode_opt_String(arr[2]),
       quality: dco_decode_u_8(arr[3]),
       effort: dco_decode_opt_box_autoadd_u_8(arr[4]),
+      pngPalette: dco_decode_opt_box_autoadd_png_palette_mode(arr[5]),
     );
   }
 
@@ -1309,14 +1324,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ImageMetadata dco_decode_image_metadata(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return ImageMetadata(
       width: dco_decode_u_32(arr[0]),
       height: dco_decode_u_32(arr[1]),
       format: dco_decode_String(arr[2]),
       fileSize: dco_decode_opt_box_autoadd_u_64(arr[3]),
       hasTransparency: dco_decode_bool(arr[4]),
+      paletteSuitability: dco_decode_opt_box_autoadd_palette_suitability(
+        arr[5],
+      ),
     );
   }
 
@@ -1410,6 +1428,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PaletteSuitability? dco_decode_opt_box_autoadd_palette_suitability(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_palette_suitability(raw);
+  }
+
+  @protected
+  PngPaletteMode? dco_decode_opt_box_autoadd_png_palette_mode(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_png_palette_mode(raw);
+  }
+
+  @protected
   ProcessResult? dco_decode_opt_box_autoadd_process_result(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_process_result(raw);
@@ -1443,13 +1475,41 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   OptimizeOptions dco_decode_optimize_options(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return OptimizeOptions(
       quality: dco_decode_u_8(arr[0]),
       effort: dco_decode_opt_box_autoadd_u_8(arr[1]),
-      writeOnlyIfSmaller: dco_decode_bool(arr[2]),
+      pngPalette: dco_decode_opt_box_autoadd_png_palette_mode(arr[2]),
+      writeOnlyIfSmaller: dco_decode_bool(arr[3]),
     );
+  }
+
+  @protected
+  PaletteRecommendation dco_decode_palette_recommendation(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return PaletteRecommendation.values[raw as int];
+  }
+
+  @protected
+  PaletteSuitability dco_decode_palette_suitability(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return PaletteSuitability(
+      uniqueColorCount: dco_decode_u_32(arr[0]),
+      uniqueColorCountExceeded: dco_decode_bool(arr[1]),
+      top256ColorCoverage: dco_decode_f_64(arr[2]),
+      hasAlpha: dco_decode_bool(arr[3]),
+      recommendation: dco_decode_palette_recommendation(arr[4]),
+    );
+  }
+
+  @protected
+  PngPaletteMode dco_decode_png_palette_mode(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return PngPaletteMode.values[raw as int];
   }
 
   @protected
@@ -1564,13 +1624,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ResizeOptions dco_decode_resize_options(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
     return ResizeOptions(
       resize: dco_decode_resize_spec(arr[0]),
       targetFormat: dco_decode_opt_String(arr[1]),
       quality: dco_decode_u_8(arr[2]),
       effort: dco_decode_opt_box_autoadd_u_8(arr[3]),
+      pngPalette: dco_decode_opt_box_autoadd_png_palette_mode(arr[4]),
     );
   }
 
@@ -1891,6 +1952,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PaletteSuitability sse_decode_box_autoadd_palette_suitability(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_palette_suitability(deserializer));
+  }
+
+  @protected
+  PngPaletteMode sse_decode_box_autoadd_png_palette_mode(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_png_palette_mode(deserializer));
+  }
+
+  @protected
   PreviewArtifactRequest sse_decode_box_autoadd_preview_artifact_request(
     SseDeserializer deserializer,
   ) {
@@ -1980,10 +2057,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_targetFormat = sse_decode_String(deserializer);
     var var_quality = sse_decode_u_8(deserializer);
     var var_effort = sse_decode_opt_box_autoadd_u_8(deserializer);
+    var var_pngPalette = sse_decode_opt_box_autoadd_png_palette_mode(
+      deserializer,
+    );
     return ConvertOptions(
       targetFormat: var_targetFormat,
       quality: var_quality,
       effort: var_effort,
+      pngPalette: var_pngPalette,
     );
   }
 
@@ -1994,11 +2075,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_targetFormat = sse_decode_opt_String(deserializer);
     var var_quality = sse_decode_u_8(deserializer);
     var var_effort = sse_decode_opt_box_autoadd_u_8(deserializer);
+    var var_pngPalette = sse_decode_opt_box_autoadd_png_palette_mode(
+      deserializer,
+    );
     return CropOptions(
       crop: var_crop,
       targetFormat: var_targetFormat,
       quality: var_quality,
       effort: var_effort,
+      pngPalette: var_pngPalette,
     );
   }
 
@@ -2055,12 +2140,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_targetFormat = sse_decode_opt_String(deserializer);
     var var_quality = sse_decode_u_8(deserializer);
     var var_effort = sse_decode_opt_box_autoadd_u_8(deserializer);
+    var var_pngPalette = sse_decode_opt_box_autoadd_png_palette_mode(
+      deserializer,
+    );
     return ExtendOptions(
       extend: var_extend,
       fill: var_fill,
       targetFormat: var_targetFormat,
       quality: var_quality,
       effort: var_effort,
+      pngPalette: var_pngPalette,
     );
   }
 
@@ -2135,12 +2224,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_format = sse_decode_String(deserializer);
     var var_fileSize = sse_decode_opt_box_autoadd_u_64(deserializer);
     var var_hasTransparency = sse_decode_bool(deserializer);
+    var var_paletteSuitability = sse_decode_opt_box_autoadd_palette_suitability(
+      deserializer,
+    );
     return ImageMetadata(
       width: var_width,
       height: var_height,
       format: var_format,
       fileSize: var_fileSize,
       hasTransparency: var_hasTransparency,
+      paletteSuitability: var_paletteSuitability,
     );
   }
 
@@ -2284,6 +2377,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PaletteSuitability? sse_decode_opt_box_autoadd_palette_suitability(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_palette_suitability(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  PngPaletteMode? sse_decode_opt_box_autoadd_png_palette_mode(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_png_palette_mode(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   ProcessResult? sse_decode_opt_box_autoadd_process_result(
     SseDeserializer deserializer,
   ) {
@@ -2349,12 +2468,51 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_quality = sse_decode_u_8(deserializer);
     var var_effort = sse_decode_opt_box_autoadd_u_8(deserializer);
+    var var_pngPalette = sse_decode_opt_box_autoadd_png_palette_mode(
+      deserializer,
+    );
     var var_writeOnlyIfSmaller = sse_decode_bool(deserializer);
     return OptimizeOptions(
       quality: var_quality,
       effort: var_effort,
+      pngPalette: var_pngPalette,
       writeOnlyIfSmaller: var_writeOnlyIfSmaller,
     );
+  }
+
+  @protected
+  PaletteRecommendation sse_decode_palette_recommendation(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return PaletteRecommendation.values[inner];
+  }
+
+  @protected
+  PaletteSuitability sse_decode_palette_suitability(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_uniqueColorCount = sse_decode_u_32(deserializer);
+    var var_uniqueColorCountExceeded = sse_decode_bool(deserializer);
+    var var_top256ColorCoverage = sse_decode_f_64(deserializer);
+    var var_hasAlpha = sse_decode_bool(deserializer);
+    var var_recommendation = sse_decode_palette_recommendation(deserializer);
+    return PaletteSuitability(
+      uniqueColorCount: var_uniqueColorCount,
+      uniqueColorCountExceeded: var_uniqueColorCountExceeded,
+      top256ColorCoverage: var_top256ColorCoverage,
+      hasAlpha: var_hasAlpha,
+      recommendation: var_recommendation,
+    );
+  }
+
+  @protected
+  PngPaletteMode sse_decode_png_palette_mode(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return PngPaletteMode.values[inner];
   }
 
   @protected
@@ -2485,11 +2643,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_targetFormat = sse_decode_opt_String(deserializer);
     var var_quality = sse_decode_u_8(deserializer);
     var var_effort = sse_decode_opt_box_autoadd_u_8(deserializer);
+    var var_pngPalette = sse_decode_opt_box_autoadd_png_palette_mode(
+      deserializer,
+    );
     return ResizeOptions(
       resize: var_resize,
       targetFormat: var_targetFormat,
       quality: var_quality,
       effort: var_effort,
+      pngPalette: var_pngPalette,
     );
   }
 
@@ -2795,6 +2957,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_palette_suitability(
+    PaletteSuitability self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_palette_suitability(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_png_palette_mode(
+    PngPaletteMode self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_png_palette_mode(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_preview_artifact_request(
     PreviewArtifactRequest self,
     SseSerializer serializer,
@@ -2896,6 +3076,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.targetFormat, serializer);
     sse_encode_u_8(self.quality, serializer);
     sse_encode_opt_box_autoadd_u_8(self.effort, serializer);
+    sse_encode_opt_box_autoadd_png_palette_mode(self.pngPalette, serializer);
   }
 
   @protected
@@ -2905,6 +3086,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_String(self.targetFormat, serializer);
     sse_encode_u_8(self.quality, serializer);
     sse_encode_opt_box_autoadd_u_8(self.effort, serializer);
+    sse_encode_opt_box_autoadd_png_palette_mode(self.pngPalette, serializer);
   }
 
   @protected
@@ -2950,6 +3132,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_String(self.targetFormat, serializer);
     sse_encode_u_8(self.quality, serializer);
     sse_encode_opt_box_autoadd_u_8(self.effort, serializer);
+    sse_encode_opt_box_autoadd_png_palette_mode(self.pngPalette, serializer);
   }
 
   @protected
@@ -3010,6 +3193,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.format, serializer);
     sse_encode_opt_box_autoadd_u_64(self.fileSize, serializer);
     sse_encode_bool(self.hasTransparency, serializer);
+    sse_encode_opt_box_autoadd_palette_suitability(
+      self.paletteSuitability,
+      serializer,
+    );
   }
 
   @protected
@@ -3150,6 +3337,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_opt_box_autoadd_palette_suitability(
+    PaletteSuitability? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_palette_suitability(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_png_palette_mode(
+    PngPaletteMode? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_png_palette_mode(self, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_opt_box_autoadd_process_result(
     ProcessResult? self,
     SseSerializer serializer,
@@ -3216,7 +3429,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_u_8(self.quality, serializer);
     sse_encode_opt_box_autoadd_u_8(self.effort, serializer);
+    sse_encode_opt_box_autoadd_png_palette_mode(self.pngPalette, serializer);
     sse_encode_bool(self.writeOnlyIfSmaller, serializer);
+  }
+
+  @protected
+  void sse_encode_palette_recommendation(
+    PaletteRecommendation self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_palette_suitability(
+    PaletteSuitability self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_32(self.uniqueColorCount, serializer);
+    sse_encode_bool(self.uniqueColorCountExceeded, serializer);
+    sse_encode_f_64(self.top256ColorCoverage, serializer);
+    sse_encode_bool(self.hasAlpha, serializer);
+    sse_encode_palette_recommendation(self.recommendation, serializer);
+  }
+
+  @protected
+  void sse_encode_png_palette_mode(
+    PngPaletteMode self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
   }
 
   @protected
@@ -3314,6 +3559,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_String(self.targetFormat, serializer);
     sse_encode_u_8(self.quality, serializer);
     sse_encode_opt_box_autoadd_u_8(self.effort, serializer);
+    sse_encode_opt_box_autoadd_png_palette_mode(self.pngPalette, serializer);
   }
 
   @protected

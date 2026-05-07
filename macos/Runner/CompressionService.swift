@@ -35,6 +35,7 @@ private struct CompressionServiceSettings: Codable {
   let preferredCodec: String
   let quality: Int
   let effort: Int
+  let pngPaletteMode: String
 
   private enum CodingKeys: String, CodingKey {
     case compressionMethod
@@ -43,6 +44,7 @@ private struct CompressionServiceSettings: Codable {
     case preferredCodec
     case quality
     case effort
+    case pngPaletteMode
   }
 
   init(
@@ -51,7 +53,8 @@ private struct CompressionServiceSettings: Codable {
     advancedMode: Bool,
     preferredCodec: String,
     quality: Int,
-    effort: Int
+    effort: Int,
+    pngPaletteMode: String
   ) {
     self.compressionMethod = compressionMethod
     self.compressionPriority = compressionPriority
@@ -59,6 +62,7 @@ private struct CompressionServiceSettings: Codable {
     self.preferredCodec = preferredCodec
     self.quality = quality
     self.effort = effort
+    self.pngPaletteMode = pngPaletteMode
   }
 
   init(from decoder: Decoder) throws {
@@ -69,6 +73,9 @@ private struct CompressionServiceSettings: Codable {
     preferredCodec = try container.decode(String.self, forKey: .preferredCodec)
     quality = try container.decode(Int.self, forKey: .quality)
     effort = try container.decodeIfPresent(Int.self, forKey: .effort) ?? Self.defaults.effort
+    pngPaletteMode =
+      try container.decodeIfPresent(String.self, forKey: .pngPaletteMode) ??
+      Self.defaults.pngPaletteMode
   }
 
   static let defaults = CompressionServiceSettings(
@@ -77,7 +84,8 @@ private struct CompressionServiceSettings: Codable {
     advancedMode: false,
     preferredCodec: "jpeg",
     quality: 80,
-    effort: 50
+    effort: 50,
+    pngPaletteMode: "off"
   )
 }
 

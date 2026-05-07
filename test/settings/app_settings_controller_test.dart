@@ -41,6 +41,7 @@ void main() {
       await notifier.setPreferredCodec(PreferredCodec.webp);
       await notifier.setQuality(92);
       await notifier.setEffort(74);
+      await notifier.setPngPaletteMode(PngPalettePreference.auto);
       await notifier.setStorageDestinationMode(
         StorageDestinationMode.differentLocation,
       );
@@ -77,6 +78,7 @@ void main() {
           preferredCodec: PreferredCodec.webp,
           quality: 92,
           effort: 74,
+          pngPaletteMode: PngPalettePreference.auto,
           storageDestinationMode: StorageDestinationMode.differentLocation,
           sameFolderAction: SameFolderAction.keepSource,
           keepSourceNaming: KeepSourceNaming.renameOriginal,
