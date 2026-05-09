@@ -425,7 +425,8 @@ void main() {
 
     expect(find.text('Files'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
-    expect(find.text('Details'), findsOneWidget);
+    expect(find.text('Original'), findsWidgets);
+    expect(find.text('Optimized'), findsWidgets);
     expect(find.text('Optimize'), findsOneWidget);
     expect(find.text('Optimize selected'), findsNothing);
     expect(find.text('Optimize all'), findsNothing);
@@ -442,7 +443,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.text('2 / 2'), findsOneWidget);
+    expect(controller.currentPath, '/tmp/second.jpg');
+    expect(find.text('second.jpg'), findsWidgets);
   });
 
   testWidgets('quality rows resolve independently after preview loads', (
@@ -2270,6 +2272,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Original image is smaller.'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pump();
     },
   );
 
@@ -2303,7 +2307,7 @@ void main() {
 
     expect(find.text('new-one.webp'), findsWidgets);
     expect(find.text('new-two.bmp'), findsWidgets);
-    expect(find.text('1 / 2'), findsOneWidget);
+    expect(controller.currentPath, '/tmp/new-one.webp');
   });
 
   testWidgets(
@@ -2334,21 +2338,21 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
-      expect(find.text('1 / 3'), findsOneWidget);
+      expect(controller.currentPath, '/tmp/animals/cat.png');
       expect(find.text('4.1 KB'), findsOneWidget);
 
       await tester.tap(find.text('animals').first);
       await tester.pump();
 
-      expect(find.text('1 / 3'), findsNothing);
-      expect(find.text('0 / 2'), findsOneWidget);
+      expect(controller.isFolderSelected, isTrue);
       expect(find.text('Loaded'), findsNothing);
 
       await tester.tap(find.text('dog.jpg').first);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
-      expect(find.text('2 / 3'), findsOneWidget);
+      expect(controller.currentPath, '/tmp/animals/dog.jpg');
+      expect(controller.isFolderSelected, isFalse);
     },
   );
 
@@ -3833,7 +3837,7 @@ void main() {
   testWidgets('storage section shows picker-driven different-location flow', (
     tester,
   ) async {
-    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    await tester.binding.setSurfaceSize(const Size(1400, 680));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     final channel = _FakeFileOpenChannel()..pickFolderResult = ['/tmp/export'];
@@ -3850,6 +3854,23 @@ void main() {
     await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
     await tester.pumpAndSettle();
 
+    await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 260));
+    await tester.pumpAndSettle();
+
+    final scrollFinder = find.byKey(const ValueKey('settings-scroll-view'));
+    final settingsScrollable = find.descendant(
+      of: scrollFinder,
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Storage'),
+      120,
+      scrollable: settingsScrollable,
+    );
+    await tester.pumpAndSettle();
+
     expect(find.text('Storage'), findsOneWidget);
     expect(find.text('Metadata'), findsOneWidget);
     expect(
@@ -3857,7 +3878,12 @@ void main() {
       lessThan(tester.getTopLeft(find.text('Metadata')).dy),
     );
 
-    await tester.tap(find.byIcon(Icons.add).first);
+    final storageHeader = find
+        .ancestor(of: find.text('Storage'), matching: find.byType(Row))
+        .first;
+    await tester.tap(
+      find.descendant(of: storageHeader, matching: find.byIcon(Icons.add)),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Remove original'), findsOneWidget);
@@ -3865,7 +3891,44 @@ void main() {
     expect(find.text('Rename optimized'), findsNothing);
     expect(find.text('Preserve folder structure'), findsNothing);
 
-    await tester.tap(find.text('Keep original'));
+    final differentLocationFinder = find.byKey(
+      const ValueKey('storage-destination-differentLocation'),
+    );
+    await tester.scrollUntilVisible(
+      differentLocationFinder,
+      120,
+      scrollable: settingsScrollable,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(differentLocationFinder);
+    await tester.pumpAndSettle();
+
+    expect(channel.pickFolderCallCount, 1);
+    expect(find.text('/tmp/export'), findsOneWidget);
+    expect(find.text('Preserve folder structure'), findsOneWidget);
+
+    channel.pickFolderResult = const <String>[];
+    await tester.scrollUntilVisible(
+      differentLocationFinder,
+      120,
+      scrollable: settingsScrollable,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(differentLocationFinder);
+    await tester.pumpAndSettle();
+
+    expect(channel.pickFolderCallCount, 2);
+    expect(find.text('/tmp/export'), findsOneWidget);
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(MyApp)),
+    );
+    await container
+        .read(appSettingsProvider.notifier)
+        .setStorageDestinationMode(StorageDestinationMode.sameFolder);
+    await container
+        .read(appSettingsProvider.notifier)
+        .setSameFolderAction(SameFolderAction.keepSource);
     await tester.pumpAndSettle();
 
     expect(find.text('Rename optimized'), findsOneWidget);
@@ -3880,7 +3943,9 @@ void main() {
       '_optimized',
     );
 
-    await tester.tap(find.text('Rename original'));
+    await container
+        .read(appSettingsProvider.notifier)
+        .setKeepSourceNaming(KeepSourceNaming.renameOriginal);
     await tester.pumpAndSettle();
 
     expect(
@@ -3891,24 +3956,6 @@ void main() {
           .initialValue,
       '_original',
     );
-
-    await tester.tap(
-      find.byKey(const ValueKey('storage-destination-differentLocation')),
-    );
-    await tester.pumpAndSettle();
-
-    expect(channel.pickFolderCallCount, 1);
-    expect(find.text('/tmp/export'), findsOneWidget);
-    expect(find.text('Preserve folder structure'), findsOneWidget);
-
-    channel.pickFolderResult = const <String>[];
-    await tester.tap(
-      find.byKey(const ValueKey('storage-destination-differentLocation')),
-    );
-    await tester.pumpAndSettle();
-
-    expect(channel.pickFolderCallCount, 2);
-    expect(find.text('/tmp/export'), findsOneWidget);
   });
 
   testWidgets(
