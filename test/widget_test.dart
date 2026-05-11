@@ -18,10 +18,19 @@ import 'package:oimg/src/rust/types.dart';
 import 'package:oimg/src/settings/app_settings.dart';
 import 'package:oimg/src/settings/app_settings_controller.dart';
 import 'package:oimg/src/settings/app_settings_repository.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 
 void main() {
+  PackageInfo.setMockInitialValues(
+    appName: 'OIMG',
+    packageName: 'com.yunho-c.oimg',
+    version: '0.1.2',
+    buildNumber: '5',
+    buildSignature: '',
+  );
+
   testWidgets('renders empty state with no startup files', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -36,12 +45,93 @@ void main() {
     await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
     await tester.pumpAndSettle();
 
-    expect(find.text('Optimize your images easily'), findsOneWidget);
+    final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+    final appBar = tester.widget<AppBar>(find.byType(AppBar));
+    expect(scaffold.floatingHeader, isTrue);
+    expect(appBar.surfaceOpacity, 0.10);
+    expect(appBar.surfaceBlur, 4);
+    expect(find.text('Optimize images easily'), findsOneWidget);
+    expect(find.text('Built with care by '), findsOneWidget);
+    expect(find.text('v0.1.2 · Built with care by '), findsNothing);
     expect(
       find.byKey(const ValueKey('empty-state-browse-button')),
       findsOneWidget,
     );
+    expect(
+      find.byKey(const ValueKey('empty-state-hero-gradient-panel')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('empty-state-hero-acrylic-panel')),
+      findsNothing,
+    );
     expect(find.byType(DropRegion), findsOneWidget);
+  });
+
+  testWidgets('stored acrylic panel preference changes empty state hero', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final store = _FakeAppSettingsStore()
+      ..value = AppSettings.defaults
+          .copyWith(homeAcrylicPanelEnabled: true)
+          .toJsonString();
+    final slimg = _FakeSlimgApi();
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(
+      _buildApp(controller: controller, slimg: slimg, store: store),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Optimize images easily'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('empty-state-hero-acrylic-panel')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('empty-state-hero-gradient-panel')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('feature card hover shows a preview panel', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi();
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('empty-state-feature-preview-panel')),
+      findsNothing,
+    );
+
+    final card = find.byKey(const ValueKey('empty-state-feature-preview'));
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: tester.getCenter(card));
+    await mouse.moveTo(tester.getCenter(card));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 260));
+
+    expect(
+      find.byKey(const ValueKey('empty-state-feature-preview-panel')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('browse menu shows file and folder actions on empty state', (
@@ -2252,7 +2342,7 @@ void main() {
 
       expect(find.text('1 / 3'), findsNothing);
       expect(find.text('0 / 2'), findsOneWidget);
-      expect(find.text('Loaded'), findsOneWidget);
+      expect(find.text('Loaded'), findsNothing);
 
       await tester.tap(find.text('dog.jpg').first);
       await tester.pump();
@@ -3089,6 +3179,20 @@ void main() {
     await tester.tap(find.byType(Switch).last);
     await tester.pumpAndSettle();
 
+    await tester.enterText(
+      find.byKey(const ValueKey('developer-home-shader-speed-field')),
+      '0.25',
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.ancestor(
+        of: find.text('Acrylic panel'),
+        matching: find.byType(Checkbox),
+      ),
+    );
+    await tester.pumpAndSettle();
+
     await tester.tap(
       find.ancestor(
         of: find.text('Timing logs'),
@@ -3109,6 +3213,8 @@ void main() {
     expect(store.value, contains('"developerModeEnabled":true'));
     expect(store.value, contains('"timingLogsEnabled":true'));
     expect(store.value, contains('"macOsCaptionButtonsEnabled":true'));
+    expect(store.value, contains('"homeShaderSpeed":0.25'));
+    expect(store.value, contains('"homeAcrylicPanelEnabled":true'));
   });
 
   testWidgets('title bar keeps developer left of home and settings', (
@@ -3211,13 +3317,64 @@ void main() {
     await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
     await tester.pumpAndSettle();
 
+    var scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+    var appBar = tester.widget<AppBar>(find.byType(AppBar));
+    expect(scaffold.floatingHeader, isFalse);
+    expect(appBar.surfaceOpacity, isNull);
+    expect(appBar.surfaceBlur, isNull);
     expect(find.text('first.png'), findsWidgets);
 
     await tester.tap(find.byKey(const ValueKey('title-bar-home-button')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Optimize your images easily'), findsOneWidget);
+    scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+    appBar = tester.widget<AppBar>(find.byType(AppBar));
+    expect(scaffold.floatingHeader, isTrue);
+    expect(appBar.surfaceOpacity, 0.10);
+    expect(appBar.surfaceBlur, 4);
+    expect(find.text('Optimize images easily'), findsOneWidget);
     expect(find.text('first.png'), findsNothing);
+  });
+
+  testWidgets('title bar home button is disabled while optimizing', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {
+        '/tmp/first.png': _metadata('png', 2400),
+        '/tmp/first.jpeg': _metadata('jpeg', 900),
+      },
+      batchDelay: const Duration(seconds: 1),
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('optimize-action-idle')));
+    await tester.pump();
+
+    final homeButton = tester.widget<GhostButton>(
+      find.byKey(const ValueKey('title-bar-home-button')),
+    );
+    expect(homeButton.onPressed, isNull);
+
+    await tester.tap(find.byKey(const ValueKey('title-bar-home-button')));
+    await tester.pump();
+
+    expect(find.text('first.png'), findsWidgets);
+    expect(find.text('Optimize images easily'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
   });
 
   testWidgets('title bar settings menu cycles persisted theme preference', (
@@ -3248,7 +3405,40 @@ void main() {
 
     await tester.tap(settingsButton);
     await tester.pumpAndSettle();
-    expect(find.text('Theme: System'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('title-bar-settings-label')),
+      findsOneWidget,
+    );
+    expect(find.text('Theme'), findsOneWidget);
+    expect(find.text('System'), findsNothing);
+    expect(find.text('Color'), findsOneWidget);
+    expect(find.text('Slate'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('title-bar-community-label')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('title-bar-bug-tracker-button')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('title-bar-blog-button')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('title-bar-app-name-label')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('title-bar-version-label')),
+      findsOneWidget,
+    );
+    expect(find.text('v0.1.2'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('title-bar-donate-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('title-bar-contributors-button')),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(const ValueKey('title-bar-theme-toggle')));
     await tester.pumpAndSettle();
@@ -3256,19 +3446,29 @@ void main() {
       find.byKey(const ValueKey('title-bar-theme-toggle')),
       findsOneWidget,
     );
-    expect(find.text('Theme: Light'), findsOneWidget);
+    expect(find.text('Light'), findsNothing);
     expect(
       AppSettings.fromJsonString((await store.read())!).themePreference,
       AppThemePreference.light,
     );
 
+    await tester.tap(
+      find.byKey(const ValueKey('title-bar-color-scheme-toggle')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Zinc'), findsOneWidget);
+    expect(
+      AppSettings.fromJsonString((await store.read())!).colorSchemePreference,
+      AppColorSchemePreference.zinc,
+    );
+
     await tester.tap(find.byKey(const ValueKey('title-bar-theme-toggle')));
     await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey('title-bar-theme-toggle')),
       findsOneWidget,
     );
-    expect(find.text('Theme: Dark'), findsOneWidget);
+    expect(find.text('Dark'), findsNothing);
     expect(
       AppSettings.fromJsonString((await store.read())!).themePreference,
       AppThemePreference.dark,
@@ -3280,10 +3480,62 @@ void main() {
       find.byKey(const ValueKey('title-bar-theme-toggle')),
       findsOneWidget,
     );
-    expect(find.text('Theme: System'), findsOneWidget);
+    expect(find.text('System'), findsNothing);
     expect(
       AppSettings.fromJsonString((await store.read())!).themePreference,
       AppThemePreference.system,
+    );
+  });
+
+  testWidgets('stored color scheme preference maps to app color schemes', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    Future<void> pumpWithColorScheme(
+      AppColorSchemePreference colorSchemePreference,
+    ) async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+
+      final store = _FakeAppSettingsStore()
+        ..value = AppSettings.defaults
+            .copyWith(colorSchemePreference: colorSchemePreference)
+            .toJsonString();
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      );
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+      await tester.pumpWidget(
+        _buildApp(controller: controller, slimg: slimg, store: store),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await pumpWithColorScheme(AppColorSchemePreference.zinc);
+    expect(
+      tester.widget<ShadcnApp>(find.byType(ShadcnApp)).theme.colorScheme,
+      ColorSchemes.lightZinc,
+    );
+    expect(
+      tester.widget<ShadcnApp>(find.byType(ShadcnApp)).darkTheme?.colorScheme,
+      ColorSchemes.darkZinc,
+    );
+
+    await pumpWithColorScheme(AppColorSchemePreference.stone);
+    expect(
+      tester.widget<ShadcnApp>(find.byType(ShadcnApp)).theme.colorScheme,
+      ColorSchemes.lightStone,
+    );
+    expect(
+      tester.widget<ShadcnApp>(find.byType(ShadcnApp)).darkTheme?.colorScheme,
+      ColorSchemes.darkStone,
     );
   });
 
@@ -3876,6 +4128,23 @@ void main() {
     await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
     await tester.pumpAndSettle();
 
+    expect(
+      find.byKey(const ValueKey('metric-legend-dot-Pixel Match')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('metric-legend-dot-MS-SSIM')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('metric-legend-dot-SSIMULACRA 2')),
+      findsNothing,
+    );
+
+    await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
     final pixelMatchDot = tester.widget<Container>(
       find.byKey(const ValueKey('metric-legend-dot-Pixel Match')),
     );
@@ -3888,15 +4157,15 @@ void main() {
 
     expect(
       (pixelMatchDot.decoration! as BoxDecoration).color,
-      const Color(0xFF2563EB),
+      const Color(0xFF06B6D4),
     );
     expect(
       (msSsimDot.decoration! as BoxDecoration).color,
-      const Color(0xFFD97706),
+      const Color(0xFFD946EF),
     );
     expect(
       (ssimulacra2Dot.decoration! as BoxDecoration).color,
-      const Color(0xFF16A34A),
+      const Color(0xFFEAB308),
     );
   });
 

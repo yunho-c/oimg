@@ -1047,6 +1047,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "imagequant"
+version = "4.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "caf5d73b959dfbe5d6b5cd3ca8de5265c7bc58297f20560a60a1d2ba6a19991f"
+dependencies = [
+ "arrayvec",
+ "once_cell",
+ "rgb",
+]
+
+[[package]]
 name = "img-parts"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1998,9 +2009,11 @@ name = "slimg-core"
 version = "0.5.1"
 dependencies = [
  "image",
+ "imagequant",
  "imgref",
  "mozjpeg",
  "oxipng",
+ "png",
  "rapid-qoi",
  "ravif",
  "rgb",

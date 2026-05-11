@@ -8,6 +8,8 @@ enum CompressionPriority { compatibility, efficiency }
 
 enum PreferredCodec { png, jpeg, webp, avif, jxl }
 
+enum PngPalettePreference { off, auto, on }
+
 enum StorageDestinationMode { sameFolder, differentLocation }
 
 enum SameFolderAction { replaceSource, keepSource }
@@ -15,6 +17,8 @@ enum SameFolderAction { replaceSource, keepSource }
 enum KeepSourceNaming { renameOptimized, renameOriginal }
 
 enum AppThemePreference { system, light, dark }
+
+enum AppColorSchemePreference { slate, zinc, stone, neutral, gray }
 
 const Object _noAppSettingsValue = Object();
 
@@ -53,6 +57,28 @@ extension AppThemePreferenceValues on AppThemePreference {
   }
 }
 
+extension AppColorSchemePreferenceValues on AppColorSchemePreference {
+  String get label {
+    return switch (this) {
+      AppColorSchemePreference.slate => 'Slate',
+      AppColorSchemePreference.zinc => 'Zinc',
+      AppColorSchemePreference.stone => 'Stone',
+      AppColorSchemePreference.neutral => 'Neutral',
+      AppColorSchemePreference.gray => 'Gray',
+    };
+  }
+
+  AppColorSchemePreference get next {
+    return switch (this) {
+      AppColorSchemePreference.slate => AppColorSchemePreference.zinc,
+      AppColorSchemePreference.zinc => AppColorSchemePreference.stone,
+      AppColorSchemePreference.stone => AppColorSchemePreference.neutral,
+      AppColorSchemePreference.neutral => AppColorSchemePreference.gray,
+      AppColorSchemePreference.gray => AppColorSchemePreference.slate,
+    };
+  }
+}
+
 class AppSettings {
   const AppSettings({
     required this.compressionMethod,
@@ -60,6 +86,8 @@ class AppSettings {
     required this.advancedMode,
     required this.preferredCodec,
     required this.quality,
+    this.effort = 50,
+    this.pngPaletteMode = PngPalettePreference.off,
     required this.storageDestinationMode,
     required this.sameFolderAction,
     this.keepSourceNaming = KeepSourceNaming.renameOptimized,
@@ -77,11 +105,14 @@ class AppSettings {
     this.differenceTooltipShowsCoordinates = true,
     this.differenceTooltipUsesSwatches = true,
     this.themePreference = AppThemePreference.system,
+    this.colorSchemePreference = AppColorSchemePreference.slate,
     required this.developerModeEnabled,
     required this.timingLogsEnabled,
     this.macOsCaptionButtonsEnabled = false,
     this.differentLocationPath,
     this.previewPathHeaderEnabled = false,
+    this.homeShaderSpeed = defaultHomeShaderSpeed,
+    this.homeAcrylicPanelEnabled = false,
   });
 
   final CompressionMethod compressionMethod;
@@ -89,6 +120,8 @@ class AppSettings {
   final bool advancedMode;
   final PreferredCodec preferredCodec;
   final int quality;
+  final int effort;
+  final PngPalettePreference pngPaletteMode;
   final StorageDestinationMode storageDestinationMode;
   final SameFolderAction sameFolderAction;
   final KeepSourceNaming keepSourceNaming;
@@ -107,13 +140,17 @@ class AppSettings {
   final bool differenceTooltipShowsCoordinates;
   final bool differenceTooltipUsesSwatches;
   final AppThemePreference themePreference;
+  final AppColorSchemePreference colorSchemePreference;
   final bool developerModeEnabled;
   final bool timingLogsEnabled;
   final bool macOsCaptionButtonsEnabled;
   final bool previewPathHeaderEnabled;
+  final double homeShaderSpeed;
+  final bool homeAcrylicPanelEnabled;
 
   static const defaultKeepSourceOriginalSuffix = '_original';
   static const defaultKeepSourceOptimizedSuffix = '_optimized';
+  static const defaultHomeShaderSpeed = 0.5;
 
   static const defaults = AppSettings(
     compressionMethod: CompressionMethod.lossy,
@@ -121,6 +158,8 @@ class AppSettings {
     advancedMode: false,
     preferredCodec: PreferredCodec.jpeg,
     quality: 80,
+    effort: 50,
+    pngPaletteMode: PngPalettePreference.off,
     storageDestinationMode: StorageDestinationMode.sameFolder,
     sameFolderAction: SameFolderAction.replaceSource,
     keepSourceNaming: KeepSourceNaming.renameOptimized,
@@ -138,10 +177,13 @@ class AppSettings {
     differenceTooltipShowsCoordinates: true,
     differenceTooltipUsesSwatches: true,
     themePreference: AppThemePreference.system,
+    colorSchemePreference: AppColorSchemePreference.slate,
     developerModeEnabled: false,
     timingLogsEnabled: false,
     macOsCaptionButtonsEnabled: false,
     previewPathHeaderEnabled: false,
+    homeShaderSpeed: defaultHomeShaderSpeed,
+    homeAcrylicPanelEnabled: false,
   );
 
   PreferredCodec get effectiveCodec {
@@ -193,6 +235,8 @@ class AppSettings {
     bool? advancedMode,
     PreferredCodec? preferredCodec,
     int? quality,
+    int? effort,
+    PngPalettePreference? pngPaletteMode,
     StorageDestinationMode? storageDestinationMode,
     SameFolderAction? sameFolderAction,
     KeepSourceNaming? keepSourceNaming,
@@ -211,10 +255,13 @@ class AppSettings {
     bool? differenceTooltipShowsCoordinates,
     bool? differenceTooltipUsesSwatches,
     AppThemePreference? themePreference,
+    AppColorSchemePreference? colorSchemePreference,
     bool? developerModeEnabled,
     bool? timingLogsEnabled,
     bool? macOsCaptionButtonsEnabled,
     bool? previewPathHeaderEnabled,
+    double? homeShaderSpeed,
+    bool? homeAcrylicPanelEnabled,
   }) {
     return AppSettings(
       compressionMethod: compressionMethod ?? this.compressionMethod,
@@ -222,6 +269,8 @@ class AppSettings {
       advancedMode: advancedMode ?? this.advancedMode,
       preferredCodec: preferredCodec ?? this.preferredCodec,
       quality: quality ?? this.quality,
+      effort: effort ?? this.effort,
+      pngPaletteMode: pngPaletteMode ?? this.pngPaletteMode,
       storageDestinationMode:
           storageDestinationMode ?? this.storageDestinationMode,
       sameFolderAction: sameFolderAction ?? this.sameFolderAction,
@@ -254,12 +303,17 @@ class AppSettings {
       differenceTooltipUsesSwatches:
           differenceTooltipUsesSwatches ?? this.differenceTooltipUsesSwatches,
       themePreference: themePreference ?? this.themePreference,
+      colorSchemePreference:
+          colorSchemePreference ?? this.colorSchemePreference,
       developerModeEnabled: developerModeEnabled ?? this.developerModeEnabled,
       timingLogsEnabled: timingLogsEnabled ?? this.timingLogsEnabled,
       macOsCaptionButtonsEnabled:
           macOsCaptionButtonsEnabled ?? this.macOsCaptionButtonsEnabled,
       previewPathHeaderEnabled:
           previewPathHeaderEnabled ?? this.previewPathHeaderEnabled,
+      homeShaderSpeed: homeShaderSpeed ?? this.homeShaderSpeed,
+      homeAcrylicPanelEnabled:
+          homeAcrylicPanelEnabled ?? this.homeAcrylicPanelEnabled,
     );
   }
 
@@ -270,6 +324,8 @@ class AppSettings {
       'advancedMode': advancedMode,
       'preferredCodec': preferredCodec.name,
       'quality': quality,
+      'effort': effort,
+      'pngPaletteMode': pngPaletteMode.name,
       'storageDestinationMode': storageDestinationMode.name,
       'sameFolderAction': sameFolderAction.name,
       'keepSourceNaming': keepSourceNaming.name,
@@ -288,10 +344,13 @@ class AppSettings {
       'differenceTooltipShowsCoordinates': differenceTooltipShowsCoordinates,
       'differenceTooltipUsesSwatches': differenceTooltipUsesSwatches,
       'themePreference': themePreference.name,
+      'colorSchemePreference': colorSchemePreference.name,
       'developerModeEnabled': developerModeEnabled,
       'timingLogsEnabled': timingLogsEnabled,
       'macOsCaptionButtonsEnabled': macOsCaptionButtonsEnabled,
       'previewPathHeaderEnabled': previewPathHeaderEnabled,
+      'homeShaderSpeed': homeShaderSpeed,
+      'homeAcrylicPanelEnabled': homeAcrylicPanelEnabled,
     };
   }
 
@@ -318,6 +377,10 @@ class AppSettings {
         json['preferredCodec'] as String,
       ),
       quality: json['quality'] as int? ?? defaults.quality,
+      effort: json['effort'] as int? ?? defaults.effort,
+      pngPaletteMode: PngPalettePreference.values.byName(
+        json['pngPaletteMode'] as String? ?? defaults.pngPaletteMode.name,
+      ),
       storageDestinationMode: StorageDestinationMode.values.byName(
         json['storageDestinationMode'] as String? ??
             defaults.storageDestinationMode.name,
@@ -371,6 +434,10 @@ class AppSettings {
       themePreference: AppThemePreference.values.byName(
         json['themePreference'] as String? ?? defaults.themePreference.name,
       ),
+      colorSchemePreference: AppColorSchemePreference.values.byName(
+        json['colorSchemePreference'] as String? ??
+            defaults.colorSchemePreference.name,
+      ),
       developerModeEnabled:
           json['developerModeEnabled'] as bool? ??
           defaults.developerModeEnabled,
@@ -382,6 +449,12 @@ class AppSettings {
       previewPathHeaderEnabled:
           json['previewPathHeaderEnabled'] as bool? ??
           defaults.previewPathHeaderEnabled,
+      homeShaderSpeed:
+          (json['homeShaderSpeed'] as num?)?.toDouble() ??
+          defaults.homeShaderSpeed,
+      homeAcrylicPanelEnabled:
+          json['homeAcrylicPanelEnabled'] as bool? ??
+          defaults.homeAcrylicPanelEnabled,
     );
   }
 
@@ -393,6 +466,8 @@ class AppSettings {
         other.advancedMode == advancedMode &&
         other.preferredCodec == preferredCodec &&
         other.quality == quality &&
+        other.effort == effort &&
+        other.pngPaletteMode == pngPaletteMode &&
         other.storageDestinationMode == storageDestinationMode &&
         other.sameFolderAction == sameFolderAction &&
         other.keepSourceNaming == keepSourceNaming &&
@@ -412,10 +487,13 @@ class AppSettings {
             differenceTooltipShowsCoordinates &&
         other.differenceTooltipUsesSwatches == differenceTooltipUsesSwatches &&
         other.themePreference == themePreference &&
+        other.colorSchemePreference == colorSchemePreference &&
         other.developerModeEnabled == developerModeEnabled &&
         other.timingLogsEnabled == timingLogsEnabled &&
         other.macOsCaptionButtonsEnabled == macOsCaptionButtonsEnabled &&
-        other.previewPathHeaderEnabled == previewPathHeaderEnabled;
+        other.previewPathHeaderEnabled == previewPathHeaderEnabled &&
+        other.homeShaderSpeed == homeShaderSpeed &&
+        other.homeAcrylicPanelEnabled == homeAcrylicPanelEnabled;
   }
 
   @override
@@ -425,6 +503,8 @@ class AppSettings {
     advancedMode,
     preferredCodec,
     quality,
+    effort,
+    pngPaletteMode,
     storageDestinationMode,
     sameFolderAction,
     keepSourceNaming,
@@ -443,9 +523,12 @@ class AppSettings {
     differenceTooltipShowsCoordinates,
     differenceTooltipUsesSwatches,
     themePreference,
+    colorSchemePreference,
     developerModeEnabled,
     timingLogsEnabled,
     macOsCaptionButtonsEnabled,
     previewPathHeaderEnabled,
+    homeShaderSpeed,
+    homeAcrylicPanelEnabled,
   ]);
 }

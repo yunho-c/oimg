@@ -42,18 +42,32 @@ OptimizationPlan buildOptimizationPlan({
   final effectiveQuality = settings.showsQualityControl
       ? settings.quality
       : 100;
+  final effort = settings.effort;
+  final pngPaletteMode = targetCodec == PreferredCodec.png
+      ? _pngPaletteModeOf(settings.pngPaletteMode)
+      : null;
   final useSourceImageForPreview = switch (targetCodec) {
-    PreferredCodec.png => true,
+    PreferredCodec.png => settings.pngPaletteMode == PngPalettePreference.off,
     PreferredCodec.webp => effectiveQuality == 100,
     PreferredCodec.jxl => effectiveQuality == 100,
     _ => false,
   };
   final operation = usesSourceCodec
       ? ImageOperation.optimize(
-          OptimizeOptions(quality: effectiveQuality, writeOnlyIfSmaller: true),
+          OptimizeOptions(
+            quality: effectiveQuality,
+            effort: effort,
+            pngPalette: pngPaletteMode,
+            writeOnlyIfSmaller: true,
+          ),
         )
       : ImageOperation.convert(
-          ConvertOptions(targetFormat: targetFormat, quality: effectiveQuality),
+          ConvertOptions(
+            targetFormat: targetFormat,
+            quality: effectiveQuality,
+            effort: effort,
+            pngPalette: pngPaletteMode,
+          ),
         );
   final storageDecision = _resolveStorageDecision(
     file: file,
@@ -85,6 +99,14 @@ OptimizationPlan buildOptimizationPlan({
     renameSourceAfterSuccessPath: storageDecision.renameSourceAfterSuccessPath,
     moveOutputAfterSuccessPath: storageDecision.moveOutputAfterSuccessPath,
   );
+}
+
+PngPaletteMode _pngPaletteModeOf(PngPalettePreference preference) {
+  return switch (preference) {
+    PngPalettePreference.off => PngPaletteMode.off,
+    PngPalettePreference.auto => PngPaletteMode.auto,
+    PngPalettePreference.on => PngPaletteMode.on_,
+  };
 }
 
 String codecIdOf(PreferredCodec codec) {

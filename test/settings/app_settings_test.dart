@@ -236,6 +236,10 @@ void main() {
       expect(settings.timingLogsEnabled, isFalse);
       expect(settings.macOsCaptionButtonsEnabled, isFalse);
       expect(settings.previewPathHeaderEnabled, isFalse);
+      expect(settings.homeShaderSpeed, AppSettings.defaultHomeShaderSpeed);
+      expect(settings.homeAcrylicPanelEnabled, isFalse);
+      expect(settings.effort, AppSettings.defaults.effort);
+      expect(settings.pngPaletteMode, AppSettings.defaults.pngPaletteMode);
       expect(
         settings.storageDestinationMode,
         StorageDestinationMode.sameFolder,
@@ -255,6 +259,7 @@ void main() {
       expect(settings.bitsPerPixelColorsEnabled, isFalse);
       expect(settings.fileSizeColorsEnabled, isFalse);
       expect(settings.themePreference, AppThemePreference.system);
+      expect(settings.colorSchemePreference, AppColorSchemePreference.slate);
     });
   });
 }

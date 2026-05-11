@@ -17,8 +17,13 @@ The Windows release workflow currently produces unsigned ZIP and Inno Setup inst
 
 Follow-up: add Authenticode signing before ZIP and installer packaging once a Windows code-signing certificate is available in CI. The workflow should sign `oimg.exe`, bundled DLLs, and the setup EXE, verify the signatures, then upload the signed artifacts.
 
+## Linux release hardening
+
+- Add Linux `arm64` release support with either a native ARM runner or a deliberate cross-build path.
+- Add Debian package signing and apt repository metadata if OIMG is distributed through an apt source instead of GitHub Release downloads.
+
 ## Release dependency pinning
 
-The macOS and Windows release workflows currently checkout sibling repositories from the branches used by this app.
+The release workflows currently checkout sibling repositories from the branches used by this app.
 
 Follow-up: pin `slimg`, `tjdistler-iqa-fork`, and `irondash` to release tags or commit SHAs before publishing stable releases, so release rebuilds do not silently pick up branch changes.

@@ -93,13 +93,35 @@ Windows verification checklist:
 - Run a basic optimization.
 - Submit the MSIX to Microsoft Store for signing and distribution.
 
-## Future Platforms
+## Current Platform: Linux Debian
 
-Linux Debian packaging is not part of the current release workflow yet.
+The Linux Debian release workflow should build, validate, and upload an unsigned `amd64` `.deb`.
 
-When it is added, extend this file with:
+Linux verification checklist:
 
-- Artifact name and extension.
-- Required signing or packaging credentials.
-- Target OS version assumptions.
-- Manual smoke-test steps.
+- Download the `.deb` from the draft release.
+- Install it on Debian/Ubuntu/Pop!_OS:
+
+  ```bash
+  sudo dpkg -i oimg_*_amd64.deb
+  sudo apt install -f
+  ```
+
+- Launch OIMG.
+- Check image Open With metadata:
+
+  ```bash
+  gio mime image/png
+  gio mime image/avif
+  ```
+
+- If testing Nautilus integration, restart Files and verify the context menu:
+
+  ```bash
+  nautilus -q
+  ```
+
+- Right-click a supported image in Nautilus and test:
+  - `Compress image`
+  - `Compress image (lossless)`
+- Open an image and run a basic optimization in the app.

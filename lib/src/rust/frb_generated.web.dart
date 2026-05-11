@@ -83,6 +83,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   OptimizeOptions dco_decode_box_autoadd_optimize_options(dynamic raw);
 
   @protected
+  PaletteSuitability dco_decode_box_autoadd_palette_suitability(dynamic raw);
+
+  @protected
+  PngPaletteMode dco_decode_box_autoadd_png_palette_mode(dynamic raw);
+
+  @protected
   PreviewArtifactRequest dco_decode_box_autoadd_preview_artifact_request(
     dynamic raw,
   );
@@ -186,6 +192,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   FillSpec? dco_decode_opt_box_autoadd_fill_spec(dynamic raw);
 
   @protected
+  PaletteSuitability? dco_decode_opt_box_autoadd_palette_suitability(
+    dynamic raw,
+  );
+
+  @protected
+  PngPaletteMode? dco_decode_opt_box_autoadd_png_palette_mode(dynamic raw);
+
+  @protected
   ProcessResult? dco_decode_opt_box_autoadd_process_result(dynamic raw);
 
   @protected
@@ -202,6 +216,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   OptimizeOptions dco_decode_optimize_options(dynamic raw);
+
+  @protected
+  PaletteRecommendation dco_decode_palette_recommendation(dynamic raw);
+
+  @protected
+  PaletteSuitability dco_decode_palette_suitability(dynamic raw);
+
+  @protected
+  PngPaletteMode dco_decode_png_palette_mode(dynamic raw);
 
   @protected
   PreviewArtifactRequest dco_decode_preview_artifact_request(dynamic raw);
@@ -325,6 +348,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   OptimizeOptions sse_decode_box_autoadd_optimize_options(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PaletteSuitability sse_decode_box_autoadd_palette_suitability(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PngPaletteMode sse_decode_box_autoadd_png_palette_mode(
     SseDeserializer deserializer,
   );
 
@@ -454,6 +487,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   FillSpec? sse_decode_opt_box_autoadd_fill_spec(SseDeserializer deserializer);
 
   @protected
+  PaletteSuitability? sse_decode_opt_box_autoadd_palette_suitability(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PngPaletteMode? sse_decode_opt_box_autoadd_png_palette_mode(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   ProcessResult? sse_decode_opt_box_autoadd_process_result(
     SseDeserializer deserializer,
   );
@@ -476,6 +519,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   OptimizeOptions sse_decode_optimize_options(SseDeserializer deserializer);
+
+  @protected
+  PaletteRecommendation sse_decode_palette_recommendation(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PaletteSuitability sse_decode_palette_suitability(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PngPaletteMode sse_decode_png_palette_mode(SseDeserializer deserializer);
 
   @protected
   PreviewArtifactRequest sse_decode_preview_artifact_request(
@@ -641,6 +697,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_palette_suitability(
+    PaletteSuitability self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_png_palette_mode(
+    PngPaletteMode self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_preview_artifact_request(
     PreviewArtifactRequest self,
     SseSerializer serializer,
@@ -794,6 +862,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_opt_box_autoadd_palette_suitability(
+    PaletteSuitability? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_png_palette_mode(
+    PngPaletteMode? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_box_autoadd_process_result(
     ProcessResult? self,
     SseSerializer serializer,
@@ -820,6 +900,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_optimize_options(
     OptimizeOptions self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_palette_recommendation(
+    PaletteRecommendation self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_palette_suitability(
+    PaletteSuitability self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_png_palette_mode(
+    PngPaletteMode self,
     SseSerializer serializer,
   );
 

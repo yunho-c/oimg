@@ -1,0 +1,224 @@
+name: Linux Debian Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build, for example v1.0.1"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build Linux Debian package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    env:
+      DIST_DIR: ${{ github.workspace }}/oimg/debian/packages
+
+    steps:
+      - name: Resolve release tag
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            tag="${{ inputs.tag }}"
+          else
+            tag="${GITHUB_REF_NAME}"
+          fi
+
+          if [[ ! "$tag" =~ ^v[0-9]+[.][0-9]+[.][0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Release tag must look like v1.2.3, got: $tag" >&2
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate required secrets
+        shell: bash
+        env:
+          CI_REPO_TOKEN: ${{ secrets.CI_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${CI_REPO_TOKEN:-}" ]]; then
+            echo "Missing required secret: CI_REPO_TOKEN" >&2
+            exit 1
+          fi
+
+      - name: Checkout oimg
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+          path: oimg
+          fetch-depth: 0
+
+      - name: Validate tag is on main
+        shell: bash
+        working-directory: oimg
+        run: |
+          set -euo pipefail
+          echo "Temporarily skipped for Linux workflow test."
+          # git fetch origin main
+          # if ! git merge-base --is-ancestor HEAD origin/main; then
+          #   echo "Release tag ${{ steps.release.outputs.tag }} must point to a commit reachable from origin/main." >&2
+          #   exit 1
+          # fi
+
+      - name: Checkout slimg
+        uses: actions/checkout@v4
+        with:
+          repository: yunho-c/slimg
+          ref: feat/zenavif
+          path: slimg
+          token: ${{ secrets.CI_REPO_TOKEN }}
+          submodules: recursive
+
+      - name: Checkout tjdistler-iqa-fork
+        uses: actions/checkout@v4
+        with:
+          repository: yunho-c/tjdistler-iqa-fork
+          ref: perf/simd-gaussian-vertical
+          path: tjdistler-iqa-fork
+          token: ${{ secrets.CI_REPO_TOKEN }}
+
+      - name: Checkout irondash
+        uses: actions/checkout@v4
+        with:
+          repository: yunho-c/irondash
+          ref: fix/macos-engine-context-race
+          path: irondash
+          token: ${{ secrets.CI_REPO_TOKEN }}
+
+      - name: Validate pubspec version
+        shell: bash
+        working-directory: oimg
+        run: |
+          set -euo pipefail
+          pubspec_version="$(awk '/^version:/ { split($2, parts, "+"); print parts[1]; exit }' pubspec.yaml)"
+          tag_version="${{ steps.release.outputs.version }}"
+
+          if [[ -z "$pubspec_version" ]]; then
+            echo "Could not read version from pubspec.yaml" >&2
+            exit 1
+          fi
+
+          if [[ "$pubspec_version" != "$tag_version" ]]; then
+            echo "Tag version ($tag_version) does not match pubspec.yaml ($pubspec_version)" >&2
+            exit 1
+          fi
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install native build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            clang \
+            cmake \
+            desktop-file-utils \
+            dpkg-dev \
+            libblkid-dev \
+            libclang-dev \
+            libgtk-3-dev \
+            liblzma-dev \
+            libstdc++-13-dev \
+            nasm \
+            ninja-build \
+            pkg-config \
+            python3 \
+            python3-nautilus \
+            rsync
+
+      - name: Install Flutter dependencies
+        shell: bash
+        working-directory: oimg
+        run: |
+          set -euo pipefail
+          flutter pub get
+          dart pub get --directory rust_builder/cargokit/build_tool
+
+      - name: Run release checks
+        shell: bash
+        working-directory: oimg
+        run: |
+          set -euo pipefail
+          flutter analyze
+          flutter test test/settings test/file_open_controller_test.dart test/file_open_channel_test.dart test/optimization
+          env RUSTC_WRAPPER= CARGO_BUILD_RUSTC_WRAPPER= cargo test --manifest-path rust/Cargo.toml
+
+      - name: Build Debian package
+        shell: bash
+        working-directory: oimg
+        run: |
+          set -euo pipefail
+          ./scripts/linux/package-deb.sh
+
+      - name: Verify Debian package
+        shell: bash
+        working-directory: oimg
+        run: |
+          set -euo pipefail
+          deb_path="$(find "$DIST_DIR" -maxdepth 1 -type f -name '*.deb' | sort | tail -n 1)"
+          if [[ -z "$deb_path" || ! -f "$deb_path" ]]; then
+            echo "Expected Debian package not found in $DIST_DIR" >&2
+            exit 1
+          fi
+
+          dpkg-deb -I "$deb_path"
+          dpkg-deb -I "$deb_path" | grep -E 'Architecture:[[:space:]]*amd64'
+          dpkg-deb -I "$deb_path" | grep 'python3-nautilus'
+          dpkg-deb -c "$deb_path" | grep '/opt/oimg/oimg-service'
+          dpkg-deb -c "$deb_path" | grep '/usr/share/nautilus-python/extensions/oimg.py'
+          dpkg-deb -c "$deb_path" | grep '/usr/share/applications/oimg.desktop'
+
+          rm -rf /tmp/oimg-deb-root
+          dpkg-deb -x "$deb_path" /tmp/oimg-deb-root
+          desktop-file-validate /tmp/oimg-deb-root/usr/share/applications/oimg.desktop
+          python3 -m py_compile /tmp/oimg-deb-root/usr/share/nautilus-python/extensions/oimg.py
+
+      - name: Upload Debian artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OIMG-${{ steps.release.outputs.version }}-linux-amd64-deb
+          path: oimg/debian/packages/*.deb
+          if-no-files-found: error
+
+      - name: Create draft GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.release.outputs.tag }}"
+          deb_path="$(find "$DIST_DIR" -maxdepth 1 -type f -name '*.deb' | sort | tail -n 1)"
+
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" \
+              --repo "$GITHUB_REPOSITORY" \
+              --draft \
+              --title "OIMG $tag" \
+              --notes "Release candidate for $tag."
+          fi
+
+          gh release upload "$tag" "$deb_path" \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber

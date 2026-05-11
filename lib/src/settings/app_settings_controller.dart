@@ -52,6 +52,16 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     await _update((settings) => settings.copyWith(quality: quality));
   }
 
+  Future<void> setEffort(int effort) async {
+    await _update((settings) => settings.copyWith(effort: effort));
+  }
+
+  Future<void> setPngPaletteMode(PngPalettePreference pngPaletteMode) async {
+    await _update(
+      (settings) => settings.copyWith(pngPaletteMode: pngPaletteMode),
+    );
+  }
+
   Future<void> setStorageDestinationMode(
     StorageDestinationMode storageDestinationMode,
   ) async {
@@ -201,6 +211,23 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     );
   }
 
+  Future<void> setColorSchemePreference(
+    AppColorSchemePreference colorSchemePreference,
+  ) async {
+    await _update(
+      (settings) =>
+          settings.copyWith(colorSchemePreference: colorSchemePreference),
+    );
+  }
+
+  Future<void> cycleColorSchemePreference() async {
+    await _update(
+      (settings) => settings.copyWith(
+        colorSchemePreference: settings.colorSchemePreference.next,
+      ),
+    );
+  }
+
   Future<void> setDeveloperModeEnabled(bool developerModeEnabled) async {
     await _update(
       (settings) => settings.copyWith(
@@ -237,6 +264,19 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
       (settings) => settings.copyWith(
         macOsCaptionButtonsEnabled: macOsCaptionButtonsEnabled,
       ),
+    );
+  }
+
+  Future<void> setHomeShaderSpeed(double homeShaderSpeed) async {
+    await _update(
+      (settings) => settings.copyWith(homeShaderSpeed: homeShaderSpeed),
+    );
+  }
+
+  Future<void> setHomeAcrylicPanelEnabled(bool homeAcrylicPanelEnabled) async {
+    await _update(
+      (settings) =>
+          settings.copyWith(homeAcrylicPanelEnabled: homeAcrylicPanelEnabled),
     );
   }
 

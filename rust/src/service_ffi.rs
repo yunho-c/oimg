@@ -11,8 +11,8 @@ use crate::codec::parse_format;
 use crate::error::{panic_message, Result, SlimgBridgeError};
 use crate::fs::safe_write_bytes;
 use crate::types::{
-    BatchItemResult, ConvertOptions, ImageOperation, OptimizeOptions, ProcessFileBatchRequest,
-    ProcessFileRequest, ProcessResult,
+    BatchItemResult, ConvertOptions, ImageOperation, OptimizeOptions, PngPaletteMode,
+    ProcessFileBatchRequest, ProcessFileRequest, ProcessResult,
 };
 
 #[derive(Debug, Deserialize, Clone, Copy)]
@@ -39,6 +39,8 @@ struct CompressionServiceSettings {
     advanced_mode: bool,
     preferred_codec: PreferredCodec,
     quality: u8,
+    effort: Option<u8>,
+    png_palette_mode: Option<PngPaletteMode>,
 }
 
 #[derive(Debug, Deserialize, Clone, Copy)]
@@ -223,12 +225,16 @@ fn build_batch_request(request: CompressionServiceRequest) -> Result<ProcessFile
         let operation = if same_format {
             ImageOperation::Optimize(OptimizeOptions {
                 quality: settings.quality,
+                effort: settings.effort,
+                png_palette: settings.png_palette_mode,
                 write_only_if_smaller: true,
             })
         } else {
             ImageOperation::Convert(ConvertOptions {
                 target_format: target_codec.clone(),
                 quality: settings.quality,
+                effort: settings.effort,
+                png_palette: settings.png_palette_mode,
             })
         };
 
@@ -300,6 +306,8 @@ fn process_save_as_path(
                 operation: ImageOperation::Convert(ConvertOptions {
                     target_format: target_format.to_string(),
                     quality: 80,
+                    effort: None,
+                    png_palette: None,
                 }),
             },
             None,
@@ -337,6 +345,8 @@ fn process_save_as_jpg(
         &flattened,
         &EncodeOptions {
             quality: settings.quality,
+            effort: settings.effort,
+            png_palette: Default::default(),
             threads: None,
         },
     )?;
@@ -478,6 +488,8 @@ mod tests {
             &PipelineOptions {
                 format: Format::Png,
                 quality: 80,
+                effort: None,
+                png_palette: Default::default(),
                 threads: None,
                 resize: None,
                 crop: None,
@@ -496,6 +508,8 @@ mod tests {
             &PipelineOptions {
                 format: Format::Png,
                 quality: 80,
+                effort: None,
+                png_palette: Default::default(),
                 threads: None,
                 resize: None,
                 crop: None,
@@ -579,6 +593,8 @@ mod tests {
             &PipelineOptions {
                 format: Format::WebP,
                 quality: 80,
+                effort: None,
+                png_palette: Default::default(),
                 threads: None,
                 resize: None,
                 crop: None,
