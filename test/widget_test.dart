@@ -521,9 +521,10 @@ void main() {
     expect(_similarityValueFinder('~90.0%'), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 80));
-    expect(_similarityValueFinder('~70.0%'), findsOneWidget);
+    expect(_similarityApproximateValueFinder(), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
     expect(_similarityValueFinder('56.7%'), findsOneWidget);
   });
 
@@ -1036,6 +1037,7 @@ void main() {
         ),
       );
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
 
       final settings = AppSettings.fromJsonString((await store.read())!);
       expect(settings.quality, 100);
@@ -4438,6 +4440,18 @@ Finder _similarityLoadingFinder() {
   return find.descendant(
     of: _similarityTileFinder(),
     matching: find.byType(CircularProgressIndicator),
+  );
+}
+
+Finder _similarityApproximateValueFinder() {
+  return find.descendant(
+    of: _similarityTileFinder(),
+    matching: find.byWidgetPredicate((widget) {
+      return widget is Text &&
+          widget.data != null &&
+          widget.data!.startsWith('~') &&
+          widget.data!.endsWith('%');
+    }),
   );
 }
 

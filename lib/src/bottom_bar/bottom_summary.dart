@@ -147,6 +147,8 @@ class _BottomSummaryViewModel {
         _BottomStatData(
           label: 'Similarity',
           value: similarityStat.value,
+          numericValue: similarityStat.score,
+          numericFormatter: similarityStat.numericFormatter,
           color: Color(0xFFF59E0B),
           colorMode: _BottomStatColorMode.similarity,
           colorScore: similarityStat.score,
@@ -296,11 +298,13 @@ class _DerivedSimilarityStat {
     required this.value,
     required this.loading,
     this.score,
+    this.numericFormatter,
   });
 
   final String value;
   final bool loading;
   final double? score;
+  final String Function(num value)? numericFormatter;
 }
 
 _DerivedSimilarityStat _deriveSimilarityStat({
@@ -327,6 +331,7 @@ _DerivedSimilarityStat _deriveSimilarityStat({
         value: _formatSimilarityPercentValue(average),
         loading: false,
         score: average,
+        numericFormatter: _formatSimilarityTickerValue,
       );
     }
   }
@@ -358,6 +363,9 @@ _DerivedSimilarityStat _deriveSimilarityStat({
       value: '${isLoading ? '~' : ''}${_formatSimilarityPercentValue(average)}',
       loading: false,
       score: average,
+      numericFormatter: isLoading
+          ? _formatApproximateSimilarityTickerValue
+          : _formatSimilarityTickerValue,
     );
   }
 
@@ -548,6 +556,14 @@ String _formatSimilarityPercentValue(double? value) {
   }
 
   return '$rounded%';
+}
+
+String _formatSimilarityTickerValue(num value) {
+  return _formatSimilarityPercentValue(value.toDouble());
+}
+
+String _formatApproximateSimilarityTickerValue(num value) {
+  return '~${_formatSimilarityTickerValue(value)}';
 }
 
 String _formatNullableBpp(double? value) {
