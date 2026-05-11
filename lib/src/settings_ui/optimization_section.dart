@@ -120,28 +120,29 @@ class _OptimizationCollapsibleState
                           ],
                         ),
                         const SizedBox(height: 8),
-                        RadioGroup<PngPalettePreference>(
-                          value: widget.settings.pngPaletteMode,
-                          onChanged: widget.controlsLocked
-                              ? null
-                              : notifier.setPngPaletteMode,
-                          child: Row(
-                            children: [
-                              for (final mode
-                                  in PngPalettePreference.values) ...[
-                                Expanded(
-                                  child: RadioItem<PngPalettePreference>(
-                                    value: mode,
-                                    enabled: !widget.controlsLocked,
-                                    trailing: Text(
-                                      _pngPaletteLabel(mode),
-                                    ).xSmall(),
-                                  ),
-                                ),
-                                if (mode != PngPalettePreference.values.last)
-                                  const SizedBox(width: 8),
+                        Opacity(
+                          opacity: widget.controlsLocked ? 0.55 : 1,
+                          child: IgnorePointer(
+                            ignoring: widget.controlsLocked,
+                            child: Tabs(
+                              index: PngPalettePreference.values.indexOf(
+                                widget.settings.pngPaletteMode,
+                              ),
+                              expand: true,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 3,
+                              ),
+                              onChanged: (index) {
+                                notifier.setPngPaletteMode(
+                                  PngPalettePreference.values[index],
+                                );
+                              },
+                              children: [
+                                for (final mode in PngPalettePreference.values)
+                                  TabItem(child: Text(_pngPaletteLabel(mode))),
                               ],
-                            ],
+                            ),
                           ),
                         ),
                       ],
