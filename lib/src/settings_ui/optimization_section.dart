@@ -120,30 +120,11 @@ class _OptimizationCollapsibleState
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Opacity(
-                          opacity: widget.controlsLocked ? 0.55 : 1,
-                          child: IgnorePointer(
-                            ignoring: widget.controlsLocked,
-                            child: Tabs(
-                              index: PngPalettePreference.values.indexOf(
-                                widget.settings.pngPaletteMode,
-                              ),
-                              expand: true,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 3,
-                              ),
-                              onChanged: (index) {
-                                notifier.setPngPaletteMode(
-                                  PngPalettePreference.values[index],
-                                );
-                              },
-                              children: [
-                                for (final mode in PngPalettePreference.values)
-                                  TabItem(child: Text(_pngPaletteLabel(mode))),
-                              ],
-                            ),
-                          ),
+                        _PngPaletteTabs(
+                          value: widget.settings.pngPaletteMode,
+                          onChanged: widget.controlsLocked
+                              ? null
+                              : notifier.setPngPaletteMode,
                         ),
                       ],
                     ],
@@ -155,5 +136,160 @@ class _OptimizationCollapsibleState
         ],
       ),
     );
+  }
+}
+
+class _PngPaletteTabs extends StatelessWidget {
+  const _PngPaletteTabs({required this.value, required this.onChanged});
+
+  final PngPalettePreference value;
+  final ValueChanged<PngPalettePreference>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedIndex = PngPalettePreference.values.indexOf(value);
+    final enabled = onChanged != null;
+
+    return Opacity(
+      opacity: enabled ? 1 : 0.55,
+      child: TabContainer(
+        selected: selectedIndex,
+        onSelect: enabled
+            ? (index) {
+                onChanged?.call(PngPalettePreference.values[index]);
+              }
+            : null,
+        builder: (context, children) {
+          return _SlidingTabTrack(
+            selectedIndex: selectedIndex,
+            itemCount: PngPalettePreference.values.length,
+            children: children,
+          );
+        },
+        childBuilder: _buildTab,
+        children: [
+          for (final mode in PngPalettePreference.values)
+            TabItem(child: Text(_pngPaletteLabel(mode))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTab(BuildContext context, TabContainerData data, Widget child) {
+    final theme = Theme.of(context);
+    final scaling = theme.scaling;
+    final densityGap = theme.density.baseGap * scaling;
+    final densityContentPadding = theme.density.baseContentPadding * scaling;
+    final compTheme = ComponentTheme.maybeOf<TabsTheme>(context);
+    final tabPadding = styleValue(
+      defaultValue: EdgeInsets.symmetric(
+        horizontal: densityContentPadding,
+        vertical: densityGap * 0.5,
+      ),
+      themeValue: compTheme?.tabPadding,
+      widgetValue: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+    );
+    final selected = data.index == data.selected;
+    final selectable = data.onSelect != null;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: selectable ? () => data.onSelect?.call(data.index) : null,
+      child: MouseRegion(
+        hitTestBehavior: HitTestBehavior.translucent,
+        cursor: selectable
+            ? SystemMouseCursors.click
+            : SystemMouseCursors.basic,
+        child: Container(
+          alignment: Alignment.center,
+          padding: tabPadding,
+          child: (selected ? child.foreground() : child.muted())
+              .small()
+              .medium(),
+        ),
+      ),
+    );
+  }
+}
+
+class _SlidingTabTrack extends StatelessWidget {
+  const _SlidingTabTrack({
+    required this.selectedIndex,
+    required this.itemCount,
+    required this.children,
+  });
+
+  final int selectedIndex;
+  final int itemCount;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scaling = theme.scaling;
+    final densityGap = theme.density.baseGap * scaling;
+    final compTheme = ComponentTheme.maybeOf<TabsTheme>(context);
+    final containerPadding = styleValue(
+      defaultValue: EdgeInsets.all(densityGap * 0.5),
+      themeValue: compTheme?.containerPadding,
+    );
+    final backgroundColor = styleValue(
+      defaultValue: theme.colorScheme.muted,
+      themeValue: compTheme?.backgroundColor,
+    );
+    final borderRadius = styleValue(
+      defaultValue: BorderRadius.circular(theme.radiusLg),
+      themeValue: compTheme?.borderRadius,
+    );
+    final resolvedBorderRadius = borderRadius is BorderRadius
+        ? borderRadius
+        : borderRadius.resolve(Directionality.of(context));
+
+    return Container(
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: resolvedBorderRadius,
+      ),
+      padding: containerPadding,
+      child: ClipRRect(
+        borderRadius: resolvedBorderRadius,
+        child: IntrinsicHeight(
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: AnimatedAlign(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  alignment: _alignmentFor(selectedIndex),
+                  child: FractionallySizedBox(
+                    widthFactor: 1 / itemCount,
+                    heightFactor: 1,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.background,
+                        borderRadius: BorderRadius.circular(theme.radiusMd),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final child in children) Expanded(child: child),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Alignment _alignmentFor(int index) {
+    if (itemCount <= 1) {
+      return Alignment.center;
+    }
+    return Alignment(-1 + (2 * index / (itemCount - 1)), 0);
   }
 }
