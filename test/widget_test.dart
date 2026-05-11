@@ -3191,6 +3191,14 @@ void main() {
 
     await tester.tap(
       find.ancestor(
+        of: find.text('Flipper'),
+        matching: find.byType(RadioItem<BottomStatAnimationMode>),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.ancestor(
         of: find.text('Acrylic panel'),
         matching: find.byType(Checkbox),
       ),
@@ -3219,6 +3227,7 @@ void main() {
     expect(store.value, contains('"macOsCaptionButtonsEnabled":true'));
     expect(store.value, contains('"homeShaderSpeed":0.25'));
     expect(store.value, contains('"homeAcrylicPanelEnabled":true'));
+    expect(store.value, contains('"bottomStatAnimationMode":"flipper"'));
   });
 
   testWidgets('title bar keeps developer left of home and settings', (

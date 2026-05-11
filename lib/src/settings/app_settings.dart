@@ -20,7 +20,19 @@ enum AppThemePreference { system, light, dark }
 
 enum AppColorSchemePreference { slate, zinc, stone, neutral, gray }
 
+enum BottomStatAnimationMode { ticker, flipper, off }
+
 const Object _noAppSettingsValue = Object();
+
+extension BottomStatAnimationModeLabels on BottomStatAnimationMode {
+  String get label {
+    return switch (this) {
+      BottomStatAnimationMode.ticker => 'Ticker',
+      BottomStatAnimationMode.flipper => 'Flipper',
+      BottomStatAnimationMode.off => 'Off',
+    };
+  }
+}
 
 extension PreferredCodecCapabilities on PreferredCodec {
   bool get supportsTransparency {
@@ -113,6 +125,7 @@ class AppSettings {
     this.previewPathHeaderEnabled = false,
     this.homeShaderSpeed = defaultHomeShaderSpeed,
     this.homeAcrylicPanelEnabled = false,
+    this.bottomStatAnimationMode = BottomStatAnimationMode.ticker,
   });
 
   final CompressionMethod compressionMethod;
@@ -147,6 +160,7 @@ class AppSettings {
   final bool previewPathHeaderEnabled;
   final double homeShaderSpeed;
   final bool homeAcrylicPanelEnabled;
+  final BottomStatAnimationMode bottomStatAnimationMode;
 
   static const defaultKeepSourceOriginalSuffix = '_original';
   static const defaultKeepSourceOptimizedSuffix = '_optimized';
@@ -184,6 +198,7 @@ class AppSettings {
     previewPathHeaderEnabled: false,
     homeShaderSpeed: defaultHomeShaderSpeed,
     homeAcrylicPanelEnabled: false,
+    bottomStatAnimationMode: BottomStatAnimationMode.ticker,
   );
 
   PreferredCodec get effectiveCodec {
@@ -262,6 +277,7 @@ class AppSettings {
     bool? previewPathHeaderEnabled,
     double? homeShaderSpeed,
     bool? homeAcrylicPanelEnabled,
+    BottomStatAnimationMode? bottomStatAnimationMode,
   }) {
     return AppSettings(
       compressionMethod: compressionMethod ?? this.compressionMethod,
@@ -314,6 +330,8 @@ class AppSettings {
       homeShaderSpeed: homeShaderSpeed ?? this.homeShaderSpeed,
       homeAcrylicPanelEnabled:
           homeAcrylicPanelEnabled ?? this.homeAcrylicPanelEnabled,
+      bottomStatAnimationMode:
+          bottomStatAnimationMode ?? this.bottomStatAnimationMode,
     );
   }
 
@@ -351,6 +369,7 @@ class AppSettings {
       'previewPathHeaderEnabled': previewPathHeaderEnabled,
       'homeShaderSpeed': homeShaderSpeed,
       'homeAcrylicPanelEnabled': homeAcrylicPanelEnabled,
+      'bottomStatAnimationMode': bottomStatAnimationMode.name,
     };
   }
 
@@ -455,6 +474,10 @@ class AppSettings {
       homeAcrylicPanelEnabled:
           json['homeAcrylicPanelEnabled'] as bool? ??
           defaults.homeAcrylicPanelEnabled,
+      bottomStatAnimationMode: BottomStatAnimationMode.values.byName(
+        json['bottomStatAnimationMode'] as String? ??
+            defaults.bottomStatAnimationMode.name,
+      ),
     );
   }
 
@@ -493,7 +516,8 @@ class AppSettings {
         other.macOsCaptionButtonsEnabled == macOsCaptionButtonsEnabled &&
         other.previewPathHeaderEnabled == previewPathHeaderEnabled &&
         other.homeShaderSpeed == homeShaderSpeed &&
-        other.homeAcrylicPanelEnabled == homeAcrylicPanelEnabled;
+        other.homeAcrylicPanelEnabled == homeAcrylicPanelEnabled &&
+        other.bottomStatAnimationMode == bottomStatAnimationMode;
   }
 
   @override
@@ -530,5 +554,6 @@ class AppSettings {
     previewPathHeaderEnabled,
     homeShaderSpeed,
     homeAcrylicPanelEnabled,
+    bottomStatAnimationMode,
   ]);
 }

@@ -167,12 +167,16 @@ class _BottomStatTile extends ConsumerWidget {
               ),
             )
           else if (numericValue != null && numericFormatter != null)
-            _BottomStatTickerValue(
+            _BottomStatAnimatedValue(
               key: ValueKey(
                 'bottom-stat-${stat.label}-${showAlternate ? 'alternate' : 'primary'}',
               ),
+              mode:
+                  settings?.bottomStatAnimationMode ??
+                  AppSettings.defaults.bottomStatAnimationMode,
               value: numericValue,
               formatter: numericFormatter,
+              fallbackValue: displayedValue,
               color: valueColor,
             )
           else
@@ -274,16 +278,20 @@ class _BottomStatTile extends ConsumerWidget {
   }
 }
 
-class _BottomStatTickerValue extends StatelessWidget {
-  const _BottomStatTickerValue({
+class _BottomStatAnimatedValue extends StatelessWidget {
+  const _BottomStatAnimatedValue({
     super.key,
+    required this.mode,
     required this.value,
     required this.formatter,
+    required this.fallbackValue,
     required this.color,
   });
 
+  final BottomStatAnimationMode mode;
   final num value;
   final String Function(num value) formatter;
+  final String fallbackValue;
   final Color color;
 
   @override
@@ -294,19 +302,38 @@ class _BottomStatTickerValue extends StatelessWidget {
       color: color,
     );
 
-    return NumberTicker.builder(
-      number: value,
-      duration: const Duration(milliseconds: 350),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
-        return Text(
-          formatter(value),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: style,
-        );
-      },
-    );
+    return switch (mode) {
+      BottomStatAnimationMode.ticker => NumberTicker.builder(
+        number: value,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+        builder: (context, value, child) {
+          return Text(
+            formatter(value),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: style,
+          );
+        },
+      ),
+      BottomStatAnimationMode.flipper => DefaultTextStyle.merge(
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: style,
+        child: TextFlipper(
+          text: formatter(value),
+          charset: FlipperCharset.alphanumeric + const FlipperCharset('.% x-'),
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+        ),
+      ),
+      BottomStatAnimationMode.off => Text(
+        fallbackValue,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: style,
+      ),
+    };
   }
 }
 

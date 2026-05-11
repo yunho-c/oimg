@@ -464,6 +464,32 @@ class _DeveloperSettingsDialog extends ConsumerWidget {
                   ),
                   const SizedBox(height: 14),
                   _DeveloperSection(
+                    title: 'Stats',
+                    child: RadioGroup<BottomStatAnimationMode>(
+                      value: settings.bottomStatAnimationMode,
+                      onChanged: settings.developerModeEnabled
+                          ? notifier.setBottomStatAnimationMode
+                          : null,
+                      child: Row(
+                        children: [
+                          for (final mode
+                              in BottomStatAnimationMode.values) ...[
+                            Expanded(
+                              child: RadioItem<BottomStatAnimationMode>(
+                                value: mode,
+                                enabled: settings.developerModeEnabled,
+                                trailing: Text(mode.label).small(),
+                              ),
+                            ),
+                            if (mode != BottomStatAnimationMode.values.last)
+                              const SizedBox(width: 8),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _DeveloperSection(
                     title: 'Home',
                     child: Column(
                       children: [

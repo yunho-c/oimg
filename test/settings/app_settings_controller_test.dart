@@ -67,6 +67,9 @@ void main() {
       await notifier.setTimingLogsEnabled(true);
       await notifier.setMacOsCaptionButtonsEnabled(true);
       await notifier.setHomeAcrylicPanelEnabled(true);
+      await notifier.setBottomStatAnimationMode(
+        BottomStatAnimationMode.flipper,
+      );
 
       final settings = container.read(appSettingsProvider).requireValue;
       expect(
@@ -102,6 +105,7 @@ void main() {
           timingLogsEnabled: true,
           macOsCaptionButtonsEnabled: true,
           homeAcrylicPanelEnabled: true,
+          bottomStatAnimationMode: BottomStatAnimationMode.flipper,
         ),
       );
       expect(await store.read(), settings.toJsonString());
