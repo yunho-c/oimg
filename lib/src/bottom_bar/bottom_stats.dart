@@ -113,10 +113,17 @@ class _BottomStatTile extends ConsumerWidget {
     final settings = ref.watch(appSettingsProvider).asData?.value;
     final savingsDisplayMode = ref.watch(_savingsDisplayModeProvider);
     final isToggleable = stat.toggleable && !stat.loading;
-    final displayedValue =
-        stat.toggleable && savingsDisplayMode == _SavingsDisplayMode.ratio
+    final showAlternate =
+        stat.toggleable && savingsDisplayMode == _SavingsDisplayMode.ratio;
+    final displayedValue = showAlternate
         ? (stat.alternateValue ?? stat.value)
         : stat.value;
+    final numericValue = showAlternate
+        ? stat.alternateNumericValue
+        : stat.numericValue;
+    final numericFormatter = showAlternate
+        ? stat.alternateNumericFormatter
+        : stat.numericFormatter;
     final defaultValueColor = switch (stat.colorMode) {
       _BottomStatColorMode.none => stat.color,
       _ => theme.colorScheme.foreground,
@@ -158,6 +165,15 @@ class _BottomStatTile extends ConsumerWidget {
                 strokeWidth: 2,
                 color: stat.color,
               ),
+            )
+          else if (numericValue != null && numericFormatter != null)
+            _BottomStatTickerValue(
+              key: ValueKey(
+                'bottom-stat-${stat.label}-${showAlternate ? 'alternate' : 'primary'}',
+              ),
+              value: numericValue,
+              formatter: numericFormatter,
+              color: valueColor,
             )
           else
             Text(
@@ -255,6 +271,42 @@ class _BottomStatTile extends ConsumerWidget {
     }
 
     return ContextMenu(items: [contextMenuItem], child: tappableTile);
+  }
+}
+
+class _BottomStatTickerValue extends StatelessWidget {
+  const _BottomStatTickerValue({
+    super.key,
+    required this.value,
+    required this.formatter,
+    required this.color,
+  });
+
+  final num value;
+  final String Function(num value) formatter;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = TextStyle(
+      fontSize: 20,
+      fontWeight: FontWeight.w700,
+      color: color,
+    );
+
+    return NumberTicker.builder(
+      number: value,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Text(
+          formatter(value),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: style,
+        );
+      },
+    );
   }
 }
 

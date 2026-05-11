@@ -2396,7 +2396,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
 
     await tester.tap(find.text('animals').first);
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('4.1 KB'), findsOneWidget);
     expect(find.text('2.6 KB'), findsWidgets);
