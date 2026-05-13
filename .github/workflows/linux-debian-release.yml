@@ -17,7 +17,10 @@ permissions:
 jobs:
   release:
     name: Build Linux Debian package
-    runs-on: ubuntu-24.04
+    # Use 22.04 as the Linux compatibility baseline so the package runs on
+    # systems with older GLib. Move back to ubuntu-24.04 once 22.04 support
+    # is no longer needed or the Linux build no longer links newer GLib symbols.
+    runs-on: ubuntu-22.04
     timeout-minutes: 120
 
     env:
