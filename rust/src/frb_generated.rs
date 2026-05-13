@@ -1063,9 +1063,13 @@ impl SseDecode for crate::types::ConvertOptions {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_targetFormat = <String>::sse_decode(deserializer);
         let mut var_quality = <u8>::sse_decode(deserializer);
+        let mut var_effort = <Option<u8>>::sse_decode(deserializer);
+        let mut var_pngPalette = <Option<crate::types::PngPaletteMode>>::sse_decode(deserializer);
         return crate::types::ConvertOptions {
             target_format: var_targetFormat,
             quality: var_quality,
+            effort: var_effort,
+            png_palette: var_pngPalette,
         };
     }
 }
@@ -1076,10 +1080,14 @@ impl SseDecode for crate::types::CropOptions {
         let mut var_crop = <crate::types::CropSpec>::sse_decode(deserializer);
         let mut var_targetFormat = <Option<String>>::sse_decode(deserializer);
         let mut var_quality = <u8>::sse_decode(deserializer);
+        let mut var_effort = <Option<u8>>::sse_decode(deserializer);
+        let mut var_pngPalette = <Option<crate::types::PngPaletteMode>>::sse_decode(deserializer);
         return crate::types::CropOptions {
             crop: var_crop,
             target_format: var_targetFormat,
             quality: var_quality,
+            effort: var_effort,
+            png_palette: var_pngPalette,
         };
     }
 }
@@ -1141,11 +1149,15 @@ impl SseDecode for crate::types::ExtendOptions {
         let mut var_fill = <Option<crate::types::FillSpec>>::sse_decode(deserializer);
         let mut var_targetFormat = <Option<String>>::sse_decode(deserializer);
         let mut var_quality = <u8>::sse_decode(deserializer);
+        let mut var_effort = <Option<u8>>::sse_decode(deserializer);
+        let mut var_pngPalette = <Option<crate::types::PngPaletteMode>>::sse_decode(deserializer);
         return crate::types::ExtendOptions {
             extend: var_extend,
             fill: var_fill,
             target_format: var_targetFormat,
             quality: var_quality,
+            effort: var_effort,
+            png_palette: var_pngPalette,
         };
     }
 }
@@ -1241,12 +1253,15 @@ impl SseDecode for crate::types::ImageMetadata {
         let mut var_format = <String>::sse_decode(deserializer);
         let mut var_fileSize = <Option<u64>>::sse_decode(deserializer);
         let mut var_hasTransparency = <bool>::sse_decode(deserializer);
+        let mut var_paletteSuitability =
+            <Option<crate::types::PaletteSuitability>>::sse_decode(deserializer);
         return crate::types::ImageMetadata {
             width: var_width,
             height: var_height,
             format: var_format,
             file_size: var_fileSize,
             has_transparency: var_hasTransparency,
+            palette_suitability: var_paletteSuitability,
         };
     }
 }
@@ -1390,6 +1405,28 @@ impl SseDecode for Option<crate::types::FillSpec> {
     }
 }
 
+impl SseDecode for Option<crate::types::PaletteSuitability> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::types::PaletteSuitability>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<crate::types::PngPaletteMode> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::types::PngPaletteMode>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
 impl SseDecode for Option<crate::types::ProcessResult> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1449,10 +1486,59 @@ impl SseDecode for crate::types::OptimizeOptions {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_quality = <u8>::sse_decode(deserializer);
+        let mut var_effort = <Option<u8>>::sse_decode(deserializer);
+        let mut var_pngPalette = <Option<crate::types::PngPaletteMode>>::sse_decode(deserializer);
         let mut var_writeOnlyIfSmaller = <bool>::sse_decode(deserializer);
         return crate::types::OptimizeOptions {
             quality: var_quality,
+            effort: var_effort,
+            png_palette: var_pngPalette,
             write_only_if_smaller: var_writeOnlyIfSmaller,
+        };
+    }
+}
+
+impl SseDecode for crate::types::PaletteRecommendation {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::types::PaletteRecommendation::On,
+            1 => crate::types::PaletteRecommendation::Review,
+            2 => crate::types::PaletteRecommendation::Off,
+            _ => unreachable!("Invalid variant for PaletteRecommendation: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::types::PaletteSuitability {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_uniqueColorCount = <u32>::sse_decode(deserializer);
+        let mut var_uniqueColorCountExceeded = <bool>::sse_decode(deserializer);
+        let mut var_top256ColorCoverage = <f64>::sse_decode(deserializer);
+        let mut var_hasAlpha = <bool>::sse_decode(deserializer);
+        let mut var_recommendation =
+            <crate::types::PaletteRecommendation>::sse_decode(deserializer);
+        return crate::types::PaletteSuitability {
+            unique_color_count: var_uniqueColorCount,
+            unique_color_count_exceeded: var_uniqueColorCountExceeded,
+            top_256_color_coverage: var_top256ColorCoverage,
+            has_alpha: var_hasAlpha,
+            recommendation: var_recommendation,
+        };
+    }
+}
+
+impl SseDecode for crate::types::PngPaletteMode {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::types::PngPaletteMode::Off,
+            1 => crate::types::PngPaletteMode::Auto,
+            2 => crate::types::PngPaletteMode::On,
+            _ => unreachable!("Invalid variant for PngPaletteMode: {}", inner),
         };
     }
 }
@@ -1529,6 +1615,7 @@ impl SseDecode for crate::types::ProcessFileRequest {
         let mut var_inputPath = <String>::sse_decode(deserializer);
         let mut var_outputPath = <Option<String>>::sse_decode(deserializer);
         let mut var_overwrite = <bool>::sse_decode(deserializer);
+        let mut var_preserveFileDates = <bool>::sse_decode(deserializer);
         let mut var_preserveExif = <bool>::sse_decode(deserializer);
         let mut var_preserveColorProfile = <bool>::sse_decode(deserializer);
         let mut var_operation = <crate::types::ImageOperation>::sse_decode(deserializer);
@@ -1536,6 +1623,7 @@ impl SseDecode for crate::types::ProcessFileRequest {
             input_path: var_inputPath,
             output_path: var_outputPath,
             overwrite: var_overwrite,
+            preserve_file_dates: var_preserveFileDates,
             preserve_exif: var_preserveExif,
             preserve_color_profile: var_preserveColorProfile,
             operation: var_operation,
@@ -1585,10 +1673,14 @@ impl SseDecode for crate::types::ResizeOptions {
         let mut var_resize = <crate::types::ResizeSpec>::sse_decode(deserializer);
         let mut var_targetFormat = <Option<String>>::sse_decode(deserializer);
         let mut var_quality = <u8>::sse_decode(deserializer);
+        let mut var_effort = <Option<u8>>::sse_decode(deserializer);
+        let mut var_pngPalette = <Option<crate::types::PngPaletteMode>>::sse_decode(deserializer);
         return crate::types::ResizeOptions {
             resize: var_resize,
             target_format: var_targetFormat,
             quality: var_quality,
+            effort: var_effort,
+            png_palette: var_pngPalette,
         };
     }
 }
@@ -2051,6 +2143,8 @@ impl flutter_rust_bridge::IntoDart for crate::types::ConvertOptions {
         [
             self.target_format.into_into_dart().into_dart(),
             self.quality.into_into_dart().into_dart(),
+            self.effort.into_into_dart().into_dart(),
+            self.png_palette.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2070,6 +2164,8 @@ impl flutter_rust_bridge::IntoDart for crate::types::CropOptions {
             self.crop.into_into_dart().into_dart(),
             self.target_format.into_into_dart().into_dart(),
             self.quality.into_into_dart().into_dart(),
+            self.effort.into_into_dart().into_dart(),
+            self.png_palette.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2147,6 +2243,8 @@ impl flutter_rust_bridge::IntoDart for crate::types::ExtendOptions {
             self.fill.into_into_dart().into_dart(),
             self.target_format.into_into_dart().into_dart(),
             self.quality.into_into_dart().into_dart(),
+            self.effort.into_into_dart().into_dart(),
+            self.png_palette.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2238,6 +2336,7 @@ impl flutter_rust_bridge::IntoDart for crate::types::ImageMetadata {
             self.format.into_into_dart().into_dart(),
             self.file_size.into_into_dart().into_dart(),
             self.has_transparency.into_into_dart().into_dart(),
+            self.palette_suitability.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2288,6 +2387,8 @@ impl flutter_rust_bridge::IntoDart for crate::types::OptimizeOptions {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.quality.into_into_dart().into_dart(),
+            self.effort.into_into_dart().into_dart(),
+            self.png_palette.into_into_dart().into_dart(),
             self.write_only_if_smaller.into_into_dart().into_dart(),
         ]
         .into_dart()
@@ -2298,6 +2399,73 @@ impl flutter_rust_bridge::IntoIntoDart<crate::types::OptimizeOptions>
     for crate::types::OptimizeOptions
 {
     fn into_into_dart(self) -> crate::types::OptimizeOptions {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::types::PaletteRecommendation {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::On => 0.into_dart(),
+            Self::Review => 1.into_dart(),
+            Self::Off => 2.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::types::PaletteRecommendation
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::types::PaletteRecommendation>
+    for crate::types::PaletteRecommendation
+{
+    fn into_into_dart(self) -> crate::types::PaletteRecommendation {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::types::PaletteSuitability {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.unique_color_count.into_into_dart().into_dart(),
+            self.unique_color_count_exceeded
+                .into_into_dart()
+                .into_dart(),
+            self.top_256_color_coverage.into_into_dart().into_dart(),
+            self.has_alpha.into_into_dart().into_dart(),
+            self.recommendation.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::types::PaletteSuitability
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::types::PaletteSuitability>
+    for crate::types::PaletteSuitability
+{
+    fn into_into_dart(self) -> crate::types::PaletteSuitability {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::types::PngPaletteMode {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Off => 0.into_dart(),
+            Self::Auto => 1.into_dart(),
+            Self::On => 2.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::types::PngPaletteMode {}
+impl flutter_rust_bridge::IntoIntoDart<crate::types::PngPaletteMode>
+    for crate::types::PngPaletteMode
+{
+    fn into_into_dart(self) -> crate::types::PngPaletteMode {
         self
     }
 }
@@ -2410,6 +2578,7 @@ impl flutter_rust_bridge::IntoDart for crate::types::ProcessFileRequest {
             self.input_path.into_into_dart().into_dart(),
             self.output_path.into_into_dart().into_dart(),
             self.overwrite.into_into_dart().into_dart(),
+            self.preserve_file_dates.into_into_dart().into_dart(),
             self.preserve_exif.into_into_dart().into_dart(),
             self.preserve_color_profile.into_into_dart().into_dart(),
             self.operation.into_into_dart().into_dart(),
@@ -2477,6 +2646,8 @@ impl flutter_rust_bridge::IntoDart for crate::types::ResizeOptions {
             self.resize.into_into_dart().into_dart(),
             self.target_format.into_into_dart().into_dart(),
             self.quality.into_into_dart().into_dart(),
+            self.effort.into_into_dart().into_dart(),
+            self.png_palette.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2719,6 +2890,8 @@ impl SseEncode for crate::types::ConvertOptions {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.target_format, serializer);
         <u8>::sse_encode(self.quality, serializer);
+        <Option<u8>>::sse_encode(self.effort, serializer);
+        <Option<crate::types::PngPaletteMode>>::sse_encode(self.png_palette, serializer);
     }
 }
 
@@ -2728,6 +2901,8 @@ impl SseEncode for crate::types::CropOptions {
         <crate::types::CropSpec>::sse_encode(self.crop, serializer);
         <Option<String>>::sse_encode(self.target_format, serializer);
         <u8>::sse_encode(self.quality, serializer);
+        <Option<u8>>::sse_encode(self.effort, serializer);
+        <Option<crate::types::PngPaletteMode>>::sse_encode(self.png_palette, serializer);
     }
 }
 
@@ -2777,6 +2952,8 @@ impl SseEncode for crate::types::ExtendOptions {
         <Option<crate::types::FillSpec>>::sse_encode(self.fill, serializer);
         <Option<String>>::sse_encode(self.target_format, serializer);
         <u8>::sse_encode(self.quality, serializer);
+        <Option<u8>>::sse_encode(self.effort, serializer);
+        <Option<crate::types::PngPaletteMode>>::sse_encode(self.png_palette, serializer);
     }
 }
 
@@ -2853,6 +3030,10 @@ impl SseEncode for crate::types::ImageMetadata {
         <String>::sse_encode(self.format, serializer);
         <Option<u64>>::sse_encode(self.file_size, serializer);
         <bool>::sse_encode(self.has_transparency, serializer);
+        <Option<crate::types::PaletteSuitability>>::sse_encode(
+            self.palette_suitability,
+            serializer,
+        );
     }
 }
 
@@ -2977,6 +3158,26 @@ impl SseEncode for Option<crate::types::FillSpec> {
     }
 }
 
+impl SseEncode for Option<crate::types::PaletteSuitability> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::types::PaletteSuitability>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<crate::types::PngPaletteMode> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::types::PngPaletteMode>::sse_encode(value, serializer);
+        }
+    }
+}
+
 impl SseEncode for Option<crate::types::ProcessResult> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -3031,7 +3232,54 @@ impl SseEncode for crate::types::OptimizeOptions {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <u8>::sse_encode(self.quality, serializer);
+        <Option<u8>>::sse_encode(self.effort, serializer);
+        <Option<crate::types::PngPaletteMode>>::sse_encode(self.png_palette, serializer);
         <bool>::sse_encode(self.write_only_if_smaller, serializer);
+    }
+}
+
+impl SseEncode for crate::types::PaletteRecommendation {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::types::PaletteRecommendation::On => 0,
+                crate::types::PaletteRecommendation::Review => 1,
+                crate::types::PaletteRecommendation::Off => 2,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::types::PaletteSuitability {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u32>::sse_encode(self.unique_color_count, serializer);
+        <bool>::sse_encode(self.unique_color_count_exceeded, serializer);
+        <f64>::sse_encode(self.top_256_color_coverage, serializer);
+        <bool>::sse_encode(self.has_alpha, serializer);
+        <crate::types::PaletteRecommendation>::sse_encode(self.recommendation, serializer);
+    }
+}
+
+impl SseEncode for crate::types::PngPaletteMode {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::types::PngPaletteMode::Off => 0,
+                crate::types::PngPaletteMode::Auto => 1,
+                crate::types::PngPaletteMode::On => 2,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
     }
 }
 
@@ -3084,6 +3332,7 @@ impl SseEncode for crate::types::ProcessFileRequest {
         <String>::sse_encode(self.input_path, serializer);
         <Option<String>>::sse_encode(self.output_path, serializer);
         <bool>::sse_encode(self.overwrite, serializer);
+        <bool>::sse_encode(self.preserve_file_dates, serializer);
         <bool>::sse_encode(self.preserve_exif, serializer);
         <bool>::sse_encode(self.preserve_color_profile, serializer);
         <crate::types::ImageOperation>::sse_encode(self.operation, serializer);
@@ -3118,6 +3367,8 @@ impl SseEncode for crate::types::ResizeOptions {
         <crate::types::ResizeSpec>::sse_encode(self.resize, serializer);
         <Option<String>>::sse_encode(self.target_format, serializer);
         <u8>::sse_encode(self.quality, serializer);
+        <Option<u8>>::sse_encode(self.effort, serializer);
+        <Option<crate::types::PngPaletteMode>>::sse_encode(self.png_palette, serializer);
     }
 }
 

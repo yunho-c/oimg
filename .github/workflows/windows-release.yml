@@ -1,0 +1,294 @@
+name: Windows Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build, for example v1.0.1"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build Windows ZIP, installer, and Store MSIX
+    runs-on: windows-2025
+    timeout-minutes: 120
+
+    env:
+      APP_NAME: OIMG
+      DIST_DIR: ${{ github.workspace }}\oimg\dist\windows
+
+    steps:
+      - name: Resolve release tag
+        id: release
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $tag = "${{ inputs.tag }}"
+            $checkoutRef = "${{ github.ref_name }}"
+          } else {
+            $tag = $env:GITHUB_REF_NAME
+            $checkoutRef = $tag
+          }
+
+          if ($tag -notmatch '^v[0-9]+[.][0-9]+[.][0-9]+([-.][0-9A-Za-z.-]+)?$') {
+            throw "Release tag must look like v1.2.3, got: $tag"
+          }
+
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "version=$($tag.Substring(1))" >> $env:GITHUB_OUTPUT
+          "checkout_ref=$checkoutRef" >> $env:GITHUB_OUTPUT
+
+      - name: Validate required secrets
+        shell: pwsh
+        env:
+          CI_REPO_TOKEN: ${{ secrets.CI_REPO_TOKEN }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          if ([string]::IsNullOrWhiteSpace($env:CI_REPO_TOKEN)) {
+            throw "Missing required secret: CI_REPO_TOKEN"
+          }
+
+      - name: Checkout oimg
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.release.outputs.checkout_ref }}
+          path: oimg
+          fetch-depth: 0
+
+      - name: Validate tag is on main
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        working-directory: oimg
+        run: |
+          $ErrorActionPreference = "Stop"
+          git fetch origin main
+          $PSNativeCommandUseErrorActionPreference = $false
+          git merge-base --is-ancestor HEAD origin/main
+          if ($LASTEXITCODE -ne 0) {
+            throw "Release tag ${{ steps.release.outputs.tag }} must point to a commit reachable from origin/main."
+          }
+
+      - name: Checkout slimg
+        uses: actions/checkout@v6
+        with:
+          repository: yunho-c/slimg
+          ref: feat/zenavif
+          path: slimg
+          token: ${{ secrets.CI_REPO_TOKEN }}
+          submodules: recursive
+
+      - name: Checkout tjdistler-iqa-fork
+        uses: actions/checkout@v6
+        with:
+          repository: yunho-c/tjdistler-iqa-fork
+          ref: perf/simd-gaussian-vertical
+          path: tjdistler-iqa-fork
+          token: ${{ secrets.CI_REPO_TOKEN }}
+
+      - name: Checkout irondash
+        uses: actions/checkout@v6
+        with:
+          repository: yunho-c/irondash
+          ref: fix/macos-engine-context-race
+          path: irondash
+          token: ${{ secrets.CI_REPO_TOKEN }}
+
+      - name: Validate pubspec version
+        shell: pwsh
+        working-directory: oimg
+        run: |
+          $ErrorActionPreference = "Stop"
+          $line = Get-Content pubspec.yaml | Where-Object { $_ -match '^version:\s*(\S+)' } | Select-Object -First 1
+          if ($null -eq $line -or $line -notmatch '^version:\s*([^+]+)') {
+            throw "Could not read version from pubspec.yaml"
+          }
+
+          $pubspecVersion = $Matches[1]
+          $tagVersion = "${{ steps.release.outputs.version }}"
+          if ($pubspecVersion -ne $tagVersion) {
+            throw "Tag version ($tagVersion) does not match pubspec.yaml ($pubspecVersion)"
+          }
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Set up Rust
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+          rustup toolchain install stable-x86_64-pc-windows-msvc --force-non-host
+          rustup target add x86_64-pc-windows-msvc --toolchain stable-x86_64-pc-windows-msvc
+
+      - name: Install native build tools
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+          choco install nasm llvm innosetup -y --no-progress
+          "C:\Program Files\NASM" >> $env:GITHUB_PATH
+          "C:\Program Files\LLVM\bin" >> $env:GITHUB_PATH
+          "C:\Program Files (x86)\Inno Setup 6" >> $env:GITHUB_PATH
+
+      - name: Install Flutter dependencies
+        shell: pwsh
+        working-directory: oimg
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+          flutter pub get
+          dart pub get --directory rust_builder/cargokit/build_tool
+
+      - name: Run release checks
+        shell: pwsh
+        working-directory: oimg
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+          flutter analyze
+          flutter test test/settings test/file_open_controller_test.dart test/file_open_channel_test.dart test/optimization
+          $env:RUSTC_WRAPPER = ""
+          $env:CARGO_BUILD_RUSTC_WRAPPER = ""
+          cargo test --manifest-path rust/Cargo.toml
+
+      - name: Build unsigned Windows app
+        shell: pwsh
+        working-directory: oimg
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+          powershell -ExecutionPolicy Bypass -File scripts/windows/build_windows.ps1 -Command build -Mode release
+
+      - name: Package Windows ZIP
+        shell: pwsh
+        working-directory: oimg
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path $env:DIST_DIR | Out-Null
+
+          $releaseDir = "build\windows\x64\runner\Release"
+          $exePath = Join-Path $releaseDir "oimg.exe"
+          if (-not (Test-Path $exePath)) {
+            throw "Expected Windows executable not found: $exePath"
+          }
+
+          $zipPath = Join-Path $env:DIST_DIR "OIMG-${{ steps.release.outputs.version }}-windows-x64.zip"
+          if (Test-Path $zipPath) {
+            Remove-Item $zipPath
+          }
+
+          Compress-Archive -Path (Join-Path $releaseDir "*") -DestinationPath $zipPath
+          $hash = (Get-FileHash -Algorithm SHA256 $zipPath).Hash.ToLowerInvariant()
+          Set-Content -Path "$zipPath.sha256" -Value "$hash  $(Split-Path -Leaf $zipPath)"
+
+      - name: Package Windows installer
+        shell: pwsh
+        working-directory: oimg
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+          powershell -ExecutionPolicy Bypass -File scripts/windows/package_inno_installer.ps1 `
+            -Version "${{ steps.release.outputs.version }}" `
+            -OutputDir $env:DIST_DIR
+
+      - name: Package Store MSIX
+        shell: pwsh
+        working-directory: oimg
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+
+          $msixVersion = "${{ steps.release.outputs.version }}.0"
+          dart run msix:create --version $msixVersion
+
+          $generatedMsix = Get-ChildItem "build\windows\x64\msix" -Filter "*.msix" | Sort-Object LastWriteTime | Select-Object -Last 1
+          if ($null -eq $generatedMsix) {
+            throw "Expected MSIX artifact not found in build\windows\x64\msix"
+          }
+
+          $msixPath = Join-Path $env:DIST_DIR "OIMG-${{ steps.release.outputs.version }}-windows-x64.msix"
+          if (Test-Path $msixPath) {
+            Remove-Item $msixPath
+          }
+
+          Move-Item -Path $generatedMsix.FullName -Destination $msixPath
+          $hash = (Get-FileHash -Algorithm SHA256 $msixPath).Hash.ToLowerInvariant()
+          Set-Content -Path "$msixPath.sha256" -Value "$hash  $(Split-Path -Leaf $msixPath)"
+
+      - name: Verify Windows artifacts
+        shell: pwsh
+        working-directory: oimg
+        run: |
+          $ErrorActionPreference = "Stop"
+          $releaseDir = "build\windows\x64\runner\Release"
+          $zipPath = Join-Path $env:DIST_DIR "OIMG-${{ steps.release.outputs.version }}-windows-x64.zip"
+          $shaPath = "$zipPath.sha256"
+          $setupPath = Join-Path $env:DIST_DIR "OIMG-${{ steps.release.outputs.version }}-windows-x64-setup.exe"
+          $setupShaPath = "$setupPath.sha256"
+          $msixPath = Join-Path $env:DIST_DIR "OIMG-${{ steps.release.outputs.version }}-windows-x64.msix"
+          $msixShaPath = "$msixPath.sha256"
+
+          foreach ($path in @((Join-Path $releaseDir "oimg.exe"), $zipPath, $shaPath, $setupPath, $setupShaPath, $msixPath, $msixShaPath)) {
+            if (-not (Test-Path $path)) {
+              throw "Expected artifact not found: $path"
+            }
+          }
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: OIMG-${{ steps.release.outputs.version }}-windows-x64
+          path: |
+            oimg/dist/windows/*.zip
+            oimg/dist/windows/*.exe
+            oimg/dist/windows/*.msix
+            oimg/dist/windows/*.sha256
+          if-no-files-found: error
+
+      - name: Create draft GitHub Release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $false
+          $tag = "${{ steps.release.outputs.tag }}"
+          $zipPath = Get-ChildItem $env:DIST_DIR -Filter "*.zip" | Sort-Object Name | Select-Object -Last 1
+          $setupPath = Get-ChildItem $env:DIST_DIR -Filter "*.exe" | Sort-Object Name | Select-Object -Last 1
+          $msixPath = Get-ChildItem $env:DIST_DIR -Filter "*.msix" | Sort-Object Name | Select-Object -Last 1
+          $assetPaths = Get-ChildItem $env:DIST_DIR -Include "*.zip", "*.exe", "*.msix", "*.sha256" -Recurse | Sort-Object Name
+
+          if ($null -eq $zipPath -or $null -eq $setupPath -or $null -eq $msixPath -or $assetPaths.Count -lt 6) {
+            throw "Expected Windows release artifacts were not found in $env:DIST_DIR"
+          }
+
+          gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag `
+              --repo $env:GITHUB_REPOSITORY `
+              --draft `
+              --title "OIMG $tag" `
+              --notes "Windows release candidate for $tag."
+            if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+            }
+          }
+
+          gh release upload $tag @($assetPaths | ForEach-Object { $_.FullName }) `
+            --repo $env:GITHUB_REPOSITORY `
+            --clobber
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }

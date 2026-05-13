@@ -1,4 +1,5 @@
 use crate::error::SlimgBridgeError;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FormatInfo {
@@ -7,13 +8,30 @@ pub struct FormatInfo {
     pub can_encode: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ImageMetadata {
     pub width: u32,
     pub height: u32,
     pub format: String,
     pub file_size: Option<u64>,
     pub has_transparency: bool,
+    pub palette_suitability: Option<PaletteSuitability>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PaletteRecommendation {
+    On,
+    Review,
+    Off,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PaletteSuitability {
+    pub unique_color_count: u32,
+    pub unique_color_count_exceeded: bool,
+    pub top_256_color_coverage: f64,
+    pub has_alpha: bool,
+    pub recommendation: PaletteRecommendation,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -143,6 +161,7 @@ pub struct ProcessFileRequest {
     pub input_path: String,
     pub output_path: Option<String>,
     pub overwrite: bool,
+    pub preserve_file_dates: bool,
     pub preserve_exif: bool,
     pub preserve_color_profile: bool,
     pub operation: ImageOperation,
@@ -179,12 +198,24 @@ pub struct PreviewFileRequest {
 pub struct ConvertOptions {
     pub target_format: String,
     pub quality: u8,
+    pub effort: Option<u8>,
+    pub png_palette: Option<PngPaletteMode>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OptimizeOptions {
     pub quality: u8,
+    pub effort: Option<u8>,
+    pub png_palette: Option<PngPaletteMode>,
     pub write_only_if_smaller: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum PngPaletteMode {
+    Off,
+    Auto,
+    On,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -201,6 +232,8 @@ pub struct ResizeOptions {
     pub resize: ResizeSpec,
     pub target_format: Option<String>,
     pub quality: u8,
+    pub effort: Option<u8>,
+    pub png_palette: Option<PngPaletteMode>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -222,6 +255,8 @@ pub struct CropOptions {
     pub crop: CropSpec,
     pub target_format: Option<String>,
     pub quality: u8,
+    pub effort: Option<u8>,
+    pub png_palette: Option<PngPaletteMode>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -242,6 +277,8 @@ pub struct ExtendOptions {
     pub fill: Option<FillSpec>,
     pub target_format: Option<String>,
     pub quality: u8,
+    pub effort: Option<u8>,
+    pub png_palette: Option<PngPaletteMode>,
 }
 
 impl ImageOperation {
@@ -260,27 +297,69 @@ impl ImageOperation {
             Self::Convert(options) => Self::Convert(ConvertOptions {
                 target_format: options.target_format.clone(),
                 quality,
+                effort: options.effort,
+                png_palette: options.png_palette,
             }),
             Self::Optimize(options) => Self::Optimize(OptimizeOptions {
                 quality,
+                effort: options.effort,
+                png_palette: options.png_palette,
                 write_only_if_smaller: options.write_only_if_smaller,
             }),
             Self::Resize(options) => Self::Resize(ResizeOptions {
                 resize: options.resize.clone(),
                 target_format: options.target_format.clone(),
                 quality,
+                effort: options.effort,
+                png_palette: options.png_palette,
             }),
             Self::Crop(options) => Self::Crop(CropOptions {
                 crop: options.crop.clone(),
                 target_format: options.target_format.clone(),
                 quality,
+                effort: options.effort,
+                png_palette: options.png_palette,
             }),
             Self::Extend(options) => Self::Extend(ExtendOptions {
                 extend: options.extend.clone(),
                 fill: options.fill.clone(),
                 target_format: options.target_format.clone(),
                 quality,
+                effort: options.effort,
+                png_palette: options.png_palette,
             }),
+        }
+    }
+}
+
+impl PngPaletteMode {
+    pub(crate) fn to_core(self) -> slimg_core::PngPaletteMode {
+        match self {
+            Self::Off => slimg_core::PngPaletteMode::Off,
+            Self::Auto => slimg_core::PngPaletteMode::Auto,
+            Self::On => slimg_core::PngPaletteMode::On,
+        }
+    }
+}
+
+impl From<slimg_core::PaletteRecommendation> for PaletteRecommendation {
+    fn from(value: slimg_core::PaletteRecommendation) -> Self {
+        match value {
+            slimg_core::PaletteRecommendation::On => Self::On,
+            slimg_core::PaletteRecommendation::Review => Self::Review,
+            slimg_core::PaletteRecommendation::Off => Self::Off,
+        }
+    }
+}
+
+impl From<slimg_core::PaletteStats> for PaletteSuitability {
+    fn from(value: slimg_core::PaletteStats) -> Self {
+        Self {
+            unique_color_count: value.unique_color_count,
+            unique_color_count_exceeded: value.unique_color_count_exceeded,
+            top_256_color_coverage: value.top_256_color_coverage,
+            has_alpha: value.has_alpha,
+            recommendation: value.recommendation.into(),
         }
     }
 }

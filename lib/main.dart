@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,9 +19,11 @@ import 'package:oimg/src/rust/types.dart';
 import 'package:oimg/src/settings/app_settings.dart';
 import 'package:oimg/src/settings/app_settings_controller.dart';
 import 'package:oimg/src/settings/developer_diagnostics.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 import 'package:window_manager/window_manager.dart';
 
 const _uiScale = 0.8;
@@ -68,6 +71,11 @@ final _savingsDisplayModeProvider =
     NotifierProvider<_SavingsDisplayModeNotifier, _SavingsDisplayMode>(
       _SavingsDisplayModeNotifier.new,
     );
+
+final _packageVersionProvider = FutureProvider<String>((ref) async {
+  final packageInfo = await PackageInfo.fromPlatform();
+  return packageInfo.version;
+});
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -130,12 +138,15 @@ class MyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final baseTypography = const Typography.geist().scale(_uiScale);
     final settings = ref.watch(appSettingsProvider).asData?.value;
+    final colorSchemePreference =
+        settings?.colorSchemePreference ??
+        AppSettings.defaults.colorSchemePreference;
 
     return ShadcnApp(
       title: 'OIMG',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorSchemes.lightSlate,
+        colorScheme: _lightColorScheme(colorSchemePreference),
         radius: _uiRadius,
         scaling: _uiScale,
         typography: baseTypography,
@@ -143,7 +154,7 @@ class MyApp extends ConsumerWidget {
         surfaceBlur: 8,
       ),
       darkTheme: ThemeData.dark(
-        colorScheme: ColorSchemes.darkSlate,
+        colorScheme: _darkColorScheme(colorSchemePreference),
         radius: _uiRadius,
         scaling: _uiScale,
         typography: baseTypography,
@@ -154,6 +165,26 @@ class MyApp extends ConsumerWidget {
       home: const OimgHomePage(),
     );
   }
+}
+
+ColorScheme _lightColorScheme(AppColorSchemePreference preference) {
+  return switch (preference) {
+    AppColorSchemePreference.slate => ColorSchemes.lightSlate,
+    AppColorSchemePreference.zinc => ColorSchemes.lightZinc,
+    AppColorSchemePreference.stone => ColorSchemes.lightStone,
+    AppColorSchemePreference.neutral => ColorSchemes.lightNeutral,
+    AppColorSchemePreference.gray => ColorSchemes.lightGray,
+  };
+}
+
+ColorScheme _darkColorScheme(AppColorSchemePreference preference) {
+  return switch (preference) {
+    AppColorSchemePreference.slate => ColorSchemes.darkSlate,
+    AppColorSchemePreference.zinc => ColorSchemes.darkZinc,
+    AppColorSchemePreference.stone => ColorSchemes.darkStone,
+    AppColorSchemePreference.neutral => ColorSchemes.darkNeutral,
+    AppColorSchemePreference.gray => ColorSchemes.darkGray,
+  };
 }
 
 class OimgHomePage extends ConsumerStatefulWidget {
@@ -252,17 +283,25 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final controller = ref.watch(fileOpenControllerProvider);
+    final runState = ref.watch(optimizationRunControllerProvider);
     final appSettings = ref.watch(appSettingsProvider).asData?.value;
     final showCaptionButtons = _shouldShowTitleBarCaptionButtons(appSettings);
     final title =
         controller.currentDisplayTitle ?? 'Open images from your desktop';
+    final homeScreen = !controller.hasSession;
+    final prominentHomeTitle =
+        homeScreen && theme.brightness == ui.Brightness.light;
 
     return Scaffold(
+      floatingHeader: homeScreen,
       headers: [
         AppBar(
           height: _titleBarHeight,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          surfaceOpacity: homeScreen ? 0.10 : null,
+          surfaceBlur: homeScreen ? 4 : null,
           child: Stack(
             alignment: Alignment.center,
             children: [
@@ -275,7 +314,11 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                         letterSpacing: 0.4,
-                        color: Theme.of(context).colorScheme.mutedForeground,
+                        color: prominentHomeTitle
+                            ? theme.colorScheme.foreground.withValues(
+                                alpha: 0.60,
+                              )
+                            : theme.colorScheme.mutedForeground,
                       ),
                     ),
                   ),
@@ -293,7 +336,11 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
                     ),
                     if (controller.hasSession) ...[
                       const SizedBox(width: 6),
-                      _TitleBarHomeButton(onPressed: controller.clearSession),
+                      _TitleBarHomeButton(
+                        onPressed: runState.isRunning
+                            ? null
+                            : controller.clearSession,
+                      ),
                     ],
                     const SizedBox(width: 6),
                     const _TitleBarSettingsButton(),
@@ -1959,7 +2006,14 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
                   onPressed: analyzeAvailability.isEnabled
                       ? analyzeController.startAnalyze
                       : null,
-                  child: const Text('Analyze'),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(LucideIcons.chartSpline, size: 15),
+                      SizedBox(width: 8),
+                      Text('Analyze'),
+                    ],
+                  ),
                 ),
         ),
       ],
@@ -2041,7 +2095,7 @@ class _PreviewModeShortcutKey extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      padding: const EdgeInsets.fromLTRB(4, 3, 4, 2),
       decoration: BoxDecoration(
         color: theme.colorScheme.secondary.withValues(alpha: 0.7),
         borderRadius: theme.borderRadiusSm,
@@ -2298,6 +2352,11 @@ class _SettingsSidebar extends ConsumerWidget {
             ),
           if (includeBottomSectionsInScroll) ...[
             const SizedBox(height: 12),
+            _OptimizationCollapsible(
+              settings: settings,
+              controlsLocked: controlsLocked,
+            ),
+            const SizedBox(height: 12),
             _StorageCollapsible(
               settings: settings,
               controlsLocked: controlsLocked,
@@ -2400,6 +2459,11 @@ class _SettingsSidebar extends ConsumerWidget {
                         settings.when(
                           data: (settings) => Column(
                             children: [
+                              const SizedBox(height: 12),
+                              _OptimizationCollapsible(
+                                settings: settings,
+                                controlsLocked: controlsLocked,
+                              ),
                               const SizedBox(height: 12),
                               _StorageCollapsible(
                                 settings: settings,
@@ -2516,6 +2580,8 @@ class _HoverValueSlider extends StatefulWidget {
     required this.max,
     required this.divisions,
     required this.hoverEnabled,
+    this.hoverOpacityKey = const ValueKey('quality-slider-hover-opacity'),
+    this.hoverValueKey = const ValueKey('quality-slider-hover-value'),
     this.onChanged,
   });
 
@@ -2524,6 +2590,8 @@ class _HoverValueSlider extends StatefulWidget {
   final double max;
   final int? divisions;
   final bool hoverEnabled;
+  final Key hoverOpacityKey;
+  final Key hoverValueKey;
   final ValueChanged<double>? onChanged;
 
   @override
@@ -2671,15 +2739,12 @@ class _HoverValueSliderState extends State<_HoverValueSlider> {
                       curve: Curves.easeOutCubic,
                       offset: showLabel ? Offset.zero : const Offset(0, -0.12),
                       child: AnimatedOpacity(
-                        key: const ValueKey('quality-slider-hover-opacity'),
+                        key: widget.hoverOpacityKey,
                         duration: _showDuration,
                         curve: Curves.easeOutCubic,
                         opacity: showLabel ? 1 : 0,
                         child: TooltipContainer(
-                          child: Text(
-                            labelText,
-                            key: const ValueKey('quality-slider-hover-value'),
-                          ),
+                          child: Text(labelText, key: widget.hoverValueKey),
                         ),
                       ),
                     ),
@@ -3153,6 +3218,15 @@ class _StorageCollapsibleState extends ConsumerState<_StorageCollapsible> {
                                 enabled: !widget.controlsLocked,
                                 trailing: const Text('Keep original').small(),
                               ),
+                              if (widget.settings.sameFolderAction ==
+                                  SameFolderAction.keepSource) ...[
+                                const SizedBox(height: 8),
+                                _KeepSourceNamingControls(
+                                  settings: widget.settings,
+                                  controlsLocked: widget.controlsLocked,
+                                  notifier: notifier,
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -3197,6 +3271,78 @@ class _StorageCollapsibleState extends ConsumerState<_StorageCollapsible> {
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _KeepSourceNamingControls extends StatelessWidget {
+  const _KeepSourceNamingControls({
+    required this.settings,
+    required this.controlsLocked,
+    required this.notifier,
+  });
+
+  final AppSettings settings;
+  final bool controlsLocked;
+  final AppSettingsController notifier;
+
+  @override
+  Widget build(BuildContext context) {
+    final suffix = settings.keepSourceNaming == KeepSourceNaming.renameOriginal
+        ? settings.keepSourceOriginalSuffix
+        : settings.keepSourceOptimizedSuffix;
+    return Padding(
+      padding: const EdgeInsets.only(left: 22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RadioGroup<KeepSourceNaming>(
+            value: settings.keepSourceNaming,
+            onChanged: controlsLocked ? null : notifier.setKeepSourceNaming,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RadioItem<KeepSourceNaming>(
+                  value: KeepSourceNaming.renameOptimized,
+                  enabled: !controlsLocked,
+                  trailing: const Text('Rename optimized').small(),
+                ),
+                const SizedBox(height: 8),
+                RadioItem<KeepSourceNaming>(
+                  value: KeepSourceNaming.renameOriginal,
+                  enabled: !controlsLocked,
+                  trailing: const Text('Rename original').small(),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const _SettingsLabel('Suffix'),
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 160,
+                child: TextField(
+                  key: ValueKey(
+                    'keep-source-suffix-${settings.keepSourceNaming.name}',
+                  ),
+                  initialValue: suffix,
+                  enabled: !controlsLocked,
+                  onChanged: (value) {
+                    if (settings.keepSourceNaming ==
+                        KeepSourceNaming.renameOriginal) {
+                      unawaited(notifier.setKeepSourceOriginalSuffix(value));
+                      return;
+                    }
+                    unawaited(notifier.setKeepSourceOptimizedSuffix(value));
+                  },
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -3692,6 +3838,14 @@ LineChartBarData _buildAnalyzeLine({
   );
 }
 
+IconData _themePreferenceIcon(AppThemePreference preference) {
+  return switch (preference) {
+    AppThemePreference.system => LucideIcons.monitor,
+    AppThemePreference.light => LucideIcons.sun,
+    AppThemePreference.dark => LucideIcons.moon,
+  };
+}
+
 class _DeveloperButton extends StatelessWidget {
   const _DeveloperButton({required this.onPressed});
 
@@ -3749,14 +3903,31 @@ class _TitleBarSettingsButton extends ConsumerWidget {
                               .watch(appSettingsProvider)
                               .asData
                               ?.value;
+                          final packageVersion = ref
+                              .watch(_packageVersionProvider)
+                              .asData
+                              ?.value;
                           if (settings == null) {
                             return const SizedBox.shrink();
                           }
                           return DropdownMenu(
                             children: [
                               MenuButton(
+                                enabled: false,
+                                key: const ValueKey('title-bar-settings-label'),
+                                child: const Text(
+                                  'Settings',
+                                ).xSmall().medium().muted(),
+                              ),
+                              MenuButton(
                                 key: const ValueKey('title-bar-theme-toggle'),
                                 autoClose: false,
+                                trailing: Icon(
+                                  _themePreferenceIcon(
+                                    settings.themePreference,
+                                  ),
+                                  size: 15,
+                                ),
                                 onPressed: (context) {
                                   unawaited(
                                     ref
@@ -3764,9 +3935,107 @@ class _TitleBarSettingsButton extends ConsumerWidget {
                                         .cycleThemePreference(),
                                   );
                                 },
-                                child: Text(
-                                  'Theme: ${settings.themePreference.label}',
+                                child: const Text('Theme'),
+                              ),
+                              MenuButton(
+                                key: const ValueKey(
+                                  'title-bar-color-scheme-toggle',
                                 ),
+                                autoClose: false,
+                                trailing: Text(
+                                  settings.colorSchemePreference.label,
+                                ).xSmall().muted(),
+                                onPressed: (context) {
+                                  unawaited(
+                                    ref
+                                        .read(appSettingsProvider.notifier)
+                                        .cycleColorSchemePreference(),
+                                  );
+                                },
+                                child: const Text('Color'),
+                              ),
+                              const MenuDivider(),
+                              MenuButton(
+                                enabled: false,
+                                key: const ValueKey(
+                                  'title-bar-community-label',
+                                ),
+                                child: const Text(
+                                  'Community',
+                                ).xSmall().medium().muted(),
+                              ),
+                              MenuButton(
+                                key: const ValueKey(
+                                  'title-bar-bug-tracker-button',
+                                ),
+                                child: const Text('Bug Tracker'),
+                                onPressed: (context) {
+                                  unawaited(
+                                    launchUrl(
+                                      Uri.parse(
+                                        'https://github.com/oimg/issues',
+                                      ),
+                                      mode: LaunchMode.externalApplication,
+                                    ),
+                                  );
+                                },
+                              ),
+                              MenuButton(
+                                key: const ValueKey('title-bar-blog-button'),
+                                child: const Text('Blog'),
+                                onPressed: (context) {
+                                  unawaited(
+                                    launchUrl(
+                                      Uri.parse('https://oimg.substack.com'),
+                                      mode: LaunchMode.externalApplication,
+                                    ),
+                                  );
+                                },
+                              ),
+                              const MenuDivider(),
+                              MenuLabel(
+                                key: const ValueKey('title-bar-app-name-label'),
+                                trailing: KeyedSubtree(
+                                  key: const ValueKey(
+                                    'title-bar-version-label',
+                                  ),
+                                  child: Text(
+                                    packageVersion == null
+                                        ? 'v'
+                                        : 'v$packageVersion',
+                                  ).xSmall().muted(),
+                                ),
+                                child: const Text('OIMG'),
+                              ),
+                              MenuButton(
+                                key: const ValueKey('title-bar-donate-button'),
+                                child: const Text('Donate'),
+                                onPressed: (context) {
+                                  unawaited(
+                                    launchUrl(
+                                      Uri.parse(
+                                        'https://github.com/sponsors/yunho-c',
+                                      ),
+                                      mode: LaunchMode.externalApplication,
+                                    ),
+                                  );
+                                },
+                              ),
+                              MenuButton(
+                                key: const ValueKey(
+                                  'title-bar-contributors-button',
+                                ),
+                                child: const Text('Contributors'),
+                                onPressed: (context) {
+                                  unawaited(
+                                    launchUrl(
+                                      Uri.parse(
+                                        'https://github.com/yunho-c/oimg/graphs/contributors',
+                                      ),
+                                      mode: LaunchMode.externalApplication,
+                                    ),
+                                  );
+                                },
                               ),
                             ],
                           );
@@ -3789,7 +4058,7 @@ class _TitleBarSettingsButton extends ConsumerWidget {
 class _TitleBarHomeButton extends StatelessWidget {
   const _TitleBarHomeButton({required this.onPressed});
 
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -4033,6 +4302,38 @@ class _DeveloperSettingsDialog extends ConsumerWidget {
                   ),
                   const SizedBox(height: 14),
                   _DeveloperSection(
+                    title: 'Home',
+                    child: Column(
+                      children: [
+                        _DeveloperShaderSpeedField(
+                          value: settings.homeShaderSpeed,
+                          enabled: settings.developerModeEnabled,
+                          onChanged: notifier.setHomeShaderSpeed,
+                        ),
+                        const SizedBox(height: 10),
+                        Checkbox(
+                          key: const ValueKey(
+                            'developer-home-acrylic-panel-toggle',
+                          ),
+                          state: settings.homeAcrylicPanelEnabled
+                              ? CheckboxState.checked
+                              : CheckboxState.unchecked,
+                          onChanged: settings.developerModeEnabled
+                              ? (value) {
+                                  notifier.setHomeAcrylicPanelEnabled(
+                                    value == CheckboxState.checked,
+                                  );
+                                }
+                              : null,
+                          trailing: Expanded(
+                            child: Text('Acrylic panel').small().medium(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _DeveloperSection(
                     title: 'Window',
                     child: Checkbox(
                       state: settings.macOsCaptionButtonsEnabled
@@ -4076,6 +4377,50 @@ class _DeveloperSettingsDialog extends ConsumerWidget {
   }
 }
 
+class _DeveloperShaderSpeedField extends StatelessWidget {
+  const _DeveloperShaderSpeedField({
+    required this.value,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final double value;
+  final bool enabled;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: Text('Shader speed').small().medium()),
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 96,
+          child: TextField(
+            key: const ValueKey('developer-home-shader-speed-field'),
+            initialValue: value.toStringAsFixed(2),
+            enabled: enabled,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            textAlign: TextAlign.end,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+            ],
+            onChanged: (value) {
+              final parsed = double.tryParse(value);
+              if (parsed == null || parsed.isNaN || parsed.isInfinite) {
+                return;
+              }
+              onChanged(parsed.clamp(0.0, 4.0).toDouble());
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text('x').small().muted(),
+      ],
+    );
+  }
+}
+
 class _DeveloperSection extends StatelessWidget {
   const _DeveloperSection({required this.title, required this.child});
 
@@ -4111,7 +4456,18 @@ class _BottomSidebar extends ConsumerStatefulWidget {
 }
 
 class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
+  static const double _optimizeEtaSmoothing = 0.12;
+  static const _optimizeEstimateDisplayInterval = Duration(seconds: 3);
+
   Timer? _optimizeSuccessTimer;
+  Timer? _optimizeProgressTimer;
+  DateTime? _optimizeProgressStartedAt;
+  DateTime? _optimizeProgressLastCompletedAt;
+  DateTime? _optimizeProgressLastEstimateDisplayedAt;
+  int _optimizeProgressLastCompletedCount = 0;
+  Duration? _optimizeProgressSmoothedItemDuration;
+  Duration _optimizeProgressElapsed = Duration.zero;
+  Duration? _optimizeProgressDisplayedEstimate;
   bool _showOptimizeSuccess = false;
 
   @override
@@ -4126,6 +4482,7 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
   @override
   void dispose() {
     _optimizeSuccessTimer?.cancel();
+    _stopOptimizeProgressTimer();
     super.dispose();
   }
 
@@ -4135,7 +4492,15 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
   ) {
     if (next.isRunning || next.jobState == BatchJobState.cancelRequested) {
       _clearOptimizeSuccess();
+      if (previous?.isRunning != true) {
+        _startOptimizeProgressTimer();
+      }
+      _updateOptimizeProgressEstimate(next);
       return;
+    }
+
+    if (previous?.isRunning == true) {
+      _stopOptimizeProgressTimer();
     }
 
     if (next.jobState == BatchJobState.completed &&
@@ -4150,6 +4515,98 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
     }
   }
 
+  void _startOptimizeProgressTimer() {
+    _optimizeProgressTimer?.cancel();
+    final now = DateTime.now();
+    _optimizeProgressStartedAt = now;
+    _optimizeProgressLastCompletedAt = now;
+    _optimizeProgressLastEstimateDisplayedAt = null;
+    _optimizeProgressLastCompletedCount = 0;
+    _optimizeProgressSmoothedItemDuration = null;
+    _optimizeProgressElapsed = Duration.zero;
+    _optimizeProgressDisplayedEstimate = null;
+    _optimizeProgressTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final startedAt = _optimizeProgressStartedAt;
+      if (!mounted || startedAt == null) {
+        return;
+      }
+      setState(() {
+        _optimizeProgressElapsed = DateTime.now().difference(startedAt);
+      });
+    });
+  }
+
+  void _stopOptimizeProgressTimer() {
+    _optimizeProgressTimer?.cancel();
+    _optimizeProgressTimer = null;
+    _optimizeProgressStartedAt = null;
+    _optimizeProgressLastCompletedAt = null;
+    _optimizeProgressLastEstimateDisplayedAt = null;
+    _optimizeProgressLastCompletedCount = 0;
+    _optimizeProgressSmoothedItemDuration = null;
+    _optimizeProgressElapsed = Duration.zero;
+    _optimizeProgressDisplayedEstimate = null;
+  }
+
+  void _updateOptimizeProgressEstimate(OptimizationRunState state) {
+    final completedDelta =
+        state.completedCount - _optimizeProgressLastCompletedCount;
+    if (completedDelta <= 0) {
+      return;
+    }
+
+    final now = DateTime.now();
+    final lastCompletedAt = _optimizeProgressLastCompletedAt ?? now;
+    final latestItemDuration = Duration(
+      microseconds:
+          now.difference(lastCompletedAt).inMicroseconds ~/ completedDelta,
+    );
+    final previousSmoothedDuration = _optimizeProgressSmoothedItemDuration;
+    _optimizeProgressSmoothedItemDuration = previousSmoothedDuration == null
+        ? latestItemDuration
+        : Duration(
+            microseconds:
+                (_optimizeEtaSmoothing * latestItemDuration.inMicroseconds +
+                        (1 - _optimizeEtaSmoothing) *
+                            previousSmoothedDuration.inMicroseconds)
+                    .round(),
+          );
+    _optimizeProgressLastCompletedAt = now;
+    _optimizeProgressLastCompletedCount = state.completedCount;
+    _maybeUpdateOptimizeProgressDisplayedEstimate(state, now);
+  }
+
+  void _maybeUpdateOptimizeProgressDisplayedEstimate(
+    OptimizationRunState state,
+    DateTime now,
+  ) {
+    final startedAt = _optimizeProgressStartedAt;
+    final smoothedItemDuration = _optimizeProgressSmoothedItemDuration;
+    if (startedAt == null ||
+        smoothedItemDuration == null ||
+        state.completedCount <= 0 ||
+        state.totalCount <= 0) {
+      _optimizeProgressDisplayedEstimate = null;
+      _optimizeProgressLastEstimateDisplayedAt = null;
+      return;
+    }
+
+    final lastDisplayedAt = _optimizeProgressLastEstimateDisplayedAt;
+    if (_optimizeProgressDisplayedEstimate != null &&
+        lastDisplayedAt != null &&
+        now.difference(lastDisplayedAt) < _optimizeEstimateDisplayInterval) {
+      return;
+    }
+
+    _optimizeProgressDisplayedEstimate = Duration(
+      microseconds:
+          now.difference(startedAt).inMicroseconds +
+          smoothedItemDuration.inMicroseconds *
+              (state.totalCount - state.completedCount),
+    );
+    _optimizeProgressLastEstimateDisplayedAt = now;
+  }
+
   void _showOptimizeSuccessState() {
     _optimizeSuccessTimer?.cancel();
     if (!_showOptimizeSuccess) {
@@ -4157,7 +4614,7 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
         _showOptimizeSuccess = true;
       });
     }
-    _optimizeSuccessTimer = Timer(const Duration(seconds: 1), () {
+    _optimizeSuccessTimer = Timer(const Duration(seconds: 3), () {
       if (!mounted) {
         return;
       }
@@ -4402,7 +4859,36 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
                             minHeight: 6,
                             borderRadius: theme.borderRadiusLg,
                           ),
-                          if (analyzeState.isRunning &&
+                          if (runState.isRunning &&
+                              runState.totalCount > 0) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Text(
+                                  '${runState.completedCount}/${runState.totalCount}',
+                                  key: const ValueKey(
+                                    'optimize-progress-count',
+                                  ),
+                                  style: TextStyle(
+                                    color: theme.colorScheme.mutedForeground,
+                                  ),
+                                ).xSmall(),
+                                const Spacer(),
+                                Text(
+                                  _formatOptimizeProgressTime(
+                                    elapsed: _optimizeProgressElapsed,
+                                    estimate:
+                                        _optimizeProgressDisplayedEstimate,
+                                  ),
+                                  key: const ValueKey('optimize-progress-time'),
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.mutedForeground,
+                                  ),
+                                ).xSmall(),
+                              ],
+                            ),
+                          ] else if (analyzeState.isRunning &&
                               analyzeState.totalCount > 0) ...[
                             const SizedBox(height: 4),
                             Align(
@@ -4880,12 +5366,14 @@ class _BottomQualitySection extends ConsumerWidget {
     final theme = Theme.of(context);
     final settings = ref.watch(appSettingsProvider).asData?.value;
     final previewState = ref.watch(currentPreviewProvider);
+    final analyzeState = ref.watch(analyzeRunControllerProvider);
     final selectedAnalyzeSample = ref.watch(selectedAnalyzeSampleProvider);
     final previewPendingBeforeMetrics =
         selectedAnalyzeSample == null &&
         previewState.isLoading &&
         previewState.asData?.value == null;
     final colorCodingEnabled = settings?.qualityMetricColorsEnabled ?? false;
+    final showMetricLegendDots = analyzeState.samples.isNotEmpty;
     final rows = isFolderSelected
         ? const <_BottomMetricRowState>[
             _BottomMetricRowState.text(label: 'Pixel Match', value: 'N/A'),
@@ -5030,6 +5518,7 @@ class _BottomQualitySection extends ConsumerWidget {
             _BottomMetricRow(
               row: rows[index],
               colorCodingEnabled: colorCodingEnabled,
+              showLegendDot: showMetricLegendDots,
             ),
             if (index + 1 < rows.length) const SizedBox(height: 8),
           ],
@@ -5110,9 +5599,9 @@ class _BottomMetricRowState {
 
 enum _BottomMetricRowDisplayState { loading, text }
 
-const _pixelMatchAnalyzeColor = Color(0xFF2563EB);
-const _msSsimAnalyzeColor = Color(0xFFD97706);
-const _ssimulacra2AnalyzeColor = Color(0xFF16A34A);
+const _pixelMatchAnalyzeColor = Color(0xFF06B6D4);
+const _msSsimAnalyzeColor = Color(0xFFD946EF);
+const _ssimulacra2AnalyzeColor = Color(0xFFEAB308);
 
 Color _analyzeMetricColorForLabel(String label) {
   return switch (label) {
@@ -5124,10 +5613,15 @@ Color _analyzeMetricColorForLabel(String label) {
 }
 
 class _BottomMetricRow extends StatelessWidget {
-  const _BottomMetricRow({required this.row, required this.colorCodingEnabled});
+  const _BottomMetricRow({
+    required this.row,
+    required this.colorCodingEnabled,
+    required this.showLegendDot,
+  });
 
   final _BottomMetricRowState row;
   final bool colorCodingEnabled;
+  final bool showLegendDot;
 
   @override
   Widget build(BuildContext context) {
@@ -5135,16 +5629,18 @@ class _BottomMetricRow extends StatelessWidget {
     final labelWidget = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          key: ValueKey('metric-legend-dot-${row.label}'),
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: _analyzeMetricColorForLabel(row.label),
+        if (showLegendDot) ...[
+          Container(
+            key: ValueKey('metric-legend-dot-${row.label}'),
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _analyzeMetricColorForLabel(row.label),
+            ),
           ),
-        ),
-        const SizedBox(width: 6),
+          const SizedBox(width: 6),
+        ],
         Flexible(child: Text(row.label).xSmall().medium().muted()),
       ],
     );
@@ -5587,7 +6083,6 @@ class _BottomSummaryViewModel {
               'Unknown',
         ),
         _BottomInfoRowData(label: 'Images', value: '${files.length}'),
-        const _BottomInfoRowData(label: 'Scope', value: 'Loaded'),
         _BottomInfoRowData(
           label: 'Bits Per Pixel',
           value: _formatNullableBpp(originalBpp),
@@ -5922,6 +6417,24 @@ String _formatMetricTimingTooltip(int elapsedMilliseconds) {
   return '$elapsedMilliseconds ms';
 }
 
+String _formatOptimizeProgressTime({
+  required Duration elapsed,
+  required Duration? estimate,
+}) {
+  return '${_formatProgressDuration(elapsed)}/${estimate == null ? '--:--' : _formatProgressDuration(estimate)}';
+}
+
+String _formatProgressDuration(Duration duration) {
+  final totalSeconds = duration.inSeconds;
+  final hours = totalSeconds ~/ 3600;
+  final minutes = (totalSeconds % 3600) ~/ 60;
+  final seconds = totalSeconds % 60;
+  if (hours > 0) {
+    return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+  return '$minutes:${seconds.toString().padLeft(2, '0')}';
+}
+
 String _formatMegapixels(int width, int height) {
   final megapixels = (width * height) / 1000000;
   return '${megapixels.toStringAsFixed(1)} MP';
@@ -5986,6 +6499,163 @@ class _SettingsLabel extends StatelessWidget {
   }
 }
 
+class _OptimizationCollapsible extends ConsumerStatefulWidget {
+  const _OptimizationCollapsible({
+    required this.settings,
+    required this.controlsLocked,
+  });
+
+  final AppSettings settings;
+  final bool controlsLocked;
+
+  @override
+  ConsumerState<_OptimizationCollapsible> createState() =>
+      _OptimizationCollapsibleState();
+}
+
+class _OptimizationCollapsibleState
+    extends ConsumerState<_OptimizationCollapsible> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final notifier = ref.read(appSettingsProvider.notifier);
+    final currentFile = ref.watch(fileOpenControllerProvider).currentFile;
+
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 10, right: 4),
+            child: Row(
+              children: [
+                Expanded(child: const Text('Optimization').small().medium()),
+                GhostButton(
+                  onPressed: () {
+                    setState(() {
+                      _isExpanded = !_isExpanded;
+                    });
+                  },
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    transitionBuilder: (child, animation) {
+                      return FadeTransition(opacity: animation, child: child);
+                    },
+                    child: Icon(
+                      _isExpanded ? Icons.remove : Icons.add,
+                      key: ValueKey<bool>(_isExpanded),
+                    ).iconXSmall(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ClipRect(
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOutCubic,
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: _isExpanded
+                    ? const BoxConstraints()
+                    : const BoxConstraints(maxHeight: 0),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SettingsLabel('Effort'),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Text('0').xSmall().muted(),
+                          const Spacer(),
+                          Text(
+                            '${widget.settings.effort}',
+                          ).xSmall().medium().muted(),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      _HoverValueSlider(
+                        key: const ValueKey('effort-slider'),
+                        value: widget.settings.effort.toDouble(),
+                        min: 0,
+                        max: 100,
+                        divisions: 100,
+                        hoverEnabled: !widget.controlsLocked,
+                        hoverOpacityKey: const ValueKey(
+                          'effort-slider-hover-opacity',
+                        ),
+                        hoverValueKey: const ValueKey(
+                          'effort-slider-hover-value',
+                        ),
+                        onChanged: widget.controlsLocked
+                            ? null
+                            : (value) {
+                                notifier.setEffort(value.round());
+                              },
+                      ),
+                      if (widget.settings.effectiveCodec ==
+                          PreferredCodec.png) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            const _SettingsLabel('Palette'),
+                            const Spacer(),
+                            if (_paletteSuggestionLabel(currentFile)
+                                case final suggestion?)
+                              Tooltip(
+                                tooltip: (context) => TooltipContainer(
+                                  child: Text(
+                                    _paletteSuggestionTooltip(currentFile)!,
+                                  ),
+                                ),
+                                child: Text(suggestion).xSmall().muted(),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        RadioGroup<PngPalettePreference>(
+                          value: widget.settings.pngPaletteMode,
+                          onChanged: widget.controlsLocked
+                              ? null
+                              : notifier.setPngPaletteMode,
+                          child: Row(
+                            children: [
+                              for (final mode
+                                  in PngPalettePreference.values) ...[
+                                Expanded(
+                                  child: RadioItem<PngPalettePreference>(
+                                    value: mode,
+                                    enabled: !widget.controlsLocked,
+                                    trailing: Text(
+                                      _pngPaletteLabel(mode),
+                                    ).xSmall(),
+                                  ),
+                                ),
+                                if (mode != PngPalettePreference.values.last)
+                                  const SizedBox(width: 8),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ChoiceCard extends StatelessWidget {
   const _ChoiceCard({required this.title});
 
@@ -6013,6 +6683,7 @@ class _StorageDestinationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      key: ValueKey('storage-destination-${value.name}'),
       behavior: HitTestBehavior.opaque,
       onTap: enabled ? onTap : null,
       child: IgnorePointer(
@@ -6095,6 +6766,52 @@ String _qualityValueLabel(AppSettings settings) {
   return '${settings.quality}';
 }
 
+String _pngPaletteLabel(PngPalettePreference mode) {
+  return switch (mode) {
+    PngPalettePreference.off => 'Off',
+    PngPalettePreference.auto => 'Auto',
+    PngPalettePreference.on => 'On',
+  };
+}
+
+String? _paletteSuggestionLabel(OpenedImageFile? file) {
+  final suitability = file?.metadata.paletteSuitability;
+  if (suitability == null) {
+    return null;
+  }
+
+  return switch (suitability.recommendation) {
+    PaletteRecommendation.on_ => '(Suggested: On)',
+    PaletteRecommendation.review => '(Suggested: On)',
+    PaletteRecommendation.off => '(Suggested: Off)',
+  };
+}
+
+String? _paletteSuggestionTooltip(OpenedImageFile? file) {
+  final suitability = file?.metadata.paletteSuitability;
+  if (suitability == null) {
+    return null;
+  }
+
+  final uniqueColors = suitability.uniqueColorCountExceeded
+      ? '>${_formatInteger(suitability.uniqueColorCount)}'
+      : _formatInteger(suitability.uniqueColorCount);
+  return 'Unique colors: $uniqueColors';
+}
+
+String _formatInteger(int value) {
+  final digits = value.toString();
+  final buffer = StringBuffer();
+  for (var i = 0; i < digits.length; i += 1) {
+    final remaining = digits.length - i;
+    if (i > 0 && remaining % 3 == 0) {
+      buffer.write(',');
+    }
+    buffer.write(digits[i]);
+  }
+  return buffer.toString();
+}
+
 class _EmptyState extends ConsumerWidget {
   const _EmptyState();
 
@@ -6137,227 +6854,198 @@ class _EmptyState extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final appSettings = ref.watch(appSettingsProvider).asData?.value;
+    final secondaryTextColor = _homeSecondaryTextColor(theme);
+    final homeAcrylicPanelEnabled =
+        appSettings?.homeAcrylicPanelEnabled ??
+        AppSettings.defaults.homeAcrylicPanelEnabled;
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(28, 8, 28, 28),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1180),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final wide = constraints.maxWidth >= 920;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final contentWidth = math.min(
+          1180.0,
+          math.max(0.0, constraints.maxWidth - 56),
+        );
+        final wide = contentWidth >= 920;
+        final wideHero = contentWidth >= 760;
 
-              final hero = Container(
-                decoration: BoxDecoration(
-                  borderRadius: theme.borderRadiusXxl,
-                  border: Border.all(
-                    color: theme.colorScheme.border.withValues(alpha: 0.7),
-                  ),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      theme.colorScheme.background,
-                      theme.colorScheme.primary.withValues(alpha: 0.06),
-                      theme.colorScheme.secondary.withValues(alpha: 0.42),
+        final hero = _EmptyStateHeroPanel(
+          acrylicEnabled: homeAcrylicPanelEnabled,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(28, 30, 28, 28),
+            child: LayoutBuilder(
+              builder: (context, heroConstraints) {
+                final useHeroGrid = wideHero && heroConstraints.maxWidth >= 620;
+                final titleGroup = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Optimize images easily',
+                      style: TextStyle(
+                        fontSize: 31,
+                        height: 1.08,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.9,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      'OIMG helps you choose the optimal image format and settings.',
+                      style: TextStyle(
+                        color: secondaryTextColor,
+                        fontSize: 13.6,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                );
+                final actionGroup = Align(
+                  alignment: useHeroGrid
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: useHeroGrid
+                        ? CrossAxisAlignment.end
+                        : CrossAxisAlignment.start,
+                    children: [
+                      Builder(
+                        builder: (buttonContext) {
+                          return PrimaryButton(
+                            key: const ValueKey('empty-state-browse-button'),
+                            size: ButtonSize.large,
+                            density: ButtonDensity.normal,
+                            onPressed: () =>
+                                _showBrowseMenu(buttonContext, ref),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Icon(LucideIcons.folderSearch, size: 18),
+                                SizedBox(width: 10),
+                                Text(
+                                  'Open images',
+                                  textScaler: TextScaler.linear(0.7),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'or drop files and folders anywhere',
+                        textAlign: useHeroGrid
+                            ? TextAlign.right
+                            : TextAlign.left,
+                        style: TextStyle(color: secondaryTextColor),
+                      ).small(),
                     ],
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                      blurRadius: 42,
-                      offset: const Offset(0, 18),
-                    ),
-                  ],
-                ),
-                child: Stack(
+                );
+
+                if (useHeroGrid) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(flex: 3, child: titleGroup),
+                      const SizedBox(width: 28),
+                      Expanded(flex: 2, child: actionGroup),
+                    ],
+                  );
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Positioned(
-                      top: -56,
-                      right: -42,
-                      child: Container(
-                        width: 210,
-                        height: 210,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: theme.colorScheme.primary.withValues(
-                            alpha: 0.1,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: -80,
-                      left: -28,
-                      child: Container(
-                        width: 180,
-                        height: 180,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: theme.colorScheme.secondaryForeground
-                              .withValues(alpha: 0.05),
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(28, 30, 28, 28),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            'Optimize your images easily',
-                            style: TextStyle(
-                              fontSize: 31,
-                              height: 1.08,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.9,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          Text(
-                            'OIMG helps you choose the optimal image format and settings.',
-                            style: TextStyle(
-                              color: theme.colorScheme.mutedForeground,
-                              fontSize: 13.6,
-                              height: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: 26),
-                          Row(
-                            children: [
-                              PrimaryButton(
-                                key: const ValueKey(
-                                  'empty-state-browse-button',
-                                ),
-                                onPressed: () => _showBrowseMenu(context, ref),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: const [
-                                    Icon(LucideIcons.folderSearch, size: 16),
-                                    SizedBox(width: 8),
-                                    Text('Browse…'),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                'or drop files and folders anywhere',
-                                style: TextStyle(
-                                  color: theme.colorScheme.mutedForeground,
-                                ),
-                              ).small(),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
+                    titleGroup,
+                    const SizedBox(height: 26),
+                    actionGroup,
                   ],
-                ),
+                );
+              },
+            ),
+          ),
+        );
+
+        final supportCards = const [
+          _EmptyStateFeatureCard(
+            cardKey: ValueKey('empty-state-feature-preview'),
+            icon: LucideIcons.sparkles,
+            title: 'Preview',
+            description: 'Inspect optimized images before you hit save.',
+            previewVideoUrl: 'https://media.oimg.org/videos/preview_demo.mp4',
+          ),
+          _EmptyStateFeatureCard(
+            cardKey: ValueKey('empty-state-feature-compare'),
+            icon: LucideIcons.badgePercent,
+            title: 'Compare',
+            description:
+                'See how different image formats compare in savings, quality, and compatibility.',
+            previewVideoUrl: 'https://media.oimg.org/videos/compare_demo.mp4',
+          ),
+          _EmptyStateFeatureCard(
+            cardKey: ValueKey('empty-state-feature-analyze'),
+            icon: LucideIcons.chartSpline,
+            title: 'Analyze',
+            description:
+                'Explore the balance between size and quality using image quality analysis methods.',
+            previewVideoUrl: 'https://media.oimg.org/videos/analyze_demo.mp4',
+          ),
+        ];
+
+        final support = wide
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: supportCards[0]),
+                  const SizedBox(width: 10),
+                  Expanded(child: supportCards[1]),
+                  const SizedBox(width: 10),
+                  Expanded(child: supportCards[2]),
+                ],
+              )
+            : Column(
+                children: [
+                  supportCards[0],
+                  const SizedBox(height: 10),
+                  supportCards[1],
+                  const SizedBox(height: 10),
+                  supportCards[2],
+                ],
               );
 
-              final supportCards = const [
-                _EmptyStateFeatureCard(
-                  icon: LucideIcons.sparkles,
-                  title: 'Preview',
-                  description:
-                      'Inspect the optimized images before you hit save.',
-                ),
-                _EmptyStateFeatureCard(
-                  icon: LucideIcons.badgePercent,
-                  title: 'Compare',
-                  description:
-                      'See how different image formats compare in savings, quality, and compatibility.',
-                ),
-                _EmptyStateFeatureCard(
-                  icon: LucideIcons.chartSpline,
-                  title: 'Analyze',
-                  description:
-                      'Explore the balance between size and quality using state-of-the-art image quality analysis methods.',
-                ),
-              ];
-
-              final support = wide
-                  ? Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: supportCards[0]),
-                        const SizedBox(width: 14),
-                        Expanded(child: supportCards[1]),
-                        const SizedBox(width: 14),
-                        Expanded(child: supportCards[2]),
-                      ],
-                    )
-                  : Column(
-                      children: [
-                        supportCards[0],
-                        const SizedBox(height: 14),
-                        supportCards[1],
-                        const SizedBox(height: 14),
-                        supportCards[2],
-                      ],
-                    );
-
-              return Stack(
-                children: [
-                  Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        borderRadius: theme.borderRadiusXxl,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            theme.colorScheme.background,
-                            theme.colorScheme.secondary.withValues(alpha: 0.32),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    left: 28,
-                    top: 24,
-                    child: Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: theme.colorScheme.primary.withValues(
-                          alpha: 0.05,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: 54,
-                    bottom: 20,
-                    child: Container(
-                      width: 160,
-                      height: 160,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: theme.colorScheme.secondaryForeground.withValues(
-                          alpha: 0.04,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Padding(
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: _HomeShaderBackdrop(
+                borderRadius: BorderRadius.zero,
+                speed:
+                    appSettings?.homeShaderSpeed ??
+                    AppSettings.defaultHomeShaderSpeed,
+              ),
+            ),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(28, 8, 28, 28),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1180),
+                  child: Padding(
                     padding: const EdgeInsets.all(22),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         ConstrainedBox(
                           constraints: BoxConstraints(
-                            maxWidth: constraints.maxWidth * 0.8,
+                            maxWidth: contentWidth * 0.8,
                           ),
                           child: hero,
                         ),
                         const SizedBox(height: 18),
                         ConstrainedBox(
                           constraints: BoxConstraints(
-                            maxWidth: constraints.maxWidth * 0.85,
+                            maxWidth: contentWidth * 0.8,
                           ),
                           child: support,
                         ),
@@ -6365,53 +7053,396 @@ class _EmptyState extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  Positioned(
-                    right: 28,
-                    bottom: 24,
-                    child: Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      alignment: WrapAlignment.end,
-                      children: [
-                        OutlineButton(
-                          key: const ValueKey('empty-state-github-button'),
-                          onPressed: () async {
-                            await launchUrl(
-                              Uri.parse('https://github.com/yunho-c/oimg'),
-                              mode: LaunchMode.externalApplication,
-                            );
-                          },
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(LucideIcons.github, size: 15),
-                              SizedBox(width: 8),
-                              Text('GitHub'),
-                            ],
-                          ),
-                        ),
-                        OutlineButton(
-                          key: const ValueKey('empty-state-feedback-button'),
-                          onPressed: () {},
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(LucideIcons.messageSquare, size: 15),
-                              SizedBox(width: 8),
-                              Text('Feedback'),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                ),
+              ),
+            ),
+            const Positioned(left: 20, bottom: 19, child: _EmptyStateCredit()),
+            Positioned(
+              right: 28,
+              bottom: 24,
+              child: Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                alignment: WrapAlignment.end,
+                children: [
+                  _EmptyStateFooterButton(
+                    key: const ValueKey('empty-state-github-button'),
+                    hoverColor: const Color(0xFF7B4BDA),
+                    icon: LucideIcons.github,
+                    label: 'GitHub',
+                    onPressed: () async {
+                      await launchUrl(
+                        Uri.parse('https://github.com/yunho-c/oimg'),
+                        mode: LaunchMode.externalApplication,
+                      );
+                    },
+                  ),
+                  _EmptyStateFooterButton(
+                    key: const ValueKey('empty-state-feedback-button'),
+                    hoverColor: const Color(0xFFE9822E),
+                    icon: LucideIcons.messageSquare,
+                    label: 'Feedback',
+                    onPressed: () {},
                   ),
                 ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _EmptyStateHeroPanel extends StatelessWidget {
+  const _EmptyStateHeroPanel({
+    required this.acrylicEnabled,
+    required this.child,
+  });
+
+  final bool acrylicEnabled;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final borderRadius = theme.borderRadiusXxl.resolve(
+      Directionality.of(context),
+    );
+
+    if (acrylicEnabled) {
+      final darkMode = theme.brightness == ui.Brightness.dark;
+      final baseColor = darkMode
+          ? const Color(0xFFF8FAFC).withValues(alpha: 0.126)
+          : Color.lerp(
+              theme.colorScheme.background,
+              Colors.white,
+              0.45,
+            )!.withValues(alpha: 0.612);
+      final borderColor = darkMode
+          ? Colors.white.withValues(alpha: 0.18)
+          : Colors.white.withValues(alpha: 0.58);
+
+      return DecoratedBox(
+        key: const ValueKey('empty-state-hero-acrylic-panel'),
+        decoration: BoxDecoration(
+          borderRadius: borderRadius,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: darkMode ? 0.18 : 0.08),
+              blurRadius: 28,
+              offset: const Offset(0, 16),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: borderRadius,
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: borderRadius,
+                border: Border.all(color: borderColor),
+                color: baseColor,
+              ),
+              child: child,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      key: const ValueKey('empty-state-hero-gradient-panel'),
+      decoration: BoxDecoration(
+        borderRadius: borderRadius,
+        border: Border.all(
+          color: theme.colorScheme.border.withValues(alpha: 0.7),
+        ),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.background,
+            theme.colorScheme.primary.withValues(alpha: 0.06),
+            theme.colorScheme.secondary.withValues(alpha: 0.42),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.primary.withValues(alpha: 0.08),
+            blurRadius: 42,
+            offset: const Offset(0, 18),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: -56,
+            right: -42,
+            child: Container(
+              width: 210,
+              height: 210,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -80,
+            left: -28,
+            child: Container(
+              width: 180,
+              height: 180,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: theme.colorScheme.secondaryForeground.withValues(
+                  alpha: 0.05,
+                ),
+              ),
+            ),
+          ),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyStateCredit extends StatelessWidget {
+  const _EmptyStateCredit();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = theme.colorScheme.mutedForeground.withValues(
+      alpha: theme.brightness == ui.Brightness.dark ? 0.86 : 0.80,
+    );
+    final style = TextStyle(color: color, fontSize: 11.5, height: 1.2);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Built with care by ', style: style),
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () async {
+              await launchUrl(
+                Uri.parse('https://yunhocho.com/'),
+                mode: LaunchMode.externalApplication,
               );
             },
+            child: Text(
+              'Yunho Cho',
+              style: style.copyWith(
+                decoration: TextDecoration.underline,
+                decorationColor: color.withValues(alpha: 0.75),
+              ),
+            ),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EmptyStateFooterButton extends StatelessWidget {
+  const _EmptyStateFooterButton({
+    super.key,
+    required this.hoverColor,
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final Color hoverColor;
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = ButtonStyle(
+      variance: ButtonVariance.outline.copyWith(
+        decoration: (context, states, decoration) {
+          if (decoration is BoxDecoration &&
+              states.contains(WidgetState.hovered)) {
+            return decoration.copyWith(
+              color: hoverColor,
+              border: Border.all(color: hoverColor),
+            );
+          }
+          return decoration;
+        },
+        textStyle: (context, states, textStyle) {
+          if (states.contains(WidgetState.hovered)) {
+            return textStyle.copyWith(color: const Color(0xFFFFFFFF));
+          }
+          return textStyle;
+        },
+        iconTheme: (context, states, iconTheme) {
+          if (states.contains(WidgetState.hovered)) {
+            return iconTheme.copyWith(color: const Color(0xFFFFFFFF));
+          }
+          return iconTheme;
+        },
+      ),
+    );
+
+    return Button(
+      style: style,
+      onPressed: onPressed,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [Icon(icon, size: 15), const SizedBox(width: 8), Text(label)],
+      ),
+    );
+  }
+}
+
+class _HomeShaderBackdrop extends StatefulWidget {
+  const _HomeShaderBackdrop({required this.borderRadius, required this.speed});
+
+  static const _lightShaderAsset = 'assets/shaders/home_wavy_background.frag';
+  static const _darkShaderAsset =
+      'assets/shaders/home_wavy_background_dark.frag';
+
+  static final _lightProgramFuture = ui.FragmentProgram.fromAsset(
+    _lightShaderAsset,
+  );
+  static final _darkProgramFuture = ui.FragmentProgram.fromAsset(
+    _darkShaderAsset,
+  );
+
+  final BorderRadiusGeometry borderRadius;
+  final double speed;
+
+  @override
+  State<_HomeShaderBackdrop> createState() => _HomeShaderBackdropState();
+}
+
+class _HomeShaderBackdropState extends State<_HomeShaderBackdrop>
+    with SingleTickerProviderStateMixin {
+  Ticker? _shaderTicker;
+  Duration _shaderElapsed = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_shouldAnimateHomeShader) {
+      _shaderTicker = createTicker((elapsed) {
+        setState(() {
+          _shaderElapsed = elapsed;
+        });
+      })..start();
+    }
+  }
+
+  @override
+  void dispose() {
+    _shaderTicker?.dispose();
+    super.dispose();
+  }
+
+  bool get _shouldAnimateHomeShader {
+    var isWidgetTest = false;
+    assert(() {
+      isWidgetTest = WidgetsBinding.instance.runtimeType.toString().contains(
+        'TestWidgetsFlutterBinding',
+      );
+      return true;
+    }());
+    return !isWidgetTest;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final darkMode = theme.brightness == ui.Brightness.dark;
+    final shaderAsset = darkMode
+        ? _HomeShaderBackdrop._darkShaderAsset
+        : _HomeShaderBackdrop._lightShaderAsset;
+    final programFuture = darkMode
+        ? _HomeShaderBackdrop._darkProgramFuture
+        : _HomeShaderBackdrop._lightProgramFuture;
+    final fallback = _HomeShaderFallback(borderRadius: widget.borderRadius);
+    return FutureBuilder<ui.FragmentProgram>(
+      key: ValueKey(shaderAsset),
+      future: programFuture,
+      builder: (context, snapshot) {
+        final program = snapshot.data;
+        if (program == null) {
+          return fallback;
+        }
+
+        return ClipRRect(
+          borderRadius: widget.borderRadius.resolve(Directionality.of(context)),
+          child: CustomPaint(
+            painter: _HomeShaderPainter(
+              program: program,
+              time:
+                  _shaderElapsed.inMicroseconds /
+                  Duration.microsecondsPerSecond *
+                  widget.speed,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _HomeShaderFallback extends StatelessWidget {
+  const _HomeShaderFallback({required this.borderRadius});
+
+  final BorderRadiusGeometry borderRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: borderRadius,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.background,
+            theme.colorScheme.secondary.withValues(alpha: 0.32),
+          ],
         ),
       ),
     );
+  }
+}
+
+class _HomeShaderPainter extends CustomPainter {
+  const _HomeShaderPainter({required this.program, required this.time});
+
+  final ui.FragmentProgram program;
+  final double time;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) {
+      return;
+    }
+
+    final shader = program.fragmentShader()
+      ..setFloat(0, size.width)
+      ..setFloat(1, size.height)
+      ..setFloat(2, time);
+
+    canvas.drawRect(Offset.zero & size, Paint()..shader = shader);
+  }
+
+  @override
+  bool shouldRepaint(covariant _HomeShaderPainter oldDelegate) {
+    return oldDelegate.program != program || oldDelegate.time != time;
   }
 }
 
@@ -6497,37 +7528,120 @@ class _SettingsWarningBlock extends StatelessWidget {
   }
 }
 
-class _EmptyStateFeatureCard extends StatelessWidget {
-  const _EmptyStateFeatureCard({
-    required this.icon,
-    required this.title,
-    required this.description,
+class _HomeAcrylicSurface extends StatelessWidget {
+  const _HomeAcrylicSurface({
+    super.key,
+    required this.child,
+    required this.borderRadius,
+    this.blurSigma = 20,
+    this.baseColor,
+    this.backgroundAlpha = 0.52,
+    this.tintAlpha = 0.12,
+    this.tintColor,
+    this.borderAlpha = 0.62,
+    this.shadowColor,
+    this.shadowAlpha = 0.07,
   });
 
-  final IconData icon;
-  final String title;
-  final String description;
+  final Widget child;
+  final BorderRadiusGeometry borderRadius;
+  final double blurSigma;
+  final Color? baseColor;
+  final double backgroundAlpha;
+  final double tintAlpha;
+  final Color? tintColor;
+  final double borderAlpha;
+  final Color? shadowColor;
+  final double shadowAlpha;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final resolvedRadius = borderRadius.resolve(Directionality.of(context));
+    final effectiveBaseColor = baseColor ?? theme.colorScheme.background;
+    final effectiveTintColor = tintColor ?? theme.colorScheme.secondary;
+    final effectiveMidTintColor = tintColor ?? theme.colorScheme.primary;
+    final effectiveShadowColor = shadowColor ?? theme.colorScheme.foreground;
 
-    return Card(
+    return ClipRRect(
+      borderRadius: resolvedRadius,
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: borderRadius,
+            border: Border.all(
+              color: theme.colorScheme.border.withValues(alpha: borderAlpha),
+            ),
+            color: effectiveBaseColor.withValues(alpha: backgroundAlpha),
+            gradient: tintAlpha <= 0
+                ? null
+                : LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      effectiveBaseColor.withValues(alpha: backgroundAlpha),
+                      effectiveMidTintColor.withValues(alpha: tintAlpha * 0.55),
+                      effectiveTintColor.withValues(alpha: tintAlpha),
+                    ],
+                  ),
+            boxShadow: [
+              BoxShadow(
+                color: effectiveShadowColor.withValues(alpha: shadowAlpha),
+                blurRadius: 26,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyStateFeatureCard extends StatelessWidget {
+  const _EmptyStateFeatureCard({
+    required this.cardKey,
+    required this.icon,
+    required this.title,
+    required this.description,
+    this.previewVideoUrl,
+  });
+
+  final Key cardKey;
+  final IconData icon;
+  final String title;
+  final String description;
+  final String? previewVideoUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final secondaryTextColor = _homeSecondaryTextColor(theme);
+    final darkMode = theme.brightness == ui.Brightness.dark;
+
+    final card = _HomeAcrylicSurface(
+      key: cardKey,
       borderRadius: theme.borderRadiusXl,
+      blurSigma: 8,
+      baseColor: darkMode ? null : Colors.white,
+      backgroundAlpha: 0.24,
+      tintAlpha: darkMode ? 0.06 : 0.12,
+      tintColor: darkMode ? null : Colors.white,
+      borderAlpha: darkMode ? 0.62 : 0.40,
+      shadowColor: darkMode ? null : Colors.white,
+      shadowAlpha: darkMode ? 0.07 : 0.25,
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(14),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                borderRadius: theme.borderRadiusLg,
-              ),
-              child: Icon(icon, size: 18, color: theme.colorScheme.primary),
+            Padding(
+              padding: const EdgeInsets.only(top: 1),
+              child: Icon(icon, size: 20, color: theme.colorScheme.primary),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -6536,16 +7650,227 @@ class _EmptyStateFeatureCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     description,
-                    style: TextStyle(
-                      color: theme.colorScheme.mutedForeground,
-                      height: 1.45,
-                    ),
+                    style: TextStyle(color: secondaryTextColor, height: 1.45),
                   ).small(),
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+
+    return HoverCard(
+      wait: const Duration(milliseconds: 250),
+      debounce: const Duration(milliseconds: 120),
+      anchorAlignment: Alignment.topCenter,
+      popoverAlignment: Alignment.bottomCenter,
+      popoverOffset: const Offset(0, -10),
+      hoverBuilder: (context) {
+        return _EmptyStateFeaturePreview(videoUrl: previewVideoUrl);
+      },
+      child: card,
+    );
+  }
+}
+
+Color _homeSecondaryTextColor(ThemeData theme) {
+  return theme.brightness == ui.Brightness.dark
+      ? theme.colorScheme.foreground.withValues(alpha: 0.70)
+      : theme.colorScheme.foreground.withValues(alpha: 0.60);
+}
+
+class _EmptyStateFeaturePreview extends StatelessWidget {
+  const _EmptyStateFeaturePreview({this.videoUrl});
+
+  final String? videoUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final viewportSize = MediaQuery.sizeOf(context);
+    const aspectRatio = 16 / 9;
+    final maxPreviewWidth = math.max(0.0, viewportSize.width - 96);
+    final maxPreviewHeight = math.max(0.0, viewportSize.height - 180);
+    var previewWidth = math.min(760.0, maxPreviewWidth);
+    var previewHeight = previewWidth / aspectRatio;
+    if (previewHeight > maxPreviewHeight) {
+      previewHeight = maxPreviewHeight;
+      previewWidth = previewHeight * aspectRatio;
+    }
+
+    return ClipRRect(
+      key: const ValueKey('empty-state-feature-preview-panel'),
+      borderRadius: theme.borderRadiusXl.resolve(Directionality.of(context)),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: theme.borderRadiusXl,
+            border: Border.all(
+              color: theme.colorScheme.border.withValues(alpha: 0.72),
+            ),
+            color: theme.colorScheme.popover.withValues(alpha: 0.82),
+            boxShadow: [
+              BoxShadow(
+                color: theme.colorScheme.foreground.withValues(alpha: 0.10),
+                blurRadius: 28,
+                offset: const Offset(0, 16),
+              ),
+            ],
+          ),
+          child: SizedBox(
+            width: previewWidth,
+            height: previewHeight,
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: videoUrl == null
+                  ? const _EmptyStateFeaturePreviewFrame()
+                  : _EmptyStateFeaturePreviewVideo(url: videoUrl!),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyStateFeaturePreviewVideo extends StatefulWidget {
+  const _EmptyStateFeaturePreviewVideo({required this.url});
+
+  final String url;
+
+  @override
+  State<_EmptyStateFeaturePreviewVideo> createState() =>
+      _EmptyStateFeaturePreviewVideoState();
+}
+
+class _EmptyStateFeaturePreviewVideoState
+    extends State<_EmptyStateFeaturePreviewVideo> {
+  late final VideoPlayerController _controller;
+  late final Future<void> _initializeFuture;
+  var _loadFailed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+    _initializeFuture = _controller
+        .initialize()
+        .then((_) async {
+          await _controller.setLooping(true);
+          await _controller.setVolume(0);
+          await _controller.play();
+        })
+        .catchError((Object _) {
+          if (mounted) {
+            setState(() {
+              _loadFailed = true;
+            });
+          }
+        });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return ClipRRect(
+      borderRadius: theme.borderRadiusLg.resolve(Directionality.of(context)),
+      child: SizedBox(
+        width: double.infinity,
+        height: double.infinity,
+        child: FutureBuilder<void>(
+          future: _initializeFuture,
+          builder: (context, snapshot) {
+            if (_loadFailed ||
+                snapshot.connectionState != ConnectionState.done ||
+                !_controller.value.isInitialized) {
+              return const _EmptyStateFeaturePreviewFrame();
+            }
+
+            return FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: _controller.value.size.width,
+                height: _controller.value.size.height,
+                child: VideoPlayer(_controller),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyStateFeaturePreviewFrame extends StatelessWidget {
+  const _EmptyStateFeaturePreviewFrame();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: theme.borderRadiusLg,
+        border: Border.all(
+          color: theme.colorScheme.border.withValues(alpha: 0.65),
+        ),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primary.withValues(alpha: 0.14),
+            theme.colorScheme.secondary.withValues(alpha: 0.12),
+          ],
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: _EmptyStateFeaturePreviewBlock(
+                color: theme.colorScheme.primary.withValues(alpha: 0.34),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 2,
+              child: _EmptyStateFeaturePreviewBlock(
+                color: theme.colorScheme.secondaryForeground.withValues(
+                  alpha: 0.18,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyStateFeaturePreviewBlock extends StatelessWidget {
+  const _EmptyStateFeaturePreviewBlock({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: theme.borderRadiusSm,
       ),
     );
   }

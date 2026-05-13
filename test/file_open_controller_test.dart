@@ -6,6 +6,7 @@ import 'package:oimg/src/file_open/file_open_channel.dart';
 import 'package:oimg/src/file_open/file_open_controller.dart';
 import 'package:oimg/src/rust/slimg_api.dart';
 import 'package:oimg/src/rust/types.dart';
+import 'package:path/path.dart' as p;
 
 void main() {
   group('FileOpenController', () {
@@ -32,9 +33,7 @@ void main() {
       () async {
         final controller = FileOpenController(
           channel: _FakeFileOpenChannel(),
-          slimg: _FakeSlimgApi(
-            inspectResults: {'cover.png': _metadata('png')},
-          ),
+          slimg: _FakeSlimgApi(inspectResults: {'cover.png': _metadata('png')}),
           initialPaths: const ['cover.png'],
         );
 
@@ -42,7 +41,10 @@ void main() {
         await controller.openPaths(const ['readme.md']);
 
         expect(controller.sessionPaths, ['cover.png']);
-        expect(controller.takePendingNotice(), 'Some files could not be opened.');
+        expect(
+          controller.takePendingNotice(),
+          'Some files could not be opened.',
+        );
       },
     );
 
@@ -142,10 +144,10 @@ void main() {
 
       expect(controller.isFolderSelected, isTrue);
       expect(controller.selectedFolderName, 'animals');
-      expect(
-        controller.selectedFolderFiles.map((file) => file.path),
-        ['/tmp/animals/cat.png', '/tmp/animals/dog.png'],
-      );
+      expect(controller.selectedFolderFiles.map((file) => file.path), [
+        '/tmp/animals/cat.png',
+        '/tmp/animals/dog.png',
+      ]);
       expect(controller.selectedFolderSizeBytes, 2048);
       expect(controller.currentPositionLabel, isNull);
 
@@ -178,11 +180,12 @@ void main() {
         await root.delete(recursive: true);
       });
 
-      final nested = Directory('${root.path}/nested')..createSync();
-      final imageA = File('${root.path}/first.png')..writeAsBytesSync([1, 2, 3]);
-      final imageB = File('${nested.path}/second.jpg')
+      final nested = Directory(p.join(root.path, 'nested'))..createSync();
+      final imageA = File(p.join(root.path, 'first.png'))
         ..writeAsBytesSync([1, 2, 3]);
-      File('${nested.path}/notes.txt').writeAsStringSync('ignored');
+      final imageB = File(p.join(nested.path, 'second.jpg'))
+        ..writeAsBytesSync([1, 2, 3]);
+      File(p.join(nested.path, 'notes.txt')).writeAsStringSync('ignored');
 
       final controller = FileOpenController(
         channel: _FakeFileOpenChannel(),
@@ -197,189 +200,206 @@ void main() {
       await controller.initialize();
       await controller.openPaths([root.path]);
 
-      expect(
-        controller.sessionPaths.toSet(),
-        {imageA.path, imageB.path},
-      );
+      expect(controller.sessionPaths.toSet(), {imageA.path, imageB.path});
     });
 
-    test('keeps the source entry when storage keeps the original file', () async {
-      final controller = FileOpenController(
-        channel: _FakeFileOpenChannel(),
-        slimg: _FakeSlimgApi(
-          inspectResults: {'/tmp/source.png': _metadata('png')},
-        ),
-        initialPaths: const ['/tmp/source.png'],
-      );
-
-      await controller.initialize();
-      await controller.applyProcessResults(
-        [
-          BatchItemResult(
-            inputPath: '/tmp/source.png',
-            success: true,
-            result: ProcessResult(
-              outputPath: '/tmp/source.optimized.jpeg',
-              format: 'jpeg',
-              width: 48,
-              height: 32,
-              originalSize: BigInt.from(2400),
-              newSize: BigInt.from(900),
-              didWrite: true,
-            ),
+    test(
+      'keeps the source entry when storage keeps the original file',
+      () async {
+        final controller = FileOpenController(
+          channel: _FakeFileOpenChannel(),
+          slimg: _FakeSlimgApi(
+            inspectResults: {'/tmp/source.png': _metadata('png')},
           ),
-        ],
-        keepSourceEntries: const {'/tmp/source.png'},
-      );
+          initialPaths: const ['/tmp/source.png'],
+        );
 
-      expect(controller.sessionPaths, ['/tmp/source.png']);
-      expect(
-        controller.currentFile?.lastResult?.outputPath,
-        '/tmp/source.optimized.jpeg',
-      );
-    });
-
-    test('deletes the original after a successful remove-original conversion', () async {
-      final root = await Directory.systemTemp.createTemp('oimg-storage-test');
-      addTearDown(() async {
-        if (await root.exists()) {
-          await root.delete(recursive: true);
-        }
-      });
-
-      final input = File('${root.path}/source.png')..writeAsBytesSync([1, 2, 3]);
-      final output = File('${root.path}/source.optimized.jpeg')
-        ..writeAsBytesSync([4, 5, 6]);
-      final controller = FileOpenController(
-        channel: _FakeFileOpenChannel(),
-        slimg: _FakeSlimgApi(
-          inspectResults: {
-            input.path: _metadata('png'),
-            output.path: _metadata('jpeg'),
-          },
-        ),
-        initialPaths: [input.path],
-      );
-
-      await controller.initialize();
-      await controller.applyProcessResults(
-        [
-          BatchItemResult(
-            inputPath: input.path,
-            success: true,
-            result: ProcessResult(
-              outputPath: output.path,
-              format: 'jpeg',
-              width: 48,
-              height: 32,
-              originalSize: BigInt.from(2400),
-              newSize: BigInt.from(900),
-              didWrite: true,
+        await controller.initialize();
+        await controller.applyProcessResults(
+          [
+            BatchItemResult(
+              inputPath: '/tmp/source.png',
+              success: true,
+              result: ProcessResult(
+                outputPath: '/tmp/source.optimized.jpeg',
+                format: 'jpeg',
+                width: 48,
+                height: 32,
+                originalSize: BigInt.from(2400),
+                newSize: BigInt.from(900),
+                didWrite: true,
+              ),
             ),
+          ],
+          keepSourceEntries: const {'/tmp/source.png'},
+        );
+
+        expect(controller.sessionPaths, ['/tmp/source.png']);
+        expect(
+          controller.currentFile?.lastResult?.outputPath,
+          '/tmp/source.optimized.jpeg',
+        );
+      },
+    );
+
+    test(
+      'renames the original after a successful keep-original conversion',
+      () async {
+        final root = await Directory.systemTemp.createTemp('oimg-rename-test');
+        addTearDown(() async {
+          if (await root.exists()) {
+            await root.delete(recursive: true);
+          }
+        });
+
+        final input = File('${root.path}/source.png')
+          ..writeAsBytesSync([1, 2, 3]);
+        final output = File('${root.path}/source.jpeg')
+          ..writeAsBytesSync([4, 5, 6]);
+        final renamedSource = '${root.path}/source_original.png';
+        final controller = FileOpenController(
+          channel: _FakeFileOpenChannel(),
+          slimg: _FakeSlimgApi(
+            inspectResults: {
+              input.path: _metadata('png'),
+              output.path: _metadata('jpeg'),
+            },
           ),
-        ],
-        deleteSourcesAfterSuccess: {input.path},
-      );
+          initialPaths: [input.path],
+        );
 
-      expect(controller.sessionPaths, [output.path]);
-      expect(await input.exists(), isFalse);
-      expect(await output.exists(), isTrue);
-    });
-
-    test('preserves the original modified time for same-path overwrites', () async {
-      final root = await Directory.systemTemp.createTemp('oimg-date-test');
-      addTearDown(() async {
-        if (await root.exists()) {
-          await root.delete(recursive: true);
-        }
-      });
-
-      final input = File('${root.path}/source.jpg')..writeAsBytesSync([1, 2, 3]);
-      final originalModifiedTime = DateTime(2022, 3, 4, 5, 6, 7);
-      await input.setLastModified(originalModifiedTime);
-
-      input.writeAsBytesSync([4, 5, 6]);
-      await input.setLastModified(DateTime(2025, 1, 2, 3, 4, 5));
-
-      final controller = FileOpenController(
-        channel: _FakeFileOpenChannel(),
-        slimg: _FakeSlimgApi(
-          inspectResults: {input.path: _metadata('jpeg')},
-        ),
-        initialPaths: [input.path],
-      );
-
-      await controller.initialize();
-      await controller.applyProcessResults(
-        [
-          BatchItemResult(
-            inputPath: input.path,
-            success: true,
-            result: ProcessResult(
-              outputPath: input.path,
-              format: 'jpeg',
-              width: 48,
-              height: 32,
-              originalSize: BigInt.from(2400),
-              newSize: BigInt.from(1200),
-              didWrite: true,
+        await controller.initialize();
+        await controller.applyProcessResults(
+          [
+            BatchItemResult(
+              inputPath: input.path,
+              success: true,
+              result: ProcessResult(
+                outputPath: output.path,
+                format: 'jpeg',
+                width: 48,
+                height: 32,
+                originalSize: BigInt.from(2400),
+                newSize: BigInt.from(900),
+                didWrite: true,
+              ),
             ),
+          ],
+          renameSourcesAfterSuccess: {input.path: renamedSource},
+        );
+
+        expect(controller.sessionPaths, [output.path]);
+        expect(await input.exists(), isFalse);
+        expect(await File(renamedSource).exists(), isTrue);
+        expect(await output.exists(), isTrue);
+      },
+    );
+
+    test(
+      'moves optimized output into place after same-format source rename',
+      () async {
+        final root = await Directory.systemTemp.createTemp('oimg-move-test');
+        addTearDown(() async {
+          if (await root.exists()) {
+            await root.delete(recursive: true);
+          }
+        });
+
+        final input = File('${root.path}/source.jpg')
+          ..writeAsBytesSync([1, 2, 3]);
+        final temporaryOutput = File('${root.path}/source.optimized.jpeg')
+          ..writeAsBytesSync([4, 5, 6]);
+        final renamedSource = '${root.path}/source_original.jpg';
+        final controller = FileOpenController(
+          channel: _FakeFileOpenChannel(),
+          slimg: _FakeSlimgApi(
+            inspectResults: {
+              input.path: _metadata('jpeg'),
+              temporaryOutput.path: _metadata('jpeg'),
+            },
           ),
-        ],
-        preserveModifiedTimes: {input.path: originalModifiedTime},
-      );
+          initialPaths: [input.path],
+        );
 
-      expect(await input.lastModified(), originalModifiedTime);
-    });
-
-    test('preserves the original modified time for new output files', () async {
-      final root = await Directory.systemTemp.createTemp('oimg-date-test');
-      addTearDown(() async {
-        if (await root.exists()) {
-          await root.delete(recursive: true);
-        }
-      });
-
-      final input = File('${root.path}/source.png')..writeAsBytesSync([1, 2, 3]);
-      final output = File('${root.path}/source.optimized.jpeg')
-        ..writeAsBytesSync([4, 5, 6]);
-      final originalModifiedTime = DateTime(2021, 7, 8, 9, 10, 11);
-      await input.setLastModified(originalModifiedTime);
-      await output.setLastModified(DateTime(2025, 1, 2, 3, 4, 5));
-
-      final controller = FileOpenController(
-        channel: _FakeFileOpenChannel(),
-        slimg: _FakeSlimgApi(
-          inspectResults: {
-            input.path: _metadata('png'),
-            output.path: _metadata('jpeg'),
-          },
-        ),
-        initialPaths: [input.path],
-      );
-
-      await controller.initialize();
-      await controller.applyProcessResults(
-        [
-          BatchItemResult(
-            inputPath: input.path,
-            success: true,
-            result: ProcessResult(
-              outputPath: output.path,
-              format: 'jpeg',
-              width: 48,
-              height: 32,
-              originalSize: BigInt.from(2400),
-              newSize: BigInt.from(900),
-              didWrite: true,
+        await controller.initialize();
+        await controller.applyProcessResults(
+          [
+            BatchItemResult(
+              inputPath: input.path,
+              success: true,
+              result: ProcessResult(
+                outputPath: temporaryOutput.path,
+                format: 'jpeg',
+                width: 48,
+                height: 32,
+                originalSize: BigInt.from(2400),
+                newSize: BigInt.from(900),
+                didWrite: true,
+              ),
             ),
-          ),
-        ],
-        preserveModifiedTimes: {input.path: originalModifiedTime},
-      );
+          ],
+          renameSourcesAfterSuccess: {input.path: renamedSource},
+          moveOutputsAfterSuccess: {input.path: input.path},
+        );
 
-      expect(await output.lastModified(), originalModifiedTime);
-    });
+        expect(controller.sessionPaths, [input.path]);
+        expect(await input.exists(), isTrue);
+        expect(await File(renamedSource).exists(), isTrue);
+        expect(await temporaryOutput.exists(), isFalse);
+        expect(controller.currentFile?.lastResult?.outputPath, input.path);
+      },
+    );
+
+    test(
+      'deletes the original after a successful remove-original conversion',
+      () async {
+        final root = await Directory.systemTemp.createTemp('oimg-storage-test');
+        addTearDown(() async {
+          if (await root.exists()) {
+            await root.delete(recursive: true);
+          }
+        });
+
+        final input = File('${root.path}/source.png')
+          ..writeAsBytesSync([1, 2, 3]);
+        final output = File('${root.path}/source.jpeg')
+          ..writeAsBytesSync([4, 5, 6]);
+        final controller = FileOpenController(
+          channel: _FakeFileOpenChannel(),
+          slimg: _FakeSlimgApi(
+            inspectResults: {
+              input.path: _metadata('png'),
+              output.path: _metadata('jpeg'),
+            },
+          ),
+          initialPaths: [input.path],
+        );
+
+        await controller.initialize();
+        await controller.applyProcessResults(
+          [
+            BatchItemResult(
+              inputPath: input.path,
+              success: true,
+              result: ProcessResult(
+                outputPath: output.path,
+                format: 'jpeg',
+                width: 48,
+                height: 32,
+                originalSize: BigInt.from(2400),
+                newSize: BigInt.from(900),
+                didWrite: true,
+              ),
+            ),
+          ],
+          deleteSourcesAfterSuccess: {input.path},
+        );
+
+        expect(controller.sessionPaths, [output.path]);
+        expect(await input.exists(), isFalse);
+        expect(await output.exists(), isTrue);
+      },
+    );
   });
 }
 
@@ -429,7 +449,9 @@ class _FakeSlimgApi implements SlimgApi {
   }
 
   @override
-  Future<PreviewResult> previewFile({required PreviewFileRequest request}) async {
+  Future<PreviewResult> previewFile({
+    required PreviewFileRequest request,
+  }) async {
     return PreviewResult(
       encodedBytes: Uint8List(0),
       artifactId: 'preview-artifact-test',

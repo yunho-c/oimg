@@ -40,10 +40,15 @@ void main() {
       await notifier.setAdvancedMode(true);
       await notifier.setPreferredCodec(PreferredCodec.webp);
       await notifier.setQuality(92);
+      await notifier.setEffort(74);
+      await notifier.setPngPaletteMode(PngPalettePreference.auto);
       await notifier.setStorageDestinationMode(
         StorageDestinationMode.differentLocation,
       );
       await notifier.setSameFolderAction(SameFolderAction.keepSource);
+      await notifier.setKeepSourceNaming(KeepSourceNaming.renameOriginal);
+      await notifier.setKeepSourceOriginalSuffix('_raw');
+      await notifier.setKeepSourceOptimizedSuffix('_small');
       await notifier.setDifferentLocationPath('/tmp/export');
       await notifier.setPreserveFolderStructure(false);
       await notifier.setPreserveOriginalDate(true);
@@ -57,9 +62,11 @@ void main() {
       await notifier.setDifferenceTooltipShowsCoordinates(false);
       await notifier.setDifferenceTooltipUsesSwatches(true);
       await notifier.setThemePreference(AppThemePreference.dark);
+      await notifier.setColorSchemePreference(AppColorSchemePreference.zinc);
       await notifier.setDeveloperModeEnabled(true);
       await notifier.setTimingLogsEnabled(true);
       await notifier.setMacOsCaptionButtonsEnabled(true);
+      await notifier.setHomeAcrylicPanelEnabled(true);
 
       final settings = container.read(appSettingsProvider).requireValue;
       expect(
@@ -70,8 +77,13 @@ void main() {
           advancedMode: true,
           preferredCodec: PreferredCodec.webp,
           quality: 92,
+          effort: 74,
+          pngPaletteMode: PngPalettePreference.auto,
           storageDestinationMode: StorageDestinationMode.differentLocation,
           sameFolderAction: SameFolderAction.keepSource,
+          keepSourceNaming: KeepSourceNaming.renameOriginal,
+          keepSourceOriginalSuffix: '_raw',
+          keepSourceOptimizedSuffix: '_small',
           differentLocationPath: '/tmp/export',
           preserveFolderStructure: false,
           preserveOriginalDate: true,
@@ -85,9 +97,11 @@ void main() {
           differenceTooltipShowsCoordinates: false,
           differenceTooltipUsesSwatches: true,
           themePreference: AppThemePreference.dark,
+          colorSchemePreference: AppColorSchemePreference.zinc,
           developerModeEnabled: true,
           timingLogsEnabled: true,
           macOsCaptionButtonsEnabled: true,
+          homeAcrylicPanelEnabled: true,
         ),
       );
       expect(await store.read(), settings.toJsonString());

@@ -1,4 +1,5 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
+set windows-shell := ["powershell.exe", "-NoLogo", "-ExecutionPolicy", "Bypass", "-Command"]
 
 default:
   @just --list
@@ -20,3 +21,12 @@ release-dmg-sign:
 
 release-dmg-notarize:
   ./scripts/macos/release-dmg.sh --notarize
+
+windows-build mode="debug":
+    powershell -ExecutionPolicy Bypass -File scripts/windows/build_windows.ps1 -Command build -Mode {{mode}}
+
+windows-run mode="debug":
+    powershell -ExecutionPolicy Bypass -File scripts/windows/build_windows.ps1 -Command run -Mode {{mode}}
+
+windows-installer version="":
+    powershell -ExecutionPolicy Bypass -File scripts/windows/package_inno_installer.ps1 -Version "{{version}}"

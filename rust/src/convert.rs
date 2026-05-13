@@ -5,9 +5,10 @@ use std::time::Instant;
 
 use img_parts::{DynImage, ImageEXIF, ImageICC};
 use slimg_core::{
+    analyze_palette_suitability,
     codec::{get_codec, EncodeOptions},
     convert as core_convert, decode, CropMode, ExtendMode, FillColor, Format, PipelineOptions,
-    ResizeMode,
+    PngPaletteMode as CorePngPaletteMode, ResizeMode,
 };
 use slimg_exec::{classify_format, HostResources, WorkloadClass};
 
@@ -41,6 +42,7 @@ pub(crate) fn inspect_bytes(data: Vec<u8>) -> Result<ImageMetadata> {
         format: format_to_string(format),
         file_size: None,
         has_transparency: image.data.chunks_exact(4).any(|pixel| pixel[3] < 255),
+        palette_suitability: Some(analyze_palette_suitability(&image).into()),
     })
 }
 
@@ -165,6 +167,7 @@ pub(crate) fn process_file_request_with_threads(
         request.output_path,
         None,
         request.overwrite,
+        request.preserve_file_dates,
         request.preserve_exif,
         request.preserve_color_profile,
         request.operation,
@@ -187,6 +190,7 @@ pub(crate) fn process_file_path_with_threads(
         overwrite,
         false,
         false,
+        false,
         operation,
         threads,
     )
@@ -197,6 +201,7 @@ fn process_file_path_with_metadata(
     explicit_output_path: Option<String>,
     output_dir: Option<PathBuf>,
     overwrite: bool,
+    preserve_file_dates: bool,
     preserve_exif: bool,
     preserve_color_profile: bool,
     operation: ImageOperation,
@@ -222,6 +227,11 @@ fn process_file_path_with_metadata(
     )?;
 
     let mut output = run_operation(&input_bytes, &operation, threads)?;
+    let preserved_dates = if preserve_file_dates && output.should_write {
+        crate::fs::PreservedFileDates::capture(&input)
+    } else {
+        None
+    };
     if output.should_write {
         output.data = preserve_metadata(
             &input_bytes,
@@ -245,7 +255,12 @@ fn process_file_path_with_metadata(
             derived_output_path.display(),
             output.data.len()
         ));
-        safe_write_bytes(&derived_output_path, &output.data, overwrite)?;
+        safe_write_bytes(
+            &derived_output_path,
+            &output.data,
+            overwrite,
+            preserved_dates.as_ref(),
+        )?;
         crate::diagnostics::timing_log(format!(
             "process write done output={}",
             derived_output_path.display()
@@ -338,6 +353,8 @@ fn run_operation(
             Ok(PipelineOptions {
                 format: resolve_optional_target_format(options.target_format.as_deref(), source)?,
                 quality: validate_quality(options.quality)?,
+                effort: validate_effort(options.effort)?,
+                png_palette: map_png_palette(options.png_palette),
                 threads,
                 resize: Some(map_resize_spec(&options.resize)?),
                 crop: None,
@@ -349,6 +366,8 @@ fn run_operation(
             Ok(PipelineOptions {
                 format: resolve_optional_target_format(options.target_format.as_deref(), source)?,
                 quality: validate_quality(options.quality)?,
+                effort: validate_effort(options.effort)?,
+                png_palette: map_png_palette(options.png_palette),
                 threads,
                 resize: None,
                 crop: Some(map_crop_spec(&options.crop)?),
@@ -360,6 +379,8 @@ fn run_operation(
             Ok(PipelineOptions {
                 format: resolve_optional_target_format(options.target_format.as_deref(), source)?,
                 quality: validate_quality(options.quality)?,
+                effort: validate_effort(options.effort)?,
+                png_palette: map_png_palette(options.png_palette),
                 threads,
                 resize: None,
                 crop: None,
@@ -379,6 +400,7 @@ pub(crate) fn run_preview_operation(
     let output = match operation {
         ImageOperation::Convert(options) => {
             let quality = validate_quality(options.quality)?;
+            let effort = validate_effort(options.effort)?;
             let target_format = crate::codec::parse_format(&options.target_format)?;
             let encode_threads = encode_threads_for_format(target_format, threads);
             let result = core_convert(
@@ -386,6 +408,8 @@ pub(crate) fn run_preview_operation(
                 &PipelineOptions {
                     format: target_format,
                     quality,
+                    effort,
+                    png_palette: map_png_palette(options.png_palette),
                     threads: encode_threads,
                     resize: None,
                     crop: None,
@@ -397,11 +421,14 @@ pub(crate) fn run_preview_operation(
         }
         ImageOperation::Optimize(options) => {
             let quality = validate_quality(options.quality)?;
+            let effort = validate_effort(options.effort)?;
             let codec = get_codec(source_format);
             let encoded = codec.encode(
                 image,
                 &EncodeOptions {
                     quality,
+                    effort,
+                    png_palette: map_png_palette(options.png_palette),
                     threads: encode_threads_for_format(source_format, threads),
                 },
             )?;
@@ -415,6 +442,8 @@ pub(crate) fn run_preview_operation(
                 &PipelineOptions {
                     format: target_format,
                     quality: validate_quality(options.quality)?,
+                    effort: validate_effort(options.effort)?,
+                    png_palette: map_png_palette(options.png_palette),
                     threads: encode_threads_for_format(target_format, threads),
                     resize: Some(map_resize_spec(&options.resize)?),
                     crop: None,
@@ -432,6 +461,8 @@ pub(crate) fn run_preview_operation(
                 &PipelineOptions {
                     format: target_format,
                     quality: validate_quality(options.quality)?,
+                    effort: validate_effort(options.effort)?,
+                    png_palette: map_png_palette(options.png_palette),
                     threads: encode_threads_for_format(target_format, threads),
                     resize: None,
                     crop: Some(map_crop_spec(&options.crop)?),
@@ -449,6 +480,8 @@ pub(crate) fn run_preview_operation(
                 &PipelineOptions {
                     format: target_format,
                     quality: validate_quality(options.quality)?,
+                    effort: validate_effort(options.effort)?,
+                    png_palette: map_png_palette(options.png_palette),
                     threads: encode_threads_for_format(target_format, threads),
                     resize: None,
                     crop: None,
@@ -476,6 +509,7 @@ fn convert_bytes(
     threads: Option<usize>,
 ) -> Result<OperationOutput> {
     let quality = validate_quality(options.quality)?;
+    let effort = validate_effort(options.effort)?;
     let target_format = crate::codec::parse_format(&options.target_format)?;
     let (image, _) = decode(data)?;
     let result = core_convert(
@@ -483,6 +517,8 @@ fn convert_bytes(
         &PipelineOptions {
             format: target_format,
             quality,
+            effort,
+            png_palette: map_png_palette(options.png_palette),
             threads: encode_threads_for_format(target_format, threads),
             resize: None,
             crop: None,
@@ -505,6 +541,7 @@ fn optimize_bytes(
     threads: Option<usize>,
 ) -> Result<OperationOutput> {
     let quality = validate_quality(options.quality)?;
+    let effort = validate_effort(options.effort)?;
     let total_start = Instant::now();
 
     let decode_start = Instant::now();
@@ -517,6 +554,8 @@ fn optimize_bytes(
         &image,
         &EncodeOptions {
             quality,
+            effort,
+            png_palette: map_png_palette(options.png_palette),
             threads: encode_threads_for_format(format, threads),
         },
     )?;
@@ -704,6 +743,20 @@ fn validate_quality(quality: u8) -> Result<u8> {
     Ok(quality)
 }
 
+fn validate_effort(effort: Option<u8>) -> Result<Option<u8>> {
+    if effort.is_some_and(|value| value > 100) {
+        return Err(SlimgBridgeError::invalid_request(
+            "effort must be between 0 and 100",
+        ));
+    }
+    Ok(effort)
+}
+
+fn map_png_palette(mode: Option<crate::types::PngPaletteMode>) -> CorePngPaletteMode {
+    mode.map(crate::types::PngPaletteMode::to_core)
+        .unwrap_or_default()
+}
+
 fn require_non_zero(value: u32, message: &str) -> Result<()> {
     if value == 0 {
         return Err(SlimgBridgeError::invalid_request(message));
@@ -749,6 +802,8 @@ mod tests {
             &PipelineOptions {
                 format: Format::Png,
                 quality: 80,
+                effort: None,
+                png_palette: Default::default(),
                 threads: None,
                 resize: None,
                 crop: None,
@@ -792,6 +847,8 @@ mod tests {
             operation: ImageOperation::Convert(ConvertOptions {
                 target_format: "webp".to_string(),
                 quality: 80,
+                effort: None,
+                png_palette: None,
             }),
         })
         .unwrap();
@@ -807,6 +864,8 @@ mod tests {
             operation: ImageOperation::Convert(ConvertOptions {
                 target_format: "avif".to_string(),
                 quality: 80,
+                effort: None,
+                png_palette: None,
             }),
         })
         .unwrap();
@@ -824,6 +883,8 @@ mod tests {
             &ImageOperation::Convert(ConvertOptions {
                 target_format: "avif".to_string(),
                 quality: 80,
+                effort: None,
+                png_palette: None,
             }),
             None,
         )
@@ -846,6 +907,8 @@ mod tests {
             &ImageOperation::Convert(ConvertOptions {
                 target_format: "avif".to_string(),
                 quality: 0,
+                effort: None,
+                png_palette: None,
             }),
             None,
         )
@@ -876,6 +939,8 @@ mod tests {
                 resize: ResizeSpec::Scale { factor: 0.0 },
                 target_format: None,
                 quality: 80,
+                effort: None,
+                png_palette: None,
             }),
         })
         .unwrap_err();
