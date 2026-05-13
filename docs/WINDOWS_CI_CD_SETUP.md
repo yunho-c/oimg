@@ -134,6 +134,6 @@ Expected future secrets:
 
 ## Notes
 
-- The workflow currently checks out sibling repos from the branches used by this app: `slimg` from `feat/zenavif`, `tjdistler-iqa-fork` from `perf/simd-gaussian-vertical`, and `irondash` from `fix/macos-engine-context-race`.
+- The workflow currently checks out sibling repos from the branches used by this app: `slimg` from `main`, `tjdistler-iqa-fork` from `perf/simd-gaussian-vertical`, and `irondash` from `fix/macos-engine-context-race`.
 - For more reproducible releases, later pin those sibling checkouts to tags or commit SHAs.
 - The workflow uses GitHub-hosted `windows-2025`; update that runner deliberately when changing the Windows build environment.

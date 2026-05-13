@@ -22,6 +22,12 @@ Follow-up: add Authenticode signing before ZIP and installer packaging once a Wi
 - Add Linux `arm64` release support with either a native ARM runner or a deliberate cross-build path.
 - Add Debian package signing and apt repository metadata if OIMG is distributed through an apt source instead of GitHub Release downloads.
 
+## Linux APT publish artifact reuse
+
+The Linux Debian release and Linux APT publish workflows currently build and verify the `.deb` independently. That is acceptable for initial bring-up, but it can publish a different package than the one attached to the GitHub Release if runner images, caches, sibling branch checkouts, or dependencies drift between jobs.
+
+Follow-up: make the APT publish workflow run after a successful Linux Debian release workflow and publish the exact `.deb` artifact that workflow verified. Keep the publish workflow restricted to trusted release tags, validate the source run before writing to R2, then regenerate and sign the APT metadata from the reused artifact.
+
 ## Release dependency pinning
 
 The release workflows currently checkout sibling repositories from the branches used by this app.
