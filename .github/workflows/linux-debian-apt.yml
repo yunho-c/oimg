@@ -89,7 +89,7 @@ jobs:
         working-directory: oimg
         run: |
           set -euo pipefail
-          git fetch origin main
+          git fetch origin main:refs/remotes/origin/main
           if ! git merge-base --is-ancestor HEAD origin/main; then
             echo "Release tag ${{ steps.release.outputs.tag }} must point to a commit reachable from origin/main." >&2
             exit 1
