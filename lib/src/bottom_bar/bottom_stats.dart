@@ -113,10 +113,17 @@ class _BottomStatTile extends ConsumerWidget {
     final settings = ref.watch(appSettingsProvider).asData?.value;
     final savingsDisplayMode = ref.watch(_savingsDisplayModeProvider);
     final isToggleable = stat.toggleable && !stat.loading;
-    final displayedValue =
-        stat.toggleable && savingsDisplayMode == _SavingsDisplayMode.ratio
+    final showAlternate =
+        stat.toggleable && savingsDisplayMode == _SavingsDisplayMode.ratio;
+    final displayedValue = showAlternate
         ? (stat.alternateValue ?? stat.value)
         : stat.value;
+    final numericValue = showAlternate
+        ? stat.alternateNumericValue
+        : stat.numericValue;
+    final numericFormatter = showAlternate
+        ? stat.alternateNumericFormatter
+        : stat.numericFormatter;
     final defaultValueColor = switch (stat.colorMode) {
       _BottomStatColorMode.none => stat.color,
       _ => theme.colorScheme.foreground,
@@ -158,6 +165,19 @@ class _BottomStatTile extends ConsumerWidget {
                 strokeWidth: 2,
                 color: stat.color,
               ),
+            )
+          else if (numericValue != null && numericFormatter != null)
+            _BottomStatAnimatedValue(
+              key: ValueKey(
+                'bottom-stat-${stat.label}-${showAlternate ? 'alternate' : 'primary'}',
+              ),
+              mode:
+                  settings?.bottomStatAnimationMode ??
+                  AppSettings.defaults.bottomStatAnimationMode,
+              value: numericValue,
+              formatter: numericFormatter,
+              fallbackValue: displayedValue,
+              color: valueColor,
             )
           else
             Text(
@@ -255,6 +275,65 @@ class _BottomStatTile extends ConsumerWidget {
     }
 
     return ContextMenu(items: [contextMenuItem], child: tappableTile);
+  }
+}
+
+class _BottomStatAnimatedValue extends StatelessWidget {
+  const _BottomStatAnimatedValue({
+    super.key,
+    required this.mode,
+    required this.value,
+    required this.formatter,
+    required this.fallbackValue,
+    required this.color,
+  });
+
+  final BottomStatAnimationMode mode;
+  final num value;
+  final String Function(num value) formatter;
+  final String fallbackValue;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = TextStyle(
+      fontSize: 20,
+      fontWeight: FontWeight.w700,
+      color: color,
+    );
+
+    return switch (mode) {
+      BottomStatAnimationMode.ticker => NumberTicker.builder(
+        number: value,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+        builder: (context, value, child) {
+          return Text(
+            formatter(value),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: style,
+          );
+        },
+      ),
+      BottomStatAnimationMode.flipper => DefaultTextStyle.merge(
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: style,
+        child: TextFlipper(
+          text: formatter(value),
+          charset: FlipperCharset.alphanumeric + const FlipperCharset('.% x-'),
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+        ),
+      ),
+      BottomStatAnimationMode.off => Text(
+        fallbackValue,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: style,
+      ),
+    };
   }
 }
 

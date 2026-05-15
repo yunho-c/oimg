@@ -114,6 +114,8 @@ class _BottomSummaryViewModel {
         _BottomStatData(
           label: 'Original',
           value: _formatNullableBytes(originalBytes),
+          numericValue: originalBytes,
+          numericFormatter: _formatByteTickerValue,
           color: const Color(0xFF6B7280),
           colorMode: _BottomStatColorMode.fileSize,
           colorScore: originalBpp,
@@ -121,6 +123,8 @@ class _BottomSummaryViewModel {
         _BottomStatData(
           label: 'Optimized',
           value: _formatNullableBytes(newBytes),
+          numericValue: newBytes,
+          numericFormatter: _formatByteTickerValue,
           color: const Color(0xFF2563EB),
           colorMode: _BottomStatColorMode.fileSize,
           colorScore: optimizedBpp,
@@ -131,6 +135,10 @@ class _BottomSummaryViewModel {
           label: 'Savings',
           value: _formatNullablePercentValue(savingsPercent),
           alternateValue: _formatSavingsRatio(originalBytes, newBytes),
+          numericValue: savingsPercent,
+          numericFormatter: _formatPercentTickerValue,
+          alternateNumericValue: _savingsRatio(originalBytes, newBytes),
+          alternateNumericFormatter: _formatSavingsRatioTickerValue,
           color: const Color(0xFF16A34A),
           colorMode: _BottomStatColorMode.savings,
           colorScore: savingsPercent?.clamp(0, 400).toDouble(),
@@ -139,6 +147,8 @@ class _BottomSummaryViewModel {
         _BottomStatData(
           label: 'Similarity',
           value: similarityStat.value,
+          numericValue: similarityStat.score,
+          numericFormatter: similarityStat.numericFormatter,
           color: Color(0xFFF59E0B),
           colorMode: _BottomStatColorMode.similarity,
           colorScore: similarityStat.score,
@@ -207,6 +217,8 @@ class _BottomSummaryViewModel {
         _BottomStatData(
           label: 'Original',
           value: _formatNullableBytes(originalBytes),
+          numericValue: originalBytes,
+          numericFormatter: _formatByteTickerValue,
           color: const Color(0xFF6B7280),
           colorMode: _BottomStatColorMode.fileSize,
           colorScore: originalBpp,
@@ -214,6 +226,8 @@ class _BottomSummaryViewModel {
         _BottomStatData(
           label: 'Optimized',
           value: _formatNullableBytes(newBytes),
+          numericValue: newBytes,
+          numericFormatter: _formatByteTickerValue,
           color: const Color(0xFF2563EB),
           colorMode: _BottomStatColorMode.fileSize,
           colorScore: optimizedBpp,
@@ -222,6 +236,10 @@ class _BottomSummaryViewModel {
           label: 'Savings',
           value: _formatNullablePercentValue(savingsPercent),
           alternateValue: _formatSavingsRatio(originalBytes, newBytes),
+          numericValue: savingsPercent,
+          numericFormatter: _formatPercentTickerValue,
+          alternateNumericValue: _savingsRatio(originalBytes, newBytes),
+          alternateNumericFormatter: _formatSavingsRatioTickerValue,
           color: const Color(0xFF16A34A),
           colorMode: _BottomStatColorMode.savings,
           colorScore: savingsPercent?.clamp(0, 400).toDouble(),
@@ -280,11 +298,13 @@ class _DerivedSimilarityStat {
     required this.value,
     required this.loading,
     this.score,
+    this.numericFormatter,
   });
 
   final String value;
   final bool loading;
   final double? score;
+  final String Function(num value)? numericFormatter;
 }
 
 _DerivedSimilarityStat _deriveSimilarityStat({
@@ -311,6 +331,7 @@ _DerivedSimilarityStat _deriveSimilarityStat({
         value: _formatSimilarityPercentValue(average),
         loading: false,
         score: average,
+        numericFormatter: _formatSimilarityTickerValue,
       );
     }
   }
@@ -342,6 +363,9 @@ _DerivedSimilarityStat _deriveSimilarityStat({
       value: '${isLoading ? '~' : ''}${_formatSimilarityPercentValue(average)}',
       loading: false,
       score: average,
+      numericFormatter: isLoading
+          ? _formatApproximateSimilarityTickerValue
+          : _formatSimilarityTickerValue,
     );
   }
 
@@ -370,6 +394,10 @@ class _BottomStatData {
     required this.value,
     required this.color,
     this.alternateValue,
+    this.numericValue,
+    this.numericFormatter,
+    this.alternateNumericValue,
+    this.alternateNumericFormatter,
     this.colorScore,
     this.colorMode = _BottomStatColorMode.none,
     this.loading = false,
@@ -381,6 +409,10 @@ class _BottomStatData {
   final String value;
   final Color color;
   final String? alternateValue;
+  final num? numericValue;
+  final String Function(num value)? numericFormatter;
+  final num? alternateNumericValue;
+  final String Function(num value)? alternateNumericFormatter;
   final double? colorScore;
   final _BottomStatColorMode colorMode;
   final bool loading;
@@ -491,6 +523,10 @@ String _formatNullableBytes(int? bytes) {
   return _formatBytes(bytes);
 }
 
+String _formatByteTickerValue(num value) {
+  return _formatBytes(value.round());
+}
+
 String? _formatNullablePercent(double? value) {
   if (value == null) {
     return null;
@@ -505,6 +541,10 @@ String _formatNullablePercentValue(double? value) {
   return _formatNullablePercent(value) ?? '—';
 }
 
+String _formatPercentTickerValue(num value) {
+  return _formatNullablePercent(value.toDouble()) ?? '—';
+}
+
 String _formatSimilarityPercentValue(double? value) {
   if (value == null) {
     return '—';
@@ -516,6 +556,14 @@ String _formatSimilarityPercentValue(double? value) {
   }
 
   return '$rounded%';
+}
+
+String _formatSimilarityTickerValue(num value) {
+  return _formatSimilarityPercentValue(value.toDouble());
+}
+
+String _formatApproximateSimilarityTickerValue(num value) {
+  return '~${_formatSimilarityTickerValue(value)}';
 }
 
 String _formatNullableBpp(double? value) {
@@ -557,15 +605,27 @@ String _formatNullableMetricPercent(double? value) {
 }
 
 String _formatSavingsRatio(int? originalBytes, int? newBytes) {
+  final ratio = _savingsRatio(originalBytes, newBytes);
+  if (ratio == null) {
+    return '—';
+  }
+
+  return _formatSavingsRatioTickerValue(ratio);
+}
+
+double? _savingsRatio(int? originalBytes, int? newBytes) {
   if (originalBytes == null ||
       newBytes == null ||
       originalBytes <= 0 ||
       newBytes <= 0) {
-    return '—';
+    return null;
   }
 
-  final ratio = originalBytes / newBytes;
-  return '${ratio.toStringAsFixed(1)}x';
+  return originalBytes / newBytes;
+}
+
+String _formatSavingsRatioTickerValue(num value) {
+  return '${value.toStringAsFixed(1)}x';
 }
 
 String _formatMetricTimingTooltip(int elapsedMilliseconds) {

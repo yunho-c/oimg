@@ -280,6 +280,15 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
     );
   }
 
+  Future<void> setBottomStatAnimationMode(
+    BottomStatAnimationMode bottomStatAnimationMode,
+  ) async {
+    await _update(
+      (settings) =>
+          settings.copyWith(bottomStatAnimationMode: bottomStatAnimationMode),
+    );
+  }
+
   Future<void> _update(
     AppSettings Function(AppSettings settings) transform,
   ) async {

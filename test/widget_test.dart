@@ -521,9 +521,10 @@ void main() {
     expect(_similarityValueFinder('~90.0%'), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 80));
-    expect(_similarityValueFinder('~70.0%'), findsOneWidget);
+    expect(_similarityApproximateValueFinder(), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
     expect(_similarityValueFinder('56.7%'), findsOneWidget);
   });
 
@@ -1106,6 +1107,7 @@ void main() {
         ),
       );
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
 
       final settings = AppSettings.fromJsonString((await store.read())!);
       expect(settings.quality, 100);
@@ -2466,7 +2468,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
 
     await tester.tap(find.text('animals').first);
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('4.1 KB'), findsOneWidget);
     expect(find.text('2.6 KB'), findsWidgets);
@@ -3261,6 +3263,14 @@ void main() {
 
     await tester.tap(
       find.ancestor(
+        of: find.text('Flipper'),
+        matching: find.byType(RadioItem<BottomStatAnimationMode>),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.ancestor(
         of: find.text('Acrylic panel'),
         matching: find.byType(Checkbox),
       ),
@@ -3289,6 +3299,7 @@ void main() {
     expect(store.value, contains('"macOsCaptionButtonsEnabled":true'));
     expect(store.value, contains('"homeShaderSpeed":0.25'));
     expect(store.value, contains('"homeAcrylicPanelEnabled":true'));
+    expect(store.value, contains('"bottomStatAnimationMode":"flipper"'));
   });
 
   testWidgets('title bar keeps developer left of home and settings', (
@@ -4499,6 +4510,18 @@ Finder _similarityLoadingFinder() {
   return find.descendant(
     of: _similarityTileFinder(),
     matching: find.byType(CircularProgressIndicator),
+  );
+}
+
+Finder _similarityApproximateValueFinder() {
+  return find.descendant(
+    of: _similarityTileFinder(),
+    matching: find.byWidgetPredicate((widget) {
+      return widget is Text &&
+          widget.data != null &&
+          widget.data!.startsWith('~') &&
+          widget.data!.endsWith('%');
+    }),
   );
 }
 
