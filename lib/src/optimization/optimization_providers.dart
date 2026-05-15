@@ -1271,9 +1271,14 @@ final currentPreviewDifferenceFrameProvider = FutureProvider.autoDispose<Preview
 
 final currentDifferenceErrorStatsProvider = FutureProvider.autoDispose
     .family<DifferenceErrorStats, RawImageResult>((ref, rawImage) async {
-      return Future<DifferenceErrorStats>.value(
-        _computeDifferenceErrorStats(rawImage),
-      );
+      if (rawImage.differenceStats case final stats?) {
+        return DifferenceErrorStats(
+          mean: stats.mean,
+          top10Percent: stats.top10Percent,
+          top1Percent: stats.top1Percent,
+        );
+      }
+      return _computeDifferenceErrorStats(rawImage);
     });
 
 DifferenceErrorStats _computeDifferenceErrorStats(RawImageResult rawImage) {
@@ -1282,7 +1287,7 @@ DifferenceErrorStats _computeDifferenceErrorStats(RawImageResult rawImage) {
     return const DifferenceErrorStats(mean: 0, top10Percent: 0, top1Percent: 0);
   }
 
-  final pixelSums = List<int>.filled(pixelCount, 0);
+  final histogram = List<int>.filled(766, 0);
   var totalSum = 0;
   for (var i = 0; i < pixelCount; i++) {
     final byteIndex = i * 4;
@@ -1290,29 +1295,29 @@ DifferenceErrorStats _computeDifferenceErrorStats(RawImageResult rawImage) {
         rawImage.rgbaBytes[byteIndex] +
         rawImage.rgbaBytes[byteIndex + 1] +
         rawImage.rgbaBytes[byteIndex + 2];
-    pixelSums[i] = pixelSum;
+    histogram[pixelSum] += 1;
     totalSum += pixelSum;
   }
 
-  pixelSums.sort((a, b) => b.compareTo(a));
   final top10Count = math.max(1, (pixelCount * 0.10).ceil());
   final top1Count = math.max(1, (pixelCount * 0.01).ceil());
 
-  var top10Sum = 0;
-  for (var i = 0; i < top10Count; i++) {
-    top10Sum += pixelSums[i];
-  }
-
-  var top1Sum = 0;
-  for (var i = 0; i < top1Count; i++) {
-    top1Sum += pixelSums[i];
-  }
-
   return DifferenceErrorStats(
     mean: totalSum / pixelCount / 3,
-    top10Percent: top10Sum / top10Count / 3,
-    top1Percent: top1Sum / top1Count / 3,
+    top10Percent: _topHistogramAverage(histogram, top10Count),
+    top1Percent: _topHistogramAverage(histogram, top1Count),
   );
+}
+
+double _topHistogramAverage(List<int> histogram, int requestedCount) {
+  var remaining = requestedCount;
+  var sum = 0;
+  for (var value = histogram.length - 1; value >= 0 && remaining > 0; value--) {
+    final take = math.min(remaining, histogram[value]);
+    sum += value * take;
+    remaining -= take;
+  }
+  return sum / requestedCount / 3;
 }
 
 Future<ui.Image> _decodeRawImage(RawImageResult result) {

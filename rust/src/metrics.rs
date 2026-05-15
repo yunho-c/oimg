@@ -7,7 +7,7 @@ use tjdistler_iqa::{ImageQualityAssessment, MsSsim};
 
 use crate::error::SlimgBridgeError;
 use crate::preview_artifacts::{preview_artifact_store, PreviewArtifact};
-use crate::types::{PreviewArtifactRequest, RawImageResult};
+use crate::types::{PreviewArtifactRequest, RawImageDifferenceStats, RawImageResult};
 
 const DIFY_DEFAULT_THRESHOLD: f32 = 35215.0 * 0.05 * 0.05;
 
@@ -105,7 +105,7 @@ pub(crate) fn compute_difference_image(
     distorted_height: u32,
     distorted_rgba: &[u8],
 ) -> Option<RawImageResult> {
-    let rgba_bytes = compute_difference_image_data(
+    let (rgba_bytes, difference_stats) = compute_difference_image_data_and_stats(
         reference_width,
         reference_height,
         reference_rgba,
@@ -117,6 +117,7 @@ pub(crate) fn compute_difference_image(
         rgba_bytes,
         width: reference_width,
         height: reference_height,
+        difference_stats: Some(difference_stats),
     })
 }
 
@@ -255,6 +256,7 @@ fn composite_onto_white(r: u8, g: u8, b: u8, a: u8) -> [u8; 3] {
     ]
 }
 
+#[cfg(test)]
 fn compute_difference_image_data(
     reference_width: u32,
     reference_height: u32,
@@ -263,36 +265,99 @@ fn compute_difference_image_data(
     distorted_height: u32,
     distorted_rgba: &[u8],
 ) -> Option<Vec<u8>> {
+    compute_difference_image_data_and_stats(
+        reference_width,
+        reference_height,
+        reference_rgba,
+        distorted_width,
+        distorted_height,
+        distorted_rgba,
+    )
+    .map(|(rgba_bytes, _)| rgba_bytes)
+}
+
+fn compute_difference_image_data_and_stats(
+    reference_width: u32,
+    reference_height: u32,
+    reference_rgba: &[u8],
+    distorted_width: u32,
+    distorted_height: u32,
+    distorted_rgba: &[u8],
+) -> Option<(Vec<u8>, RawImageDifferenceStats)> {
     if reference_width != distorted_width || reference_height != distorted_height {
         return None;
     }
     validate_rgba_len(reference_width, reference_height, reference_rgba)?;
     validate_rgba_len(distorted_width, distorted_height, distorted_rgba)?;
 
-    Some(
-        reference_rgba
-            .chunks_exact(4)
-            .zip(distorted_rgba.chunks_exact(4))
-            .flat_map(|(reference_pixel, distorted_pixel)| {
-                let [reference_r, reference_g, reference_b, reference_a]: [u8; 4] = reference_pixel
-                    .try_into()
-                    .expect("pixel chunk should be RGBA");
-                let [distorted_r, distorted_g, distorted_b, distorted_a]: [u8; 4] = distorted_pixel
-                    .try_into()
-                    .expect("pixel chunk should be RGBA");
-                let reference_rgb =
-                    premultiply_rgb(reference_r, reference_g, reference_b, reference_a);
-                let distorted_rgb =
-                    premultiply_rgb(distorted_r, distorted_g, distorted_b, distorted_a);
-                [
-                    distorted_rgb[0].abs_diff(reference_rgb[0]),
-                    distorted_rgb[1].abs_diff(reference_rgb[1]),
-                    distorted_rgb[2].abs_diff(reference_rgb[2]),
-                    255,
-                ]
-            })
-            .collect(),
-    )
+    let pixel_count = reference_width as usize * reference_height as usize;
+    let mut rgba_bytes = Vec::with_capacity(pixel_count * 4);
+    let mut histogram = [0usize; 766];
+    let mut total_sum = 0usize;
+
+    for (reference_pixel, distorted_pixel) in reference_rgba
+        .chunks_exact(4)
+        .zip(distorted_rgba.chunks_exact(4))
+    {
+        let [reference_r, reference_g, reference_b, reference_a]: [u8; 4] = reference_pixel
+            .try_into()
+            .expect("pixel chunk should be RGBA");
+        let [distorted_r, distorted_g, distorted_b, distorted_a]: [u8; 4] = distorted_pixel
+            .try_into()
+            .expect("pixel chunk should be RGBA");
+        let reference_rgb = premultiply_rgb(reference_r, reference_g, reference_b, reference_a);
+        let distorted_rgb = premultiply_rgb(distorted_r, distorted_g, distorted_b, distorted_a);
+        let diff_r = distorted_rgb[0].abs_diff(reference_rgb[0]);
+        let diff_g = distorted_rgb[1].abs_diff(reference_rgb[1]);
+        let diff_b = distorted_rgb[2].abs_diff(reference_rgb[2]);
+        let pixel_sum = usize::from(diff_r) + usize::from(diff_g) + usize::from(diff_b);
+
+        total_sum += pixel_sum;
+        histogram[pixel_sum] += 1;
+        rgba_bytes.extend_from_slice(&[diff_r, diff_g, diff_b, 255]);
+    }
+
+    let difference_stats = difference_stats_from_histogram(&histogram, total_sum, pixel_count);
+    Some((rgba_bytes, difference_stats))
+}
+
+fn difference_stats_from_histogram(
+    histogram: &[usize; 766],
+    total_sum: usize,
+    pixel_count: usize,
+) -> RawImageDifferenceStats {
+    if pixel_count == 0 {
+        return RawImageDifferenceStats {
+            mean: 0.0,
+            top_10_percent: 0.0,
+            top_1_percent: 0.0,
+        };
+    }
+
+    let top_10_count = ((pixel_count as f64) * 0.10).ceil().max(1.0) as usize;
+    let top_1_count = ((pixel_count as f64) * 0.01).ceil().max(1.0) as usize;
+
+    RawImageDifferenceStats {
+        mean: total_sum as f64 / pixel_count as f64 / 3.0,
+        top_10_percent: histogram_top_average(histogram, top_10_count),
+        top_1_percent: histogram_top_average(histogram, top_1_count),
+    }
+}
+
+fn histogram_top_average(histogram: &[usize; 766], requested_count: usize) -> f64 {
+    let mut remaining = requested_count;
+    let mut sum = 0usize;
+
+    for (value, count) in histogram.iter().enumerate().rev() {
+        if remaining == 0 {
+            break;
+        }
+        let take = remaining.min(*count);
+        sum += value * take;
+        remaining -= take;
+    }
+
+    sum as f64 / requested_count as f64 / 3.0
 }
 
 fn premultiply_rgb(r: u8, g: u8, b: u8, a: u8) -> [u8; 3] {
@@ -597,6 +662,38 @@ mod tests {
                 .any(|pixel| pixel[0] > 0 || pixel[1] > 0 || pixel[2] > 0),
             "expected at least one visible difference pixel"
         );
+    }
+
+    #[test]
+    fn difference_image_includes_error_stats() {
+        let width = 10;
+        let height = 10;
+        let mut reference = vec![0; width * height * 4];
+        let mut distorted = reference.clone();
+        for pixel in reference.chunks_exact_mut(4) {
+            pixel[3] = 255;
+        }
+        for pixel in distorted.chunks_exact_mut(4) {
+            pixel[3] = 255;
+        }
+        distorted[0] = 30;
+
+        let diff = compute_difference_image(
+            width as u32,
+            height as u32,
+            &reference,
+            width as u32,
+            height as u32,
+            &distorted,
+        )
+        .expect("diff should compute");
+        let stats = diff
+            .difference_stats
+            .expect("difference image should include stats");
+
+        assert!((stats.mean - 0.1).abs() < f64::EPSILON);
+        assert!((stats.top_10_percent - 1.0).abs() < f64::EPSILON);
+        assert!((stats.top_1_percent - 10.0).abs() < f64::EPSILON);
     }
 
     #[test]

@@ -803,19 +803,50 @@ class ProcessResult {
           didWrite == other.didWrite;
 }
 
+class RawImageDifferenceStats {
+  final double mean;
+  final double top10Percent;
+  final double top1Percent;
+
+  const RawImageDifferenceStats({
+    required this.mean,
+    required this.top10Percent,
+    required this.top1Percent,
+  });
+
+  @override
+  int get hashCode =>
+      mean.hashCode ^ top10Percent.hashCode ^ top1Percent.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RawImageDifferenceStats &&
+          runtimeType == other.runtimeType &&
+          mean == other.mean &&
+          top10Percent == other.top10Percent &&
+          top1Percent == other.top1Percent;
+}
+
 class RawImageResult {
   final Uint8List rgbaBytes;
   final int width;
   final int height;
+  final RawImageDifferenceStats? differenceStats;
 
   const RawImageResult({
     required this.rgbaBytes,
     required this.width,
     required this.height,
+    this.differenceStats,
   });
 
   @override
-  int get hashCode => rgbaBytes.hashCode ^ width.hashCode ^ height.hashCode;
+  int get hashCode =>
+      rgbaBytes.hashCode ^
+      width.hashCode ^
+      height.hashCode ^
+      differenceStats.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -824,7 +855,8 @@ class RawImageResult {
           runtimeType == other.runtimeType &&
           rgbaBytes == other.rgbaBytes &&
           width == other.width &&
-          height == other.height;
+          height == other.height &&
+          differenceStats == other.differenceStats;
 }
 
 class ResizeOptions {

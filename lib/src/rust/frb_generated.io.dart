@@ -109,6 +109,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ProcessResult dco_decode_box_autoadd_process_result(dynamic raw);
 
   @protected
+  RawImageDifferenceStats dco_decode_box_autoadd_raw_image_difference_stats(
+    dynamic raw,
+  );
+
+  @protected
   RawImageResult dco_decode_box_autoadd_raw_image_result(dynamic raw);
 
   @protected
@@ -201,6 +206,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ProcessResult? dco_decode_opt_box_autoadd_process_result(dynamic raw);
 
   @protected
+  RawImageDifferenceStats?
+  dco_decode_opt_box_autoadd_raw_image_difference_stats(dynamic raw);
+
+  @protected
   RawImageResult? dco_decode_opt_box_autoadd_raw_image_result(dynamic raw);
 
   @protected
@@ -244,6 +253,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ProcessResult dco_decode_process_result(dynamic raw);
+
+  @protected
+  RawImageDifferenceStats dco_decode_raw_image_difference_stats(dynamic raw);
 
   @protected
   RawImageResult dco_decode_raw_image_result(dynamic raw);
@@ -390,6 +402,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  RawImageDifferenceStats sse_decode_box_autoadd_raw_image_difference_stats(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   RawImageResult sse_decode_box_autoadd_raw_image_result(
     SseDeserializer deserializer,
   );
@@ -500,6 +517,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  RawImageDifferenceStats?
+  sse_decode_opt_box_autoadd_raw_image_difference_stats(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   RawImageResult? sse_decode_opt_box_autoadd_raw_image_result(
     SseDeserializer deserializer,
   );
@@ -561,6 +584,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ProcessResult sse_decode_process_result(SseDeserializer deserializer);
+
+  @protected
+  RawImageDifferenceStats sse_decode_raw_image_difference_stats(
+    SseDeserializer deserializer,
+  );
 
   @protected
   RawImageResult sse_decode_raw_image_result(SseDeserializer deserializer);
@@ -743,6 +771,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_raw_image_difference_stats(
+    RawImageDifferenceStats self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_raw_image_result(
     RawImageResult self,
     SseSerializer serializer,
@@ -878,6 +912,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_opt_box_autoadd_raw_image_difference_stats(
+    RawImageDifferenceStats? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_box_autoadd_raw_image_result(
     RawImageResult? self,
     SseSerializer serializer,
@@ -954,6 +994,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_process_result(ProcessResult self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_raw_image_difference_stats(
+    RawImageDifferenceStats self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_raw_image_result(

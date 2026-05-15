@@ -1438,6 +1438,19 @@ impl SseDecode for Option<crate::types::ProcessResult> {
     }
 }
 
+impl SseDecode for Option<crate::types::RawImageDifferenceStats> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::types::RawImageDifferenceStats>::sse_decode(
+                deserializer,
+            ));
+        } else {
+            return None;
+        }
+    }
+}
+
 impl SseDecode for Option<crate::types::RawImageResult> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1653,16 +1666,33 @@ impl SseDecode for crate::types::ProcessResult {
     }
 }
 
+impl SseDecode for crate::types::RawImageDifferenceStats {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_mean = <f64>::sse_decode(deserializer);
+        let mut var_top10Percent = <f64>::sse_decode(deserializer);
+        let mut var_top1Percent = <f64>::sse_decode(deserializer);
+        return crate::types::RawImageDifferenceStats {
+            mean: var_mean,
+            top_10_percent: var_top10Percent,
+            top_1_percent: var_top1Percent,
+        };
+    }
+}
+
 impl SseDecode for crate::types::RawImageResult {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_rgbaBytes = <Vec<u8>>::sse_decode(deserializer);
         let mut var_width = <u32>::sse_decode(deserializer);
         let mut var_height = <u32>::sse_decode(deserializer);
+        let mut var_differenceStats =
+            <Option<crate::types::RawImageDifferenceStats>>::sse_decode(deserializer);
         return crate::types::RawImageResult {
             rgba_bytes: var_rgbaBytes,
             width: var_width,
             height: var_height,
+            difference_stats: var_differenceStats,
         };
     }
 }
@@ -2621,12 +2651,35 @@ impl flutter_rust_bridge::IntoIntoDart<crate::types::ProcessResult>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::types::RawImageDifferenceStats {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.mean.into_into_dart().into_dart(),
+            self.top_10_percent.into_into_dart().into_dart(),
+            self.top_1_percent.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::types::RawImageDifferenceStats
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::types::RawImageDifferenceStats>
+    for crate::types::RawImageDifferenceStats
+{
+    fn into_into_dart(self) -> crate::types::RawImageDifferenceStats {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::types::RawImageResult {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.rgba_bytes.into_into_dart().into_dart(),
             self.width.into_into_dart().into_dart(),
             self.height.into_into_dart().into_dart(),
+            self.difference_stats.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -3188,6 +3241,16 @@ impl SseEncode for Option<crate::types::ProcessResult> {
     }
 }
 
+impl SseEncode for Option<crate::types::RawImageDifferenceStats> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::types::RawImageDifferenceStats>::sse_encode(value, serializer);
+        }
+    }
+}
+
 impl SseEncode for Option<crate::types::RawImageResult> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -3352,12 +3415,25 @@ impl SseEncode for crate::types::ProcessResult {
     }
 }
 
+impl SseEncode for crate::types::RawImageDifferenceStats {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <f64>::sse_encode(self.mean, serializer);
+        <f64>::sse_encode(self.top_10_percent, serializer);
+        <f64>::sse_encode(self.top_1_percent, serializer);
+    }
+}
+
 impl SseEncode for crate::types::RawImageResult {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <Vec<u8>>::sse_encode(self.rgba_bytes, serializer);
         <u32>::sse_encode(self.width, serializer);
         <u32>::sse_encode(self.height, serializer);
+        <Option<crate::types::RawImageDifferenceStats>>::sse_encode(
+            self.difference_stats,
+            serializer,
+        );
     }
 }
 

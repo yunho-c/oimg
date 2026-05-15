@@ -58,11 +58,19 @@ pub struct EncodedImageResult {
     pub size_bytes: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RawImageResult {
     pub rgba_bytes: Vec<u8>,
     pub width: u32,
     pub height: u32,
+    pub difference_stats: Option<RawImageDifferenceStats>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RawImageDifferenceStats {
+    pub mean: f64,
+    pub top_10_percent: f64,
+    pub top_1_percent: f64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

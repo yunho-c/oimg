@@ -1761,6 +1761,46 @@ void main() {
     expect(find.text('255.0'), findsOneWidget);
   });
 
+  testWidgets('difference preview uses error stats from the raw image', (
+    tester,
+  ) async {
+    final frame = await _differenceFrame(
+      width: 2,
+      height: 2,
+      rgbaBytes: Uint8List(2 * 2 * 4),
+      differenceStats: const RawImageDifferenceStats(
+        mean: 2.3,
+        top10Percent: 7.8,
+        top1Percent: 9.1,
+      ),
+    );
+    addTearDown(frame.image.dispose);
+
+    await tester.pumpWidget(
+      _buildDifferencePreviewHost(
+        child: Center(
+          child: SizedBox(
+            width: 200,
+            height: 200,
+            child: DifferencePreview(
+              retentionScopeKey: 'first',
+              frame: AsyncData<PreviewDifferenceFrame?>(frame),
+              fileName: 'first.png',
+              showCoordinates: true,
+              useRgbSwatches: false,
+              unavailableMessage: 'Difference preview unavailable.',
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('2.3'), findsOneWidget);
+    expect(find.text('7.8'), findsOneWidget);
+    expect(find.text('9.1'), findsOneWidget);
+  });
+
   testWidgets(
     'difference preview keeps the error stats card visible during retained loading',
     (tester) async {
@@ -4421,6 +4461,7 @@ Future<PreviewDifferenceFrame> _differenceFrame({
   required int width,
   required int height,
   required Uint8List rgbaBytes,
+  RawImageDifferenceStats? differenceStats,
 }) async {
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
@@ -4436,6 +4477,7 @@ Future<PreviewDifferenceFrame> _differenceFrame({
       rgbaBytes: rgbaBytes,
       width: width,
       height: height,
+      differenceStats: differenceStats,
     ),
   );
 }
@@ -4759,6 +4801,11 @@ class _FakeSlimgApi implements SlimgApi {
       rgbaBytes: Uint8List(48 * 32 * 4),
       width: 48,
       height: 32,
+      differenceStats: const RawImageDifferenceStats(
+        mean: 0,
+        top10Percent: 0,
+        top1Percent: 0,
+      ),
     );
   }
 

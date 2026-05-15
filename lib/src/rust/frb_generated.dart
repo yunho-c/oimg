@@ -1148,6 +1148,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RawImageDifferenceStats dco_decode_box_autoadd_raw_image_difference_stats(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_raw_image_difference_stats(raw);
+  }
+
+  @protected
   RawImageResult dco_decode_box_autoadd_raw_image_result(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_raw_image_result(raw);
@@ -1448,6 +1456,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RawImageDifferenceStats?
+  dco_decode_opt_box_autoadd_raw_image_difference_stats(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null
+        ? null
+        : dco_decode_box_autoadd_raw_image_difference_stats(raw);
+  }
+
+  @protected
   RawImageResult? dco_decode_opt_box_autoadd_raw_image_result(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_raw_image_result(raw);
@@ -1608,15 +1625,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  RawImageResult dco_decode_raw_image_result(dynamic raw) {
+  RawImageDifferenceStats dco_decode_raw_image_difference_stats(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
     if (arr.length != 3)
       throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return RawImageDifferenceStats(
+      mean: dco_decode_f_64(arr[0]),
+      top10Percent: dco_decode_f_64(arr[1]),
+      top1Percent: dco_decode_f_64(arr[2]),
+    );
+  }
+
+  @protected
+  RawImageResult dco_decode_raw_image_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return RawImageResult(
       rgbaBytes: dco_decode_list_prim_u_8_strict(arr[0]),
       width: dco_decode_u_32(arr[1]),
       height: dco_decode_u_32(arr[2]),
+      differenceStats: dco_decode_opt_box_autoadd_raw_image_difference_stats(
+        arr[3],
+      ),
     );
   }
 
@@ -2013,6 +2046,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_process_result(deserializer));
+  }
+
+  @protected
+  RawImageDifferenceStats sse_decode_box_autoadd_raw_image_difference_stats(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_raw_image_difference_stats(deserializer));
   }
 
   @protected
@@ -2416,6 +2457,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RawImageDifferenceStats?
+  sse_decode_opt_box_autoadd_raw_image_difference_stats(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_raw_image_difference_stats(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   RawImageResult? sse_decode_opt_box_autoadd_raw_image_result(
     SseDeserializer deserializer,
   ) {
@@ -2624,15 +2679,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RawImageDifferenceStats sse_decode_raw_image_difference_stats(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_mean = sse_decode_f_64(deserializer);
+    var var_top10Percent = sse_decode_f_64(deserializer);
+    var var_top1Percent = sse_decode_f_64(deserializer);
+    return RawImageDifferenceStats(
+      mean: var_mean,
+      top10Percent: var_top10Percent,
+      top1Percent: var_top1Percent,
+    );
+  }
+
+  @protected
   RawImageResult sse_decode_raw_image_result(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_rgbaBytes = sse_decode_list_prim_u_8_strict(deserializer);
     var var_width = sse_decode_u_32(deserializer);
     var var_height = sse_decode_u_32(deserializer);
+    var var_differenceStats =
+        sse_decode_opt_box_autoadd_raw_image_difference_stats(deserializer);
     return RawImageResult(
       rgbaBytes: var_rgbaBytes,
       width: var_width,
       height: var_height,
+      differenceStats: var_differenceStats,
     );
   }
 
@@ -3029,6 +3102,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_raw_image_difference_stats(
+    RawImageDifferenceStats self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_raw_image_difference_stats(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_raw_image_result(
     RawImageResult self,
     SseSerializer serializer,
@@ -3376,6 +3458,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_opt_box_autoadd_raw_image_difference_stats(
+    RawImageDifferenceStats? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_raw_image_difference_stats(self, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_opt_box_autoadd_raw_image_result(
     RawImageResult? self,
     SseSerializer serializer,
@@ -3542,6 +3637,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_raw_image_difference_stats(
+    RawImageDifferenceStats self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_f_64(self.mean, serializer);
+    sse_encode_f_64(self.top10Percent, serializer);
+    sse_encode_f_64(self.top1Percent, serializer);
+  }
+
+  @protected
   void sse_encode_raw_image_result(
     RawImageResult self,
     SseSerializer serializer,
@@ -3550,6 +3656,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_list_prim_u_8_strict(self.rgbaBytes, serializer);
     sse_encode_u_32(self.width, serializer);
     sse_encode_u_32(self.height, serializer);
+    sse_encode_opt_box_autoadd_raw_image_difference_stats(
+      self.differenceStats,
+      serializer,
+    );
   }
 
   @protected
