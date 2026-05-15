@@ -921,14 +921,45 @@ void main() {
     final chart = tester.widget<LineChart>(find.byType(LineChart));
     expect(chart.data.lineTouchData.handleBuiltInTouches, isFalse);
     expect(chart.data.lineBarsData, hasLength(3));
-    expect(chart.data.maxX, 2520);
-    expect(chart.data.gridData.verticalInterval, 600);
-    expect(chart.data.titlesData.bottomTitles.sideTitles.interval, 600);
+    expect(chart.data.maxX, 1575);
+    expect(chart.data.gridData.verticalInterval, 375);
+    expect(chart.data.titlesData.bottomTitles.sideTitles.interval, 375);
+    expect(chart.data.extraLinesData.verticalLines, isEmpty);
+    expect(chart.data.rangeAnnotations.verticalRangeAnnotations, isEmpty);
+  });
+
+  testWidgets('analyze chart keeps original marker near optimized sizes', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', 2000)},
+    )..analyzeSampleDelay = const Duration(milliseconds: 20);
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+    await tester.pumpAndSettle();
+
+    final chart = tester.widget<LineChart>(find.byType(LineChart));
+    expect(chart.data.maxX, 2100);
+    expect(chart.data.gridData.verticalInterval, 500);
+    expect(chart.data.titlesData.bottomTitles.sideTitles.interval, 500);
     expect(chart.data.extraLinesData.verticalLines, hasLength(1));
-    expect(chart.data.extraLinesData.verticalLines.first.x, 2400);
+    expect(chart.data.extraLinesData.verticalLines.first.x, 2000);
     expect(chart.data.rangeAnnotations.verticalRangeAnnotations, hasLength(1));
-    expect(chart.data.rangeAnnotations.verticalRangeAnnotations.first.x1, 2400);
-    expect(chart.data.rangeAnnotations.verticalRangeAnnotations.first.x2, 2520);
+    expect(chart.data.rangeAnnotations.verticalRangeAnnotations.first.x1, 2000);
+    expect(chart.data.rangeAnnotations.verticalRangeAnnotations.first.x2, 2100);
   });
 
   testWidgets(

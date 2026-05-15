@@ -175,7 +175,10 @@ class _AnalyzeChartState extends State<_AnalyzeChart>
       0,
       (current, sample) => math.max(current, sample.sizeBytes.toDouble()),
     );
-    final originalMarkerX = widget.originalSizeBytes;
+    final originalMarkerX = _visibleOriginalMarkerX(
+      originalSizeBytes: widget.originalSizeBytes,
+      optimizedMaxSizeBytes: dataMaxX,
+    );
     final visibleMaxX = math.max(dataMaxX, originalMarkerX ?? 0);
     final chartMaxX = visibleMaxX <= 0 ? 1.0 : visibleMaxX * 1.05;
     final xAxisInterval = visibleMaxX <= 0 ? 1.0 : visibleMaxX / 4;
@@ -322,6 +325,19 @@ class _AnalyzeMetricPoint {
 
   final AnalyzeSampleResult sample;
   final FlSpot spot;
+}
+
+double? _visibleOriginalMarkerX({
+  required double? originalSizeBytes,
+  required double optimizedMaxSizeBytes,
+}) {
+  if (originalSizeBytes == null || optimizedMaxSizeBytes <= 0) {
+    return null;
+  }
+
+  return originalSizeBytes <= optimizedMaxSizeBytes * 1.5
+      ? originalSizeBytes
+      : null;
 }
 
 List<_AnalyzeMetricPoint> _metricPoints(
