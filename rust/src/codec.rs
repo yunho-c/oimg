@@ -30,7 +30,7 @@ pub(crate) fn format_to_string(format: Format) -> String {
 }
 
 pub(crate) fn format_info() -> Vec<FormatInfo> {
-    [
+    let mut formats: Vec<FormatInfo> = [
         Format::Jpeg,
         Format::Png,
         Format::WebP,
@@ -44,7 +44,16 @@ pub(crate) fn format_info() -> Vec<FormatInfo> {
         extension: format.extension().to_string(),
         can_encode: format.can_encode(),
     })
-    .collect()
+    .collect();
+
+    #[cfg(target_os = "macos")]
+    formats.push(FormatInfo {
+        id: "heic".to_string(),
+        extension: "heic".to_string(),
+        can_encode: false,
+    });
+
+    formats
 }
 
 #[cfg(test)]

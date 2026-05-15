@@ -5,11 +5,12 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
-use slimg_core::{codec::get_codec, decode, EncodeOptions, Format, ImageData};
+use slimg_core::{codec::get_codec, EncodeOptions, Format, ImageData};
 
 use crate::codec::parse_format;
 use crate::error::{panic_message, Result, SlimgBridgeError};
 use crate::fs::safe_write_bytes;
+use crate::source_image::decode_source_image;
 use crate::types::{
     BatchItemResult, ConvertOptions, ImageOperation, OptimizeOptions, PngPaletteMode,
     ProcessFileBatchRequest, ProcessFileRequest, ProcessResult,
@@ -339,8 +340,8 @@ fn process_save_as_jpg(
     }
 
     let input_bytes = fs::read(&input_path_buf)?;
-    let (image, _) = decode(&input_bytes)?;
-    let flattened = composite_image_onto_white(&image);
+    let source = decode_source_image(&input_bytes)?;
+    let flattened = composite_image_onto_white(&source.image);
     let encoded = get_codec(Format::Jpeg).encode(
         &flattened,
         &EncodeOptions {
@@ -464,7 +465,7 @@ mod tests {
     use super::*;
     use std::fs;
 
-    use slimg_core::{convert, Format, ImageData, PipelineOptions};
+    use slimg_core::{convert, decode, Format, ImageData, PipelineOptions};
     use tempfile::tempdir;
 
     fn test_image() -> ImageData {

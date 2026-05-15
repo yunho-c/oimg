@@ -8,13 +8,12 @@ use std::sync::{
 };
 use std::thread;
 
-use slimg_core::decode;
-
 use crate::codec::format_to_string;
 use crate::convert::run_preview_operation;
 use crate::error::{panic_message, Result, SlimgBridgeError};
 use crate::metrics::{compute_ms_ssim, compute_pixel_match_percentage, compute_ssimulacra2_score};
 use crate::preview_artifacts::{preview_artifact_store, PreviewArtifact};
+use crate::source_image::decode_source_image;
 use crate::types::{
     AnalyzeFileJobHandle, AnalyzeFileJobSnapshot, AnalyzeFileRequest, AnalyzeSampleResult,
     BatchJobState,
@@ -121,7 +120,9 @@ fn run_analyze_job(record: &Arc<AnalyzeJobRecord>, request: AnalyzeFileRequest) 
     let input_bytes = fs::read(&input_path).map_err(|error| SlimgBridgeError::Io {
         message: format!("unable to read `{}`: {error}", input_path.display()),
     })?;
-    let (source_image, source_format) = decode(&input_bytes)?;
+    let source = decode_source_image(&input_bytes)?;
+    let source_image = source.image;
+    let source_format = source.format;
     let source_rgba = Arc::<[u8]>::from(source_image.data.clone());
 
     let temp_dir =
