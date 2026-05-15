@@ -3,6 +3,7 @@ part of 'package:oimg/main.dart';
 class DifferencePreview extends ConsumerStatefulWidget {
   const DifferencePreview({
     super.key,
+    this.transformationController,
     required this.retentionScopeKey,
     required this.frame,
     required this.fileName,
@@ -13,6 +14,7 @@ class DifferencePreview extends ConsumerStatefulWidget {
     this.unavailableMessage = 'Unable to render preview.',
   });
 
+  final TransformationController? transformationController;
   final String retentionScopeKey;
   final AsyncValue<PreviewDifferenceFrame?> frame;
   final String fileName;
@@ -68,7 +70,9 @@ class _DifferencePreviewState extends ConsumerState<DifferencePreview> {
   Offset? _hoverViewportOffset;
   _DifferenceTooltipSample? _tooltipSample;
   Timer? _tooltipTimer;
-  late final TransformationController _transformationController;
+  late final TransformationController _ownedTransformationController;
+  TransformationController get _transformationController =>
+      widget.transformationController ?? _ownedTransformationController;
 
   bool get _supportsHover =>
       Platform.isMacOS || Platform.isWindows || Platform.isLinux;
@@ -76,7 +80,7 @@ class _DifferencePreviewState extends ConsumerState<DifferencePreview> {
   @override
   void initState() {
     super.initState();
-    _transformationController = TransformationController();
+    _ownedTransformationController = TransformationController();
     _syncRetainedFrame();
   }
 
@@ -96,7 +100,7 @@ class _DifferencePreviewState extends ConsumerState<DifferencePreview> {
   @override
   void dispose() {
     _tooltipTimer?.cancel();
-    _transformationController.dispose();
+    _ownedTransformationController.dispose();
     _clearRetainedFrame();
     super.dispose();
   }

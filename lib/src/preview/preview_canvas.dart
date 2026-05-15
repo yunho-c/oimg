@@ -2,12 +2,14 @@ part of 'package:oimg/main.dart';
 
 class _PreviewCanvas extends StatelessWidget {
   const _PreviewCanvas({
+    required this.transformationController,
     required this.fileName,
     this.path,
     this.encodedBytes,
     this.unavailableMessage,
   });
 
+  final TransformationController transformationController;
   final String fileName;
   final String? path;
   final Uint8List? encodedBytes;
@@ -22,6 +24,7 @@ class _PreviewCanvas extends StatelessWidget {
     assert(populated == 1);
 
     return InteractiveViewer(
+      transformationController: transformationController,
       minScale: 0.5,
       maxScale: 6,
       child: Container(

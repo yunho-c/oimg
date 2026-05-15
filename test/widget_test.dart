@@ -743,6 +743,73 @@ void main() {
     expect(slimg.differenceCallCount, 1);
   });
 
+  testWidgets('preview transform is preserved across difference mode', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final differenceFrame = await _differenceFrame(
+      width: 48,
+      height: 32,
+      rgbaBytes: _rgbaBytesFromGrayscaleMeans(List<int>.filled(48 * 32, 0)),
+    );
+    addTearDown(differenceFrame.image.dispose);
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+    );
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(
+      _buildApp(
+        controller: controller,
+        slimg: slimg,
+        differenceFrameOverride: differenceFrame,
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final imageViewer = tester.widget<InteractiveViewer>(
+      find.byType(InteractiveViewer),
+    );
+    final sharedController = imageViewer.transformationController!;
+    final transform = Matrix4.identity()
+      ..translateByDouble(24.0, 18.0, 0.0, 1.0)
+      ..scaleByDouble(2.0, 2.0, 1.0, 1.0);
+    sharedController.value = transform;
+    await tester.pump();
+
+    await tester.tap(find.byKey(const ValueKey('preview-mode-Difference')));
+    await tester.pump();
+
+    final differenceViewer = tester.widget<InteractiveViewer>(
+      find.byType(InteractiveViewer),
+    );
+    expect(differenceViewer.transformationController, same(sharedController));
+    expect(
+      differenceViewer.transformationController!.value.storage,
+      orderedEquals(transform.storage),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('preview-mode-Original')));
+    await tester.pump();
+
+    final originalViewer = tester.widget<InteractiveViewer>(
+      find.byType(InteractiveViewer),
+    );
+    expect(originalViewer.transformationController, same(sharedController));
+    expect(
+      originalViewer.transformationController!.value.storage,
+      orderedEquals(transform.storage),
+    );
+  });
+
   testWidgets('switching back to a file reuses cached preview and metrics', (
     tester,
   ) async {
@@ -4438,6 +4505,7 @@ Widget _buildApp({
   required FileOpenController controller,
   required _FakeSlimgApi slimg,
   AppSettingsStore? store,
+  PreviewDifferenceFrame? differenceFrameOverride,
 }) {
   return ProviderScope(
     overrides: [
@@ -4446,6 +4514,10 @@ Widget _buildApp({
       appSettingsRepositoryProvider.overrideWithValue(
         AppSettingsRepository(store: store ?? _FakeAppSettingsStore()),
       ),
+      if (differenceFrameOverride != null)
+        currentPreviewDifferenceFrameProvider.overrideWith(
+          (ref) async => differenceFrameOverride,
+        ),
     ],
     child: const MyApp(),
   );

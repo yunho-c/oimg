@@ -1,14 +1,43 @@
 part of 'package:oimg/main.dart';
 
-class _ImageStage extends ConsumerWidget {
+class _ImageStage extends ConsumerStatefulWidget {
   const _ImageStage({required this.title, required this.currentFile});
 
   final String title;
   final OpenedImageFile currentFile;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ImageStage> createState() => _ImageStageState();
+}
+
+class _ImageStageState extends ConsumerState<_ImageStage> {
+  late final TransformationController _previewTransformationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _previewTransformationController = TransformationController();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ImageStage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentFile.path != widget.currentFile.path) {
+      _previewTransformationController.value = Matrix4.identity();
+    }
+  }
+
+  @override
+  void dispose() {
+    _previewTransformationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final currentFile = widget.currentFile;
+    final title = widget.title;
     final appSettings = ref.watch(appSettingsProvider).asData?.value;
     final plan = ref.watch(currentOptimizationPlanProvider);
     final preview = ref.watch(currentPreviewProvider);
@@ -163,6 +192,8 @@ class _ImageStage extends ConsumerWidget {
                       switch (displayMode) {
                         case PreviewDisplayMode.original:
                           return _PreviewCanvas(
+                            transformationController:
+                                _previewTransformationController,
                             fileName: fileName,
                             path: currentFile.path,
                           );
@@ -170,6 +201,8 @@ class _ImageStage extends ConsumerWidget {
                           if (optimizedDisplay != null) {
                             if (optimizedDisplay.usesOutputPath) {
                               return _PreviewCanvas(
+                                transformationController:
+                                    _previewTransformationController,
                                 fileName: fileName,
                                 path: optimizedDisplay.outputPath,
                                 unavailableMessage:
@@ -177,6 +210,8 @@ class _ImageStage extends ConsumerWidget {
                               );
                             }
                             return _PreviewCanvas(
+                              transformationController:
+                                  _previewTransformationController,
                               fileName: fileName,
                               encodedBytes: optimizedDisplay.encodedBytes,
                               unavailableMessage:
@@ -185,6 +220,8 @@ class _ImageStage extends ConsumerWidget {
                           }
                           return preview.when(
                             data: (_) => _PreviewCanvas(
+                              transformationController:
+                                  _previewTransformationController,
                               fileName: fileName,
                               path: currentFile.path,
                             ),
@@ -192,12 +229,16 @@ class _ImageStage extends ConsumerWidget {
                               child: CircularProgressIndicator(),
                             ),
                             error: (_, _) => _PreviewCanvas(
+                              transformationController:
+                                  _previewTransformationController,
                               fileName: fileName,
                               path: currentFile.path,
                             ),
                           );
                         case PreviewDisplayMode.difference:
                           return DifferencePreview(
+                            transformationController:
+                                _previewTransformationController,
                             retentionScopeKey: currentFile.path,
                             frame: differenceFrame,
                             fileName: fileName,
@@ -232,6 +273,8 @@ class _ImageStage extends ConsumerWidget {
                     loading: () =>
                         const Center(child: CircularProgressIndicator()),
                     error: (_, _) => _PreviewCanvas(
+                      transformationController:
+                          _previewTransformationController,
                       fileName: FileOpenController.fileNameOf(currentFile.path),
                       path: currentFile.path,
                     ),
