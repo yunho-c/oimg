@@ -14,7 +14,7 @@ class _SettingsSidebar extends ConsumerWidget {
     final controlsLocked = runState.isRunning || analyzeState.isRunning;
     final showAnalyzePanel =
         analyzeState.isRunning ||
-        analyzeState.samples.isNotEmpty ||
+        (analyzeState.samples.isNotEmpty && analyzeState.isChartVisible) ||
         analyzeState.globalError != null;
 
     Widget buildSettingsContent(

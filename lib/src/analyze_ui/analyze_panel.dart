@@ -19,6 +19,8 @@ class _AnalyzePanel extends ConsumerWidget {
     final qualityIndicator = state.isRunning
         ? state.currentQuality
         : selectedAnalyzeSample?.quality;
+    final showsChart =
+        state.isRunning || (samples.isNotEmpty && state.isChartVisible);
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -46,7 +48,7 @@ class _AnalyzePanel extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 8),
-          if (state.isRunning || samples.isNotEmpty) ...[
+          if (showsChart) ...[
             Expanded(
               child: samples.isEmpty
                   ? const Center(child: CircularProgressIndicator())

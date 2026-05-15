@@ -510,6 +510,7 @@ class AnalyzeRunState {
     this.selectedArtifactId,
     this.hoveredArtifactId,
     this.globalError,
+    this.isChartVisible = true,
   });
 
   final AnalyzeAvailability availability;
@@ -523,6 +524,7 @@ class AnalyzeRunState {
   final String? selectedArtifactId;
   final String? hoveredArtifactId;
   final String? globalError;
+  final bool isChartVisible;
 
   bool get isRunning =>
       jobState == BatchJobState.running ||
@@ -557,6 +559,7 @@ class AnalyzeRunState {
     String? selectedArtifactId,
     String? hoveredArtifactId,
     String? globalError,
+    bool? isChartVisible,
     bool clearJobId = false,
     bool clearJobState = false,
     bool clearCurrentQuality = false,
@@ -582,6 +585,7 @@ class AnalyzeRunState {
           ? null
           : (hoveredArtifactId ?? this.hoveredArtifactId),
       globalError: clearGlobalError ? null : (globalError ?? this.globalError),
+      isChartVisible: isChartVisible ?? this.isChartVisible,
     );
   }
 }
@@ -826,6 +830,13 @@ class AnalyzeRunController extends Notifier<AnalyzeRunState> {
   AnalyzeSampleResult? clearHoveredSample() {
     state = state.copyWith(clearHoveredArtifactId: true);
     return state.selectedSample;
+  }
+
+  void toggleChartVisibility() {
+    if (state.isRunning || state.samples.isEmpty) {
+      return;
+    }
+    state = state.copyWith(isChartVisible: !state.isChartVisible);
   }
 
   Future<void> _pollJob(String jobId, int requestId) async {

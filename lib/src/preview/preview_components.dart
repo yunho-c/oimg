@@ -249,11 +249,17 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
     final differenceLoading =
         displayMode == PreviewDisplayMode.difference &&
         differenceFrame.isLoading;
-    final analyzeTooltip =
-        !analyzeAvailability.isEnabled &&
-            settings != null &&
-            settings.compressionMethod == CompressionMethod.lossless &&
-            !settings.showsQualityControl
+    final hasAnalyzeResults = analyzeState.samples.isNotEmpty;
+    final canToggleAnalyzeChart =
+        hasAnalyzeResults &&
+        !analyzeState.isRunning &&
+        !analyzeState.isCancelRequested;
+    final analyzeTooltip = canToggleAnalyzeChart
+        ? (analyzeState.isChartVisible ? 'Hide graph' : 'Show graph')
+        : !analyzeAvailability.isEnabled &&
+              settings != null &&
+              settings.compressionMethod == CompressionMethod.lossless &&
+              !settings.showsQualityControl
         ? 'Not available for lossless formats'
         : analyzeAvailability.reason ??
               'Visualize the quality/efficiency tradeoff';
@@ -308,15 +314,30 @@ class _PreviewDisplayModeRow extends ConsumerWidget {
                 )
               : OutlineButton(
                   alignment: Alignment.center,
-                  onPressed: analyzeAvailability.isEnabled
+                  onPressed: canToggleAnalyzeChart
+                      ? analyzeController.toggleChartVisibility
+                      : analyzeAvailability.isEnabled
                       ? analyzeController.startAnalyze
                       : null,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(LucideIcons.chartSpline, size: 15),
-                      SizedBox(width: 8),
-                      Text('Analyze'),
+                    children: [
+                      Icon(
+                        canToggleAnalyzeChart
+                            ? analyzeState.isChartVisible
+                                  ? LucideIcons.eyeOff
+                                  : LucideIcons.eye
+                            : LucideIcons.chartSpline,
+                        size: 15,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        canToggleAnalyzeChart
+                            ? analyzeState.isChartVisible
+                                  ? 'Hide'
+                                  : 'Show'
+                            : 'Analyze',
+                      ),
                     ],
                   ),
                 ),

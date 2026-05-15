@@ -962,6 +962,45 @@ void main() {
     expect(chart.data.rangeAnnotations.verticalRangeAnnotations.first.x2, 2100);
   });
 
+  testWidgets('analyze button toggles completed chart visibility', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+    )..analyzeSampleDelay = const Duration(milliseconds: 20);
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.tap(find.widgetWithText(OutlineButton, 'Analyze'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LineChart), findsOneWidget);
+    expect(find.widgetWithText(OutlineButton, 'Hide'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(OutlineButton, 'Hide'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LineChart), findsNothing);
+    expect(find.widgetWithText(OutlineButton, 'Show'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(OutlineButton, 'Show'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LineChart), findsOneWidget);
+    expect(find.widgetWithText(OutlineButton, 'Hide'), findsOneWidget);
+  });
+
   testWidgets(
     'selecting an analyze chart point updates the quality setting without clearing the chart',
     (tester) async {
