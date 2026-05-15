@@ -12,6 +12,9 @@ class _ImageStage extends ConsumerStatefulWidget {
 
 class _ImageStageState extends ConsumerState<_ImageStage> {
   late final TransformationController _previewTransformationController;
+  PreviewDisplayMode _lastNonDifferenceDisplayMode =
+      PreviewDisplayMode.original;
+  bool _isRenderingDifferencePreview = false;
 
   @override
   void initState() {
@@ -24,6 +27,8 @@ class _ImageStageState extends ConsumerState<_ImageStage> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.currentFile.path != widget.currentFile.path) {
       _previewTransformationController.value = Matrix4.identity();
+      _lastNonDifferenceDisplayMode = PreviewDisplayMode.original;
+      _isRenderingDifferencePreview = false;
     }
   }
 
@@ -94,6 +99,48 @@ class _ImageStageState extends ConsumerState<_ImageStage> {
             filePath: currentFile.path,
             mode: PreviewDisplayMode.difference,
           );
+    }
+
+    Widget buildPreviewCanvas(PreviewDisplayMode mode, String fileName) {
+      switch (mode) {
+        case PreviewDisplayMode.original:
+        case PreviewDisplayMode.difference:
+          return _PreviewCanvas(
+            transformationController: _previewTransformationController,
+            fileName: fileName,
+            path: currentFile.path,
+          );
+        case PreviewDisplayMode.optimized:
+          if (optimizedDisplay != null) {
+            if (optimizedDisplay.usesOutputPath) {
+              return _PreviewCanvas(
+                transformationController: _previewTransformationController,
+                fileName: fileName,
+                path: optimizedDisplay.outputPath,
+                unavailableMessage: 'Unable to render optimized preview.',
+              );
+            }
+            return _PreviewCanvas(
+              transformationController: _previewTransformationController,
+              fileName: fileName,
+              encodedBytes: optimizedDisplay.encodedBytes,
+              unavailableMessage: 'Unable to render optimized preview.',
+            );
+          }
+          return preview.when(
+            data: (_) => _PreviewCanvas(
+              transformationController: _previewTransformationController,
+              fileName: fileName,
+              path: currentFile.path,
+            ),
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (_, _) => _PreviewCanvas(
+              transformationController: _previewTransformationController,
+              fileName: fileName,
+              path: currentFile.path,
+            ),
+          );
+      }
     }
 
     return CallbackShortcuts(
@@ -191,51 +238,22 @@ class _ImageStageState extends ConsumerState<_ImageStage> {
                       );
                       switch (displayMode) {
                         case PreviewDisplayMode.original:
-                          return _PreviewCanvas(
-                            transformationController:
-                                _previewTransformationController,
-                            fileName: fileName,
-                            path: currentFile.path,
-                          );
+                          _lastNonDifferenceDisplayMode = displayMode;
+                          _isRenderingDifferencePreview = false;
+                          return buildPreviewCanvas(displayMode, fileName);
                         case PreviewDisplayMode.optimized:
-                          if (optimizedDisplay != null) {
-                            if (optimizedDisplay.usesOutputPath) {
-                              return _PreviewCanvas(
-                                transformationController:
-                                    _previewTransformationController,
-                                fileName: fileName,
-                                path: optimizedDisplay.outputPath,
-                                unavailableMessage:
-                                    'Unable to render optimized preview.',
-                              );
-                            }
-                            return _PreviewCanvas(
-                              transformationController:
-                                  _previewTransformationController,
-                              fileName: fileName,
-                              encodedBytes: optimizedDisplay.encodedBytes,
-                              unavailableMessage:
-                                  'Unable to render optimized preview.',
+                          _lastNonDifferenceDisplayMode = displayMode;
+                          _isRenderingDifferencePreview = false;
+                          return buildPreviewCanvas(displayMode, fileName);
+                        case PreviewDisplayMode.difference:
+                          if (differenceFrame.isLoading &&
+                              !_isRenderingDifferencePreview) {
+                            return buildPreviewCanvas(
+                              _lastNonDifferenceDisplayMode,
+                              fileName,
                             );
                           }
-                          return preview.when(
-                            data: (_) => _PreviewCanvas(
-                              transformationController:
-                                  _previewTransformationController,
-                              fileName: fileName,
-                              path: currentFile.path,
-                            ),
-                            loading: () => const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                            error: (_, _) => _PreviewCanvas(
-                              transformationController:
-                                  _previewTransformationController,
-                              fileName: fileName,
-                              path: currentFile.path,
-                            ),
-                          );
-                        case PreviewDisplayMode.difference:
+                          _isRenderingDifferencePreview = true;
                           return DifferencePreview(
                             transformationController:
                                 _previewTransformationController,

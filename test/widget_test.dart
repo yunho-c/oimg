@@ -730,7 +730,11 @@ void main() {
     await tester.pump();
 
     expect(slimg.differenceCallCount, 1);
-    expect(find.byType(CircularProgressIndicator), findsNWidgets(2));
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('difference-preview-loading')),
+      findsNothing,
+    );
 
     await tester.pump(const Duration(milliseconds: 120));
 
@@ -742,6 +746,63 @@ void main() {
     await tester.pump();
     expect(slimg.differenceCallCount, 1);
   });
+
+  testWidgets(
+    'difference mode keeps the preview visible while loading first frame',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final differenceFrame = await _differenceFrame(
+        width: 48,
+        height: 32,
+        rgbaBytes: _rgbaBytesFromGrayscaleMeans(List<int>.filled(48 * 32, 0)),
+      );
+      addTearDown(differenceFrame.image.dispose);
+      final slimg = _FakeSlimgApi(
+        inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      );
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: slimg,
+        initialPaths: const ['/tmp/first.png'],
+      );
+      await controller.initialize();
+
+      await tester.pumpWidget(
+        _buildApp(
+          controller: controller,
+          slimg: slimg,
+          differenceFrameBuilder: () async {
+            await Future<void>.delayed(const Duration(milliseconds: 1000));
+            return differenceFrame;
+          },
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.tap(find.byKey(const ValueKey('preview-mode-Difference')));
+      await tester.pump();
+
+      expect(find.byType(InteractiveViewer), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('difference-preview-ready')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('difference-preview-loading')),
+        findsNothing,
+      );
+
+      await tester.pump(const Duration(milliseconds: 900));
+
+      expect(
+        find.byKey(const ValueKey('difference-preview-ready')),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('preview transform is preserved across difference mode', (
     tester,
@@ -769,7 +830,7 @@ void main() {
       _buildApp(
         controller: controller,
         slimg: slimg,
-        differenceFrameOverride: differenceFrame,
+        differenceFrameBuilder: () async => differenceFrame,
       ),
     );
     await tester.pump();
@@ -4505,7 +4566,7 @@ Widget _buildApp({
   required FileOpenController controller,
   required _FakeSlimgApi slimg,
   AppSettingsStore? store,
-  PreviewDifferenceFrame? differenceFrameOverride,
+  Future<PreviewDifferenceFrame?> Function()? differenceFrameBuilder,
 }) {
   return ProviderScope(
     overrides: [
@@ -4514,9 +4575,9 @@ Widget _buildApp({
       appSettingsRepositoryProvider.overrideWithValue(
         AppSettingsRepository(store: store ?? _FakeAppSettingsStore()),
       ),
-      if (differenceFrameOverride != null)
+      if (differenceFrameBuilder != null)
         currentPreviewDifferenceFrameProvider.overrideWith(
-          (ref) async => differenceFrameOverride,
+          (ref) => differenceFrameBuilder(),
         ),
     ],
     child: const MyApp(),
