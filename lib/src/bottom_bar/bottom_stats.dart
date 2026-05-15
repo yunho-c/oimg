@@ -65,9 +65,10 @@ class _OptimizeSuccessButton extends StatelessWidget {
 }
 
 class _BottomStatsSection extends StatelessWidget {
-  const _BottomStatsSection({required this.stats});
+  const _BottomStatsSection({required this.stats, required this.retentionKey});
 
   final List<_BottomStatData> stats;
+  final Object retentionKey;
 
   @override
   Widget build(BuildContext context) {
@@ -76,25 +77,36 @@ class _BottomStatsSection extends StatelessWidget {
 
     return Column(
       children: [
-        Expanded(child: _BottomStatRow(stats: topRow)),
+        Expanded(
+          child: _BottomStatRow(stats: topRow, retentionKey: retentionKey),
+        ),
         const SizedBox(height: 10),
-        Expanded(child: _BottomStatRow(stats: bottomRow)),
+        Expanded(
+          child: _BottomStatRow(stats: bottomRow, retentionKey: retentionKey),
+        ),
       ],
     );
   }
 }
 
 class _BottomStatRow extends StatelessWidget {
-  const _BottomStatRow({required this.stats});
+  const _BottomStatRow({required this.stats, required this.retentionKey});
 
   final List<_BottomStatData> stats;
+  final Object retentionKey;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
         for (var index = 0; index < stats.length; index++) ...[
-          Expanded(child: _BottomStatTile(stat: stats[index])),
+          Expanded(
+            child: _BottomStatTile(
+              key: ValueKey('bottom-stat-tile-${stats[index].label}'),
+              stat: stats[index],
+              retentionKey: retentionKey,
+            ),
+          ),
           if (index + 1 < stats.length) const SizedBox(width: 10),
         ],
       ],
@@ -102,13 +114,102 @@ class _BottomStatRow extends StatelessWidget {
   }
 }
 
-class _BottomStatTile extends ConsumerWidget {
-  const _BottomStatTile({required this.stat});
+class _BottomStatTile extends ConsumerStatefulWidget {
+  const _BottomStatTile({
+    super.key,
+    required this.stat,
+    required this.retentionKey,
+  });
 
   final _BottomStatData stat;
+  final Object retentionKey;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_BottomStatTile> createState() => _BottomStatTileState();
+}
+
+class _BottomStatTileState extends ConsumerState<_BottomStatTile> {
+  _RetainedBottomStatValue? _primaryRetainedValue;
+  _RetainedBottomStatValue? _alternateRetainedValue;
+  num? _primaryAnimationStart;
+  num? _primaryAnimationTarget;
+  num? _alternateAnimationStart;
+  num? _alternateAnimationTarget;
+  String _primaryAnimationKeySuffix = 'live';
+  String _alternateAnimationKeySuffix = 'live';
+
+  @override
+  void didUpdateWidget(covariant _BottomStatTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.retentionKey != widget.retentionKey ||
+        oldWidget.stat.label != widget.stat.label) {
+      _primaryRetainedValue = null;
+      _alternateRetainedValue = null;
+      _primaryAnimationStart = null;
+      _primaryAnimationTarget = null;
+      _alternateAnimationStart = null;
+      _alternateAnimationTarget = null;
+      _primaryAnimationKeySuffix = 'live';
+      _alternateAnimationKeySuffix = 'live';
+      return;
+    }
+    _captureResolvedAnimationStarts(oldWidget.stat, widget.stat);
+  }
+
+  void _captureResolvedAnimationStarts(
+    _BottomStatData oldStat,
+    _BottomStatData newStat,
+  ) {
+    if (oldStat.pending &&
+        newStat.numericValue != null &&
+        newStat.numericFormatter != null &&
+        _primaryRetainedValue != null &&
+        _primaryRetainedValue!.value != newStat.numericValue) {
+      _primaryAnimationStart = _primaryRetainedValue!.value;
+      _primaryAnimationTarget = newStat.numericValue;
+      _primaryAnimationKeySuffix =
+          'from-$_primaryAnimationStart-to-$_primaryAnimationTarget';
+    }
+    if (oldStat.pending &&
+        newStat.alternateNumericValue != null &&
+        newStat.alternateNumericFormatter != null &&
+        _alternateRetainedValue != null &&
+        _alternateRetainedValue!.value != newStat.alternateNumericValue) {
+      _alternateAnimationStart = _alternateRetainedValue!.value;
+      _alternateAnimationTarget = newStat.alternateNumericValue;
+      _alternateAnimationKeySuffix =
+          'from-$_alternateAnimationStart-to-$_alternateAnimationTarget';
+    }
+  }
+
+  void _rememberResolvedValues(_BottomStatData stat) {
+    if (stat.loading) {
+      return;
+    }
+    if (stat.numericValue != null && stat.numericFormatter != null) {
+      _primaryRetainedValue = _RetainedBottomStatValue(
+        value: stat.numericValue!,
+        formatter: stat.numericFormatter!,
+        fallbackValue: stat.value,
+        colorScore: stat.colorScore,
+      );
+    }
+    if (stat.alternateNumericValue != null &&
+        stat.alternateNumericFormatter != null) {
+      _alternateRetainedValue = _RetainedBottomStatValue(
+        value: stat.alternateNumericValue!,
+        formatter: stat.alternateNumericFormatter!,
+        fallbackValue: stat.alternateValue ?? stat.value,
+        colorScore: stat.colorScore,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final stat = widget.stat;
+    _rememberResolvedValues(stat);
+
     final theme = Theme.of(context);
     final settings = ref.watch(appSettingsProvider).asData?.value;
     final savingsDisplayMode = ref.watch(_savingsDisplayModeProvider);
@@ -124,6 +225,26 @@ class _BottomStatTile extends ConsumerWidget {
     final numericFormatter = showAlternate
         ? stat.alternateNumericFormatter
         : stat.numericFormatter;
+    final retainedValue = showAlternate
+        ? _alternateRetainedValue
+        : _primaryRetainedValue;
+    final animationStart = showAlternate
+        ? (_alternateAnimationTarget == numericValue
+              ? _alternateAnimationStart
+              : null)
+        : (_primaryAnimationTarget == numericValue
+              ? _primaryAnimationStart
+              : null);
+    final animationKeySuffix = showAlternate
+        ? _alternateAnimationKeySuffix
+        : _primaryAnimationKeySuffix;
+    final hasResolvedNumericValue =
+        !stat.loading && numericValue != null && numericFormatter != null;
+    final retainedValueVisible =
+        stat.pending && !hasResolvedNumericValue && retainedValue != null;
+    final valueColorScore = retainedValueVisible
+        ? retainedValue.colorScore
+        : stat.colorScore;
     final defaultValueColor = switch (stat.colorMode) {
       _BottomStatColorMode.none => stat.color,
       _ => theme.colorScheme.foreground,
@@ -132,16 +253,16 @@ class _BottomStatTile extends ConsumerWidget {
       _BottomStatColorMode.none => defaultValueColor,
       _BottomStatColorMode.fileSize
           when settings?.fileSizeColorsEnabled == true &&
-              stat.colorScore != null =>
-        _qualityMetricColor(_bitsPerPixelColorScore(stat.colorScore!)),
+              valueColorScore != null =>
+        _qualityMetricColor(_bitsPerPixelColorScore(valueColorScore)),
       _BottomStatColorMode.similarity
           when settings?.similarityMetricColorsEnabled == true &&
-              stat.colorScore != null =>
-        _qualityMetricColor(stat.colorScore!),
+              valueColorScore != null =>
+        _qualityMetricColor(valueColorScore),
       _BottomStatColorMode.savings
           when settings?.savingsColorsEnabled == true &&
-              stat.colorScore != null =>
-        _savingsMetricColor(stat.colorScore!),
+              valueColorScore != null =>
+        _savingsMetricColor(valueColorScore),
       _ => defaultValueColor,
     };
 
@@ -157,7 +278,7 @@ class _BottomStatTile extends ConsumerWidget {
         children: [
           Text(stat.label).xSmall().medium().muted(),
           const Spacer(),
-          if (stat.loading)
+          if (stat.loading && !retainedValueVisible)
             SizedBox(
               width: 18,
               height: 18,
@@ -166,10 +287,24 @@ class _BottomStatTile extends ConsumerWidget {
                 color: stat.color,
               ),
             )
+          else if (retainedValueVisible)
+            _BottomStatAnimatedValue(
+              key: ValueKey(
+                'bottom-stat-${stat.label}-${showAlternate ? 'alternate' : 'primary'}-$animationKeySuffix',
+              ),
+              mode:
+                  settings?.bottomStatAnimationMode ??
+                  AppSettings.defaults.bottomStatAnimationMode,
+              value: retainedValue.value,
+              formatter: retainedValue.formatter,
+              fallbackValue: retainedValue.fallbackValue,
+              initialValue: null,
+              color: valueColor,
+            )
           else if (numericValue != null && numericFormatter != null)
             _BottomStatAnimatedValue(
               key: ValueKey(
-                'bottom-stat-${stat.label}-${showAlternate ? 'alternate' : 'primary'}',
+                'bottom-stat-${stat.label}-${showAlternate ? 'alternate' : 'primary'}-$animationKeySuffix',
               ),
               mode:
                   settings?.bottomStatAnimationMode ??
@@ -177,6 +312,7 @@ class _BottomStatTile extends ConsumerWidget {
               value: numericValue,
               formatter: numericFormatter,
               fallbackValue: displayedValue,
+              initialValue: animationStart,
               color: valueColor,
             )
           else
@@ -278,6 +414,20 @@ class _BottomStatTile extends ConsumerWidget {
   }
 }
 
+class _RetainedBottomStatValue {
+  const _RetainedBottomStatValue({
+    required this.value,
+    required this.formatter,
+    required this.fallbackValue,
+    required this.colorScore,
+  });
+
+  final num value;
+  final String Function(num value) formatter;
+  final String fallbackValue;
+  final double? colorScore;
+}
+
 class _BottomStatAnimatedValue extends StatelessWidget {
   const _BottomStatAnimatedValue({
     super.key,
@@ -285,6 +435,7 @@ class _BottomStatAnimatedValue extends StatelessWidget {
     required this.value,
     required this.formatter,
     required this.fallbackValue,
+    required this.initialValue,
     required this.color,
   });
 
@@ -292,6 +443,7 @@ class _BottomStatAnimatedValue extends StatelessWidget {
   final num value;
   final String Function(num value) formatter;
   final String fallbackValue;
+  final num? initialValue;
   final Color color;
 
   @override
@@ -304,6 +456,7 @@ class _BottomStatAnimatedValue extends StatelessWidget {
 
     return switch (mode) {
       BottomStatAnimationMode.ticker => NumberTicker.builder(
+        initialNumber: initialValue,
         number: value,
         duration: const Duration(milliseconds: 350),
         curve: Curves.easeOutCubic,

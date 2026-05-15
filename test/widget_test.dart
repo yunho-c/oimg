@@ -611,6 +611,91 @@ void main() {
     },
   );
 
+  testWidgets('bottom stats retain values while quality preview recomputes', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final slimg = _FakeSlimgApi(
+      inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
+      previewDelay: const Duration(milliseconds: 300),
+    )..previewSizeBytes = 1200;
+    final controller = FileOpenController(
+      channel: _FakeFileOpenChannel(),
+      slimg: slimg,
+      initialPaths: const ['/tmp/first.png'],
+    );
+    await controller.initialize();
+
+    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpAndSettle();
+
+    expect(
+      _bottomStatValueText(tester, label: 'Optimized', value: '1.2 KB'),
+      isNotNull,
+    );
+    expect(
+      _bottomStatValueText(tester, label: 'Savings', value: '50.0%'),
+      isNotNull,
+    );
+    expect(_similarityValueFinder('96.6%'), findsOneWidget);
+
+    slimg
+      ..previewSizeBytes = 800
+      ..pixelMatchValue = 80.0
+      ..msSsimValue = 0.8
+      ..ssimulacra2Value = 75.0;
+
+    final start = _qualitySliderValueOffset(tester, value: 80);
+    final end = _qualitySliderValueOffset(tester, value: 55);
+    await tester.dragFrom(start, end - start);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('bottom-stat-Optimized')),
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsNothing,
+    );
+    expect(
+      _bottomStatValueText(tester, label: 'Optimized', value: '1.2 KB'),
+      isNotNull,
+    );
+    expect(
+      _bottomStatValueText(tester, label: 'Savings', value: '50.0%'),
+      isNotNull,
+    );
+    expect(_similarityValueFinder('96.6%'), findsOneWidget);
+    expect(_similarityValueFinder('—'), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final animatedOptimizedValue = _bottomStatDisplayValue(
+      tester,
+      label: 'Optimized',
+    );
+    expect(animatedOptimizedValue, isNot('1.2 KB'));
+    expect(animatedOptimizedValue, isNot('800 B'));
+
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    expect(
+      _bottomStatValueText(tester, label: 'Optimized', value: '800 B'),
+      isNotNull,
+    );
+    expect(
+      _bottomStatValueText(tester, label: 'Savings', value: '66.7%'),
+      isNotNull,
+    );
+    expect(_similarityValueFinder('78.3%'), findsOneWidget);
+  });
+
   testWidgets('similarity stat shows N/A when all metrics are unavailable', (
     tester,
   ) async {
@@ -4755,6 +4840,21 @@ Text _bottomStatValueText(
       matching: find.text(value),
     ),
   );
+}
+
+String _bottomStatDisplayValue(WidgetTester tester, {required String label}) {
+  final values = tester
+      .widgetList<Text>(
+        find.descendant(
+          of: find.byKey(ValueKey('bottom-stat-$label')),
+          matching: find.byType(Text),
+        ),
+      )
+      .map((text) => text.data)
+      .whereType<String>()
+      .where((value) => value != label)
+      .toList();
+  return values.last;
 }
 
 Text _optimizedFormatValueText(WidgetTester tester) {

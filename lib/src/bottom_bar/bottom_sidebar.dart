@@ -303,6 +303,9 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
       msSsimMetric: msSsimMetric,
       ssimulacra2Metric: ssimulacra2Metric,
     );
+    final statsRetentionKey = controller.isFolderSelected
+        ? 'folder:${controller.selectedFolderPath ?? controller.selectedFolderName ?? ''}'
+        : 'file:${currentFile.path}';
 
     return Card(
       padding: EdgeInsets.zero,
@@ -320,7 +323,10 @@ class _BottomSidebarState extends ConsumerState<_BottomSidebar> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: _BottomStatsSection(stats: summary.stats),
+                          child: _BottomStatsSection(
+                            stats: summary.stats,
+                            retentionKey: statsRetentionKey,
+                          ),
                         ),
                         const SizedBox(width: 18),
                         Expanded(

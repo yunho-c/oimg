@@ -129,6 +129,7 @@ class _BottomSummaryViewModel {
           colorMode: _BottomStatColorMode.fileSize,
           colorScore: optimizedBpp,
           loading: isOptimizedPreviewPending,
+          pending: isOptimizedPreviewPending,
           tooltip: optimizedTimingTooltip,
         ),
         _BottomStatData(
@@ -142,6 +143,7 @@ class _BottomSummaryViewModel {
           color: const Color(0xFF16A34A),
           colorMode: _BottomStatColorMode.savings,
           colorScore: savingsPercent?.clamp(0, 400).toDouble(),
+          pending: isOptimizedPreviewPending,
           toggleable: true,
         ),
         _BottomStatData(
@@ -152,6 +154,7 @@ class _BottomSummaryViewModel {
           color: Color(0xFFF59E0B),
           colorMode: _BottomStatColorMode.similarity,
           colorScore: similarityStat.score,
+          pending: similarityStat.pending,
         ),
       ],
       originalSectionTitle: 'Original',
@@ -297,12 +300,14 @@ class _DerivedSimilarityStat {
   const _DerivedSimilarityStat({
     required this.value,
     required this.loading,
+    this.pending = false,
     this.score,
     this.numericFormatter,
   });
 
   final String value;
   final bool loading;
+  final bool pending;
   final double? score;
   final String Function(num value)? numericFormatter;
 }
@@ -373,7 +378,11 @@ _DerivedSimilarityStat _deriveSimilarityStat({
       pixelMatchMetric.isLoading ||
       msSsimMetric.isLoading ||
       ssimulacra2Metric.isLoading;
-  return _DerivedSimilarityStat(value: isLoading ? '—' : 'N/A', loading: false);
+  return _DerivedSimilarityStat(
+    value: isLoading ? '—' : 'N/A',
+    loading: false,
+    pending: isLoading,
+  );
 }
 
 Iterable<double> _normalizedSimilarityValues(
@@ -401,6 +410,7 @@ class _BottomStatData {
     this.colorScore,
     this.colorMode = _BottomStatColorMode.none,
     this.loading = false,
+    this.pending = false,
     this.toggleable = false,
     this.tooltip,
   });
@@ -416,6 +426,7 @@ class _BottomStatData {
   final double? colorScore;
   final _BottomStatColorMode colorMode;
   final bool loading;
+  final bool pending;
   final bool toggleable;
   final String? tooltip;
 }
