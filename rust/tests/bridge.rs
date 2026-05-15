@@ -1,4 +1,6 @@
 use std::fs;
+#[cfg(target_os = "macos")]
+use std::process::Command;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -109,6 +111,59 @@ fn inspect_bytes_reports_png_dimensions() {
     assert_eq!(metadata.format, "png");
     assert_eq!(metadata.file_size, None);
     assert!(!metadata.has_transparency);
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn inspect_and_preview_file_decode_heic_with_imageio() {
+    let dir = tempdir().unwrap();
+    let png_path = dir.path().join("input.png");
+    let heic_path = dir.path().join("input.heic");
+    fs::write(&png_path, png_bytes()).unwrap();
+
+    let status = Command::new("sips")
+        .arg("-s")
+        .arg("format")
+        .arg("heic")
+        .arg(&png_path)
+        .arg("--out")
+        .arg(&heic_path)
+        .status();
+    let Ok(status) = status else {
+        eprintln!("skipping HEIC decode test because sips is unavailable");
+        return;
+    };
+    if !status.success() {
+        eprintln!("skipping HEIC decode test because sips cannot encode HEIC");
+        return;
+    }
+
+    let metadata = bridge::inspect_file(heic_path.to_string_lossy().into_owned()).unwrap();
+    assert_eq!(metadata.width, 48);
+    assert_eq!(metadata.height, 32);
+    assert_eq!(metadata.format, "heic");
+
+    let preview = bridge::preview_file(PreviewFileRequest {
+        input_path: heic_path.to_string_lossy().into_owned(),
+        operation: ImageOperation::Convert(ConvertOptions {
+            target_format: "jpeg".to_string(),
+            quality: 80,
+            effort: None,
+            png_palette: None,
+        }),
+    })
+    .unwrap();
+    assert_eq!(preview.format, "jpeg");
+    assert_eq!(preview.width, 48);
+    assert_eq!(preview.height, 32);
+
+    let (decoded_preview, _) = decode(&preview.encoded_bytes).unwrap();
+    let top_left_green = decoded_preview.data[1];
+    let bottom_left_green = decoded_preview.data[((31 * 48) * 4 + 1) as usize];
+    assert!(
+        top_left_green < bottom_left_green,
+        "HEIC decode should preserve vertical orientation"
+    );
 }
 
 #[test]

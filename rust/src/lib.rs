@@ -12,4 +12,5 @@ mod metrics;
 mod preview;
 mod preview_artifacts;
 pub mod service_ffi;
+mod source_image;
 mod types;

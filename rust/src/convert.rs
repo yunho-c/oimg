@@ -16,6 +16,7 @@ use crate::codec::format_to_string;
 use crate::error::{Result, SlimgBridgeError};
 use crate::fs::{derive_output_path, safe_write_bytes, to_path_buf};
 use crate::preview_artifacts::{preview_artifact_store, PreviewArtifact};
+use crate::source_image::{decode_source_image, SourceFormat};
 use crate::types::{
     BatchItemResult, BatchProcessRequest, ConvertOptions, CropSpec, EncodedImageResult, ExtendSpec,
     FillSpec, ImageMetadata, ImageOperation, OptimizeOptions, PreviewResult, ProcessBytesRequest,
@@ -35,11 +36,12 @@ pub(crate) fn inspect_bytes(data: Vec<u8>) -> Result<ImageMetadata> {
         return Err(SlimgBridgeError::invalid_request("data must not be empty"));
     }
 
-    let (image, format) = decode(&data)?;
+    let source = decode_source_image(&data)?;
+    let image = source.image;
     Ok(ImageMetadata {
         width: image.width,
         height: image.height,
-        format: format_to_string(format),
+        format: source.format.id().to_string(),
         file_size: None,
         has_transparency: image.data.chunks_exact(4).any(|pixel| pixel[3] < 255),
         palette_suitability: Some(analyze_palette_suitability(&image).into()),
@@ -75,8 +77,8 @@ pub(crate) fn preview_file(request: crate::types::PreviewFileRequest) -> Result<
         let read_elapsed = read_start.elapsed();
 
         let operation_start = Instant::now();
-        let (source_image, source_format) = decode(&data)?;
-        let output = run_preview_operation(&source_image, source_format, &request.operation, None)?;
+        let source = decode_source_image(&data)?;
+        let output = run_preview_operation(&source.image, source.format, &request.operation, None)?;
         let operation_elapsed = operation_start.elapsed();
         crate::diagnostics::timing_log(format!(
             "preview path={} read={}ms operation={}ms input_bytes={}",
@@ -89,11 +91,11 @@ pub(crate) fn preview_file(request: crate::types::PreviewFileRequest) -> Result<
         Ok(PreviewResult {
             encoded_bytes: output.data.clone(),
             artifact_id: preview_artifact_store().insert(PreviewArtifact::new(
-                source_image.width,
-                source_image.height,
+                source.image.width,
+                source.image.height,
                 output.width,
                 output.height,
-                Arc::<[u8]>::from(source_image.data),
+                Arc::<[u8]>::from(source.image.data),
                 Arc::<[u8]>::from(output.preview_rgba_bytes),
             )),
             format: format_to_string(output.format),
@@ -244,7 +246,7 @@ fn process_file_path_with_metadata(
         "process resolved input={} output={} source_format={} target_format={} should_write={} overwrite={}",
         input_path,
         derived_output_path.display(),
-        format_to_string(source_format),
+        source_format.id(),
         format_to_string(output.format),
         output.should_write,
         overwrite
@@ -304,13 +306,7 @@ fn preserve_metadata(
         return Ok(output_bytes);
     }
 
-    let Some(source_image) =
-        DynImage::from_bytes(input_bytes.to_vec().into()).map_err(|error| {
-            SlimgBridgeError::Internal {
-                message: format!("metadata source parse failed: {error}"),
-            }
-        })?
-    else {
+    let Ok(Some(source_image)) = DynImage::from_bytes(input_bytes.to_vec().into()) else {
         return Ok(output_bytes);
     };
 
@@ -393,7 +389,7 @@ fn run_operation(
 
 pub(crate) fn run_preview_operation(
     image: &slimg_core::ImageData,
-    source_format: Format,
+    source_format: SourceFormat,
     operation: &ImageOperation,
     threads: Option<usize>,
 ) -> Result<PreviewOperationOutput> {
@@ -422,17 +418,18 @@ pub(crate) fn run_preview_operation(
         ImageOperation::Optimize(options) => {
             let quality = validate_quality(options.quality)?;
             let effort = validate_effort(options.effort)?;
-            let codec = get_codec(source_format);
+            let source_core_format = source_format.core()?;
+            let codec = get_codec(source_core_format);
             let encoded = codec.encode(
                 image,
                 &EncodeOptions {
                     quality,
                     effort,
                     png_palette: map_png_palette(options.png_palette),
-                    threads: encode_threads_for_format(source_format, threads),
+                    threads: encode_threads_for_format(source_core_format, threads),
                 },
             )?;
-            (encoded, source_format, image.width, image.height)
+            (encoded, source_core_format, image.width, image.height)
         }
         ImageOperation::Resize(options) => {
             let target_format =
@@ -511,9 +508,9 @@ fn convert_bytes(
     let quality = validate_quality(options.quality)?;
     let effort = validate_effort(options.effort)?;
     let target_format = crate::codec::parse_format(&options.target_format)?;
-    let (image, _) = decode(data)?;
+    let source = decode_source_image(data)?;
     let result = core_convert(
-        &image,
+        &source.image,
         &PipelineOptions {
             format: target_format,
             quality,
@@ -545,7 +542,9 @@ fn optimize_bytes(
     let total_start = Instant::now();
 
     let decode_start = Instant::now();
-    let (image, format) = decode(data)?;
+    let source = decode_source_image(data)?;
+    let image = source.image;
+    let format = source.format.core()?;
     let decode_elapsed = decode_start.elapsed();
 
     let encode_start = Instant::now();
@@ -586,13 +585,13 @@ fn optimize_bytes(
 
 fn transform_bytes<F>(data: &[u8], quality: u8, build: F) -> Result<OperationOutput>
 where
-    F: FnOnce(Format) -> Result<PipelineOptions>,
+    F: FnOnce(SourceFormat) -> Result<PipelineOptions>,
 {
-    let (image, source_format) = decode(data)?;
+    let source = decode_source_image(data)?;
     validate_quality(quality)?;
-    let mut options = build(source_format)?;
+    let mut options = build(source.format)?;
     options.threads = encode_threads_for_format(options.format, options.threads);
-    let result = core_convert(&image, &options)?;
+    let result = core_convert(&source.image, &options)?;
     Ok(OperationOutput {
         data: result.data,
         format: result.format,
@@ -602,14 +601,17 @@ where
     })
 }
 
-fn detect_source_format(data: &[u8]) -> Result<Format> {
-    Ok(decode(data)?.1)
+fn detect_source_format(data: &[u8]) -> Result<SourceFormat> {
+    Ok(decode_source_image(data)?.format)
 }
 
-fn resolve_output_format(operation: &ImageOperation, source_format: Format) -> Result<Format> {
+fn resolve_output_format(
+    operation: &ImageOperation,
+    source_format: SourceFormat,
+) -> Result<Format> {
     match operation {
         ImageOperation::Convert(options) => crate::codec::parse_format(&options.target_format),
-        ImageOperation::Optimize(_) => Ok(source_format),
+        ImageOperation::Optimize(_) => source_format.core(),
         ImageOperation::Resize(options) => {
             resolve_optional_target_format(options.target_format.as_deref(), source_format)
         }
@@ -622,10 +624,10 @@ fn resolve_output_format(operation: &ImageOperation, source_format: Format) -> R
     }
 }
 
-fn resolve_optional_target_format(value: Option<&str>, fallback: Format) -> Result<Format> {
+fn resolve_optional_target_format(value: Option<&str>, fallback: SourceFormat) -> Result<Format> {
     match value {
         Some(format) => crate::codec::parse_format(format),
-        None => Ok(fallback),
+        None => fallback.core(),
     }
 }
 
@@ -879,7 +881,7 @@ mod tests {
         let image = test_image();
         let output = run_preview_operation(
             &image,
-            Format::Png,
+            SourceFormat::Core(Format::Png),
             &ImageOperation::Convert(ConvertOptions {
                 target_format: "avif".to_string(),
                 quality: 80,
@@ -903,7 +905,7 @@ mod tests {
         let image = test_image();
         let output = run_preview_operation(
             &image,
-            Format::Png,
+            SourceFormat::Core(Format::Png),
             &ImageOperation::Convert(ConvertOptions {
                 target_format: "avif".to_string(),
                 quality: 0,

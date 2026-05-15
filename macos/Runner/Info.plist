@@ -17,6 +17,8 @@
 				<string>webp</string>
 				<string>tif</string>
 				<string>tiff</string>
+				<string>heic</string>
+				<string>heif</string>
 			</array>
 			<key>CFBundleTypeName</key>
 			<string>OIMG Image</string>
@@ -31,6 +33,8 @@
 				<string>com.compuserve.gif</string>
 				<string>com.microsoft.bmp</string>
 				<string>public.tiff</string>
+				<string>public.heic</string>
+				<string>public.heif</string>
 			</array>
 		</dict>
 	</array>
