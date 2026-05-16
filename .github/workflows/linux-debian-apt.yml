@@ -167,7 +167,6 @@ jobs:
             libclang-dev \
             libgtk-3-dev \
             liblzma-dev \
-            libstdc++-13-dev \
             nasm \
             ninja-build \
             pkg-config \
