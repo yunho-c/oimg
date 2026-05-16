@@ -259,6 +259,7 @@ jobs:
           mkdir -p "$APT_REPO_DIR/dists/stable/main/binary-amd64"
 
           cp "${{ steps.deb.outputs.path }}" "$APT_REPO_DIR/pool/main/${{ steps.deb.outputs.filename }}"
+          cp "$GITHUB_WORKSPACE/oimg/scripts/linux/apt-install.sh" "$APT_REPO_DIR/install.sh"
 
           cd "$APT_REPO_DIR"
           dpkg-scanpackages pool/main /dev/null > dists/stable/main/binary-amd64/Packages

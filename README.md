@@ -31,6 +31,12 @@ cargo check --manifest-path rust/Cargo.toml
 
 ## Linux Debian package
 
+Install on Debian/Ubuntu `amd64`:
+
+```bash
+curl -fsSL https://apt.oimg.org/install.sh | bash
+```
+
 Build a local `.deb` for install testing:
 
 ```bash
