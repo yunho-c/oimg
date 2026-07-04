@@ -1,8 +1,8 @@
 # OIMG
 
-OIMG is a desktop application that helps you optimize your images using modern image formats. Save your storage with OIMG!
+[OIMG](https://oimg.org) is a desktop application that helps you optimize your images using modern image formats. Save storage with OIMG!
 
-![demo_video]()
+https://github.com/user-attachments/assets/52e5a506-966d-4c02-8125-81023f0ecd5e
 
 ## Download
 
