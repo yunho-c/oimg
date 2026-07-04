@@ -110,7 +110,7 @@ class MethodChannelFileOpenChannel implements FileOpenChannel {
       return _pickFolderForPersistentAccessFallback();
     }
 
-    return _pickFolderForPersistentAccessFallback();
+    return null;
   }
 
   Future<SecurityScopedFileAccess?>

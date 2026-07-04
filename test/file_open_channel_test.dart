@@ -58,6 +58,28 @@ void main() {
     expect(access?.bookmark, 'bookmark-data');
   });
 
+  test(
+    'pickFolderForPersistentAccess does not fall back after cancel',
+    () async {
+      final calls = <String>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            calls.add(call.method);
+            if (call.method == 'pickFolderForPersistentAccess') {
+              return null;
+            }
+            fail('Unexpected method call: ${call.method}');
+          });
+
+      final fileOpenChannel = MethodChannelFileOpenChannel(channel: channel);
+
+      final access = await fileOpenChannel.pickFolderForPersistentAccess();
+
+      expect(access, isNull);
+      expect(calls, ['pickFolderForPersistentAccess']);
+    },
+  );
+
   test('startAccessingSecurityScopedResource forwards bookmark', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
