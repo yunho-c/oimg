@@ -426,6 +426,20 @@ class _FakeFileOpenChannel implements FileOpenChannel {
   Future<List<String>> pickFolder() async => const <String>[];
 
   @override
+  Future<SecurityScopedFileAccess?> pickFolderForPersistentAccess() async {
+    final paths = await pickFolder();
+    if (paths.isEmpty) {
+      return null;
+    }
+    return SecurityScopedFileAccess(path: paths.first);
+  }
+
+  @override
+  Future<bool> startAccessingSecurityScopedResource(String bookmark) async {
+    return false;
+  }
+
+  @override
   Future<void> showInFileManager(String path) async {
     shownPaths.add(path);
   }

@@ -4,10 +4,30 @@ import 'package:flutter/services.dart';
 
 typedef OpenFilesHandler = Future<void> Function(List<String> paths);
 
+class SecurityScopedFileAccess {
+  const SecurityScopedFileAccess({required this.path, this.bookmark});
+
+  final String path;
+  final String? bookmark;
+}
+
 abstract class FileOpenChannel {
   Future<void> bind(OpenFilesHandler onOpenFiles);
   Future<List<String>> pickFiles();
   Future<List<String>> pickFolder();
+
+  Future<SecurityScopedFileAccess?> pickFolderForPersistentAccess() async {
+    final paths = await pickFolder();
+    if (paths.isEmpty) {
+      return null;
+    }
+    return SecurityScopedFileAccess(path: paths.first);
+  }
+
+  Future<bool> startAccessingSecurityScopedResource(String bookmark) async {
+    return false;
+  }
+
   Future<void> showInFileManager(String path);
 }
 
@@ -66,6 +86,55 @@ class MethodChannelFileOpenChannel implements FileOpenChannel {
       return _parsePathList(result);
     } on MissingPluginException {
       return const <String>[];
+    }
+  }
+
+  @override
+  Future<SecurityScopedFileAccess?> pickFolderForPersistentAccess() async {
+    try {
+      final result = await _channel.invokeMethod<Object?>(
+        'pickFolderForPersistentAccess',
+      );
+      if (result is Map) {
+        final path = result['path'];
+        if (path is! String || path.isEmpty) {
+          return null;
+        }
+        final bookmark = result['bookmark'];
+        return SecurityScopedFileAccess(
+          path: path,
+          bookmark: bookmark is String && bookmark.isNotEmpty ? bookmark : null,
+        );
+      }
+    } on MissingPluginException {
+      return _pickFolderForPersistentAccessFallback();
+    }
+
+    return _pickFolderForPersistentAccessFallback();
+  }
+
+  Future<SecurityScopedFileAccess?>
+  _pickFolderForPersistentAccessFallback() async {
+    final paths = await pickFolder();
+    if (paths.isEmpty) {
+      return null;
+    }
+    return SecurityScopedFileAccess(path: paths.first);
+  }
+
+  @override
+  Future<bool> startAccessingSecurityScopedResource(String bookmark) async {
+    if (bookmark.isEmpty) {
+      return false;
+    }
+    try {
+      final result = await _channel.invokeMethod<bool>(
+        'startAccessingSecurityScopedResource',
+        bookmark,
+      );
+      return result ?? false;
+    } on MissingPluginException {
+      return false;
     }
   }
 

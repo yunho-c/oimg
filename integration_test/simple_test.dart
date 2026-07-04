@@ -55,6 +55,16 @@ class _NoopFileOpenChannel implements FileOpenChannel {
   Future<List<String>> pickFolder() async => const <String>[];
 
   @override
+  Future<SecurityScopedFileAccess?> pickFolderForPersistentAccess() async {
+    return null;
+  }
+
+  @override
+  Future<bool> startAccessingSecurityScopedResource(String bookmark) async {
+    return false;
+  }
+
+  @override
   Future<void> showInFileManager(String path) async {}
 }
 

@@ -35,10 +35,14 @@ class _StorageCollapsibleState extends ConsumerState<_StorageCollapsible> {
     }
 
     final currentPath = widget.settings.differentLocationPath;
+    final currentBookmark = widget.settings.differentLocationBookmark;
+    final needsPersistentAccess = Platform.isMacOS;
     final needsPicker =
         forcePicker ||
         currentPath == null ||
         currentPath.isEmpty ||
+        (needsPersistentAccess &&
+            (currentBookmark == null || currentBookmark.isEmpty)) ||
         widget.settings.storageDestinationMode !=
             StorageDestinationMode.differentLocation;
     if (!needsPicker) {
@@ -48,7 +52,7 @@ class _StorageCollapsibleState extends ConsumerState<_StorageCollapsible> {
     setState(() {
       _isPickingFolder = true;
     });
-    final pickedPath = await ref
+    final pickedFolder = await ref
         .read(fileOpenControllerProvider)
         .pickStorageFolder();
     if (!mounted) {
@@ -57,12 +61,15 @@ class _StorageCollapsibleState extends ConsumerState<_StorageCollapsible> {
     setState(() {
       _isPickingFolder = false;
     });
-    if (pickedPath == null || pickedPath.isEmpty) {
+    if (pickedFolder == null || pickedFolder.path.isEmpty) {
       return;
     }
 
     final notifier = ref.read(appSettingsProvider.notifier);
-    await notifier.setDifferentLocationPath(pickedPath);
+    await notifier.setDifferentLocation(
+      path: pickedFolder.path,
+      bookmark: pickedFolder.bookmark,
+    );
     await notifier.setStorageDestinationMode(
       StorageDestinationMode.differentLocation,
     );

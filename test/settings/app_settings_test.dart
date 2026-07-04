@@ -250,6 +250,7 @@ void main() {
       expect(settings.keepSourceOriginalSuffix, '_original');
       expect(settings.keepSourceOptimizedSuffix, '_optimized');
       expect(settings.differentLocationPath, isNull);
+      expect(settings.differentLocationBookmark, isNull);
       expect(settings.preserveFolderStructure, isTrue);
       expect(settings.preserveOriginalDate, isFalse);
       expect(settings.preserveExif, isFalse);

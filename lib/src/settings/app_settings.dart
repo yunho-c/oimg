@@ -122,6 +122,7 @@ class AppSettings {
     required this.timingLogsEnabled,
     this.macOsCaptionButtonsEnabled = false,
     this.differentLocationPath,
+    this.differentLocationBookmark,
     this.previewPathHeaderEnabled = false,
     this.homeShaderSpeed = defaultHomeShaderSpeed,
     this.homeAcrylicPanelEnabled = false,
@@ -141,6 +142,7 @@ class AppSettings {
   final String keepSourceOriginalSuffix;
   final String keepSourceOptimizedSuffix;
   final String? differentLocationPath;
+  final String? differentLocationBookmark;
   final bool preserveFolderStructure;
   final bool preserveOriginalDate;
   final bool preserveExif;
@@ -258,6 +260,7 @@ class AppSettings {
     String? keepSourceOriginalSuffix,
     String? keepSourceOptimizedSuffix,
     Object? differentLocationPath = _noAppSettingsValue,
+    Object? differentLocationBookmark = _noAppSettingsValue,
     bool? preserveFolderStructure,
     bool? preserveOriginalDate,
     bool? preserveExif,
@@ -299,6 +302,10 @@ class AppSettings {
           identical(differentLocationPath, _noAppSettingsValue)
           ? this.differentLocationPath
           : differentLocationPath as String?,
+      differentLocationBookmark:
+          identical(differentLocationBookmark, _noAppSettingsValue)
+          ? this.differentLocationBookmark
+          : differentLocationBookmark as String?,
       preserveFolderStructure:
           preserveFolderStructure ?? this.preserveFolderStructure,
       preserveOriginalDate: preserveOriginalDate ?? this.preserveOriginalDate,
@@ -350,6 +357,7 @@ class AppSettings {
       'keepSourceOriginalSuffix': keepSourceOriginalSuffix,
       'keepSourceOptimizedSuffix': keepSourceOptimizedSuffix,
       'differentLocationPath': differentLocationPath,
+      'differentLocationBookmark': differentLocationBookmark,
       'preserveFolderStructure': preserveFolderStructure,
       'preserveOriginalDate': preserveOriginalDate,
       'preserveExif': preserveExif,
@@ -419,6 +427,9 @@ class AppSettings {
       differentLocationPath:
           json['differentLocationPath'] as String? ??
           defaults.differentLocationPath,
+      differentLocationBookmark:
+          json['differentLocationBookmark'] as String? ??
+          defaults.differentLocationBookmark,
       preserveFolderStructure:
           json['preserveFolderStructure'] as bool? ??
           defaults.preserveFolderStructure,
@@ -497,6 +508,7 @@ class AppSettings {
         other.keepSourceOriginalSuffix == keepSourceOriginalSuffix &&
         other.keepSourceOptimizedSuffix == keepSourceOptimizedSuffix &&
         other.differentLocationPath == differentLocationPath &&
+        other.differentLocationBookmark == differentLocationBookmark &&
         other.preserveFolderStructure == preserveFolderStructure &&
         other.preserveOriginalDate == preserveOriginalDate &&
         other.preserveExif == preserveExif &&
@@ -535,6 +547,7 @@ class AppSettings {
     keepSourceOriginalSuffix,
     keepSourceOptimizedSuffix,
     differentLocationPath,
+    differentLocationBookmark,
     preserveFolderStructure,
     preserveOriginalDate,
     preserveExif,

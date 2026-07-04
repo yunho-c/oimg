@@ -133,12 +133,15 @@ class FileOpenController extends ChangeNotifier {
     await openPaths(paths);
   }
 
-  Future<String?> pickStorageFolder() async {
-    final paths = await _channel.pickFolder();
-    if (paths.isEmpty) {
-      return null;
+  Future<SecurityScopedFileAccess?> pickStorageFolder() async {
+    return _channel.pickFolderForPersistentAccess();
+  }
+
+  Future<bool> startAccessingSecurityScopedResource(String? bookmark) async {
+    if (bookmark == null || bookmark.isEmpty) {
+      return false;
     }
-    return paths.first;
+    return _channel.startAccessingSecurityScopedResource(bookmark);
   }
 
   Future<void> showInFileManager(String path) async {

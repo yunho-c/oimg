@@ -39,4 +39,39 @@ void main() {
 
     expect(paths, ['/tmp/folder']);
   });
+
+  test('pickFolderForPersistentAccess parses path and bookmark', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          expect(call.method, 'pickFolderForPersistentAccess');
+          return <String, String>{
+            'path': '/tmp/folder',
+            'bookmark': 'bookmark-data',
+          };
+        });
+
+    final fileOpenChannel = MethodChannelFileOpenChannel(channel: channel);
+
+    final access = await fileOpenChannel.pickFolderForPersistentAccess();
+
+    expect(access?.path, '/tmp/folder');
+    expect(access?.bookmark, 'bookmark-data');
+  });
+
+  test('startAccessingSecurityScopedResource forwards bookmark', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          expect(call.method, 'startAccessingSecurityScopedResource');
+          expect(call.arguments, 'bookmark-data');
+          return true;
+        });
+
+    final fileOpenChannel = MethodChannelFileOpenChannel(channel: channel);
+
+    final didStart = await fileOpenChannel.startAccessingSecurityScopedResource(
+      'bookmark-data',
+    );
+
+    expect(didStart, isTrue);
+  });
 }
