@@ -1,65 +1,34 @@
-# oimg
+# OIMG
 
-Flutter desktop app scaffolded with `flutter_rust_bridge`.
+OIMG is a desktop application that helps you optimize your images using modern image formats. Save your storage with OIMG!
 
-## Structure
+![demo_video]()
 
-- Flutter app: `lib/`
-- Rust crate: `rust/`
-- Native build helper plugin: `rust_builder/`
-- FRB config: `flutter_rust_bridge.yaml`
+## Download
 
-## Development
+- [Windows](https://oimg.org/download/windows-x64) | `winget install oimg`
+- [macOS](https://oimg.org/download/macos-arm64) | `brew install --cask yunho-c/tap/oimg`
+- [Linux](https://oimg.org/download/linux-x64) | `curl -fsSL https://apt.oimg.org/install.sh | bash`
 
-Run the app:
+## Why OIMG
 
-```bash
-flutter run -d macos
-```
+- OIMG bundles image encoding codecs with state-of-the-art efficiency, including `jpegli`, `oxipng`, and `libjxl`.
+- OIMG integrates image quality assessment (IQA) right into your workflow, preventing over-compression.
+- OIMG allows you to compare original/optimized images side-by-side and visualize errors (diffs).
+- OIMG includes convenient file explorer shortcuts for one-click optimization/conversion.
 
-Regenerate FRB bindings after changing Rust APIs:
+## Supported Formats
 
-```bash
-flutter_rust_bridge_codegen generate
-```
+- PNG
+- JPEG
+- WebP
+- AVIF
+- JPEG XL
 
-Check the Rust crate directly:
+## Architecture
 
-```bash
-cargo check --manifest-path rust/Cargo.toml
-```
+OIMG is built using Flutter (frontend) and Rust (backend). It is built with SIMD optimizations enabled (for x86 and ARM CPUs) and utilizes multithreading wherever possible. 
 
-## Linux Debian package
+## Contribute
 
-Install on Debian/Ubuntu `amd64`:
-
-```bash
-curl -fsSL https://apt.oimg.org/install.sh | bash
-```
-
-Build a local `.deb` for install testing:
-
-```bash
-scripts/linux/package-deb.sh
-```
-
-Install the generated package:
-
-```bash
-sudo dpkg -i debian/packages/*.deb
-```
-
-Check GNOME image association metadata after installing:
-
-```bash
-gio mime image/png
-gio mime image/avif
-gio launch /usr/share/applications/oimg.desktop /path/to/image.png
-```
-
-The Debian package also installs Nautilus context-menu actions for selected
-images. Restart Files after installing so Nautilus loads the extension:
-
-```bash
-nautilus -q
-```
+OIMG is completely open source. Feel free to contribute by creating [issues](https://github.com/yunho-c/oimg/issues) or [pull requests](https://github.com/yunho-c/oimg/pulls)!
