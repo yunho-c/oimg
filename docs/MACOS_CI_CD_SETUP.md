@@ -141,16 +141,32 @@ To upload through Xcode's App Store Connect export path:
 just upload-mas
 ```
 
-The MAS script uses Xcode automatic signing. Useful environment variables:
+The MAS script uses Xcode automatic signing by default. If App Store Connect cloud-managed distribution certificates are unavailable, use manual signing with locally installed Mac App Store certificates and a matching provisioning profile.
+
+Useful environment variables:
 
 | Variable | Purpose |
 | --- | --- |
 | `APPLE_TEAM_ID` | Required Developer team ID passed to Xcode and export options. |
-| `APPLE_MAS_SIGNING_CERTIFICATE` | Optional export signing certificate selector or name; normally leave unset for automatic signing. |
+| `APPLE_MAS_SIGNING_STYLE` | `automatic` or `manual`; defaults to `automatic`. |
+| `APPLE_MAS_APP_CERTIFICATE` | Manual signing app certificate selector or name, for example `3rd Party Mac Developer Application: ...`. |
+| `APPLE_MAS_INSTALLER_CERTIFICATE` | Manual signing installer certificate selector or name, for example `3rd Party Mac Developer Installer: ...`. |
+| `APPLE_MAS_PROFILE_NAME` | Manual signing provisioning profile name or UUID for the app bundle ID. |
+| `APPLE_MAS_PROFILE_PATH` | Optional local `.provisionprofile` path; when set, the script installs it before archiving. |
 | `APPLE_ASC_KEY_ID` | App Store Connect API key ID for provisioning/upload auth. |
 | `APPLE_ASC_ISSUER_ID` | App Store Connect issuer ID. |
 | `APPLE_ASC_API_KEY_PATH` | Path to `AuthKey_<key-id>.p8`; relative paths are resolved before calling Xcode. |
 | `APPLE_ASC_API_KEY_P8` | Private key contents; the script writes a temporary key file. |
+
+Manual signing example:
+
+```bash
+export APPLE_MAS_SIGNING_STYLE=manual
+export APPLE_MAS_APP_CERTIFICATE="3rd Party Mac Developer Application: Yunho Cho (3YWW337ZMW)"
+export APPLE_MAS_INSTALLER_CERTIFICATE="3rd Party Mac Developer Installer: Yunho Cho (3YWW337ZMW)"
+export APPLE_MAS_PROFILE_NAME="OIMG MAS Profile"
+export APPLE_MAS_PROFILE_PATH="/path/to/OIMG_MAS_Profile.provisionprofile"
+```
 
 Recommended first MAS validation:
 

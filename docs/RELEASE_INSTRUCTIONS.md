@@ -70,6 +70,11 @@ For Mac App Store validation, use the separate archive/export path:
 just archive-mas
 ```
 
+By default, this uses Xcode automatic signing. If App Store Connect cloud signing
+is unavailable, set `APPLE_MAS_SIGNING_STYLE=manual` with the local Mac App Store
+app certificate, installer certificate, and provisioning profile before running
+the command.
+
 After inspecting the exported build and entitlement diagnostics, upload with:
 
 ```bash

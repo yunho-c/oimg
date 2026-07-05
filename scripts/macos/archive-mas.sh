@@ -11,15 +11,19 @@ Usage:
 
 Behavior:
   - Prepares Flutter macOS release config
-  - Archives the macOS app with Xcode automatic signing
+  - Archives the macOS app with Xcode automatic or manual signing
   - Exports the archive with method app-store-connect
   - With --upload, asks xcodebuild to upload to App Store Connect
   - Writes archive, export output, and diagnostics under dist/macos-mas/
 
 Optional environment variables:
   APPLE_TEAM_ID               Developer team ID for signing/export (required)
-  APPLE_MAS_SIGNING_CERTIFICATE
-                              Optional export signing certificate selector/name
+  APPLE_MAS_SIGNING_STYLE     automatic or manual (default: automatic)
+  APPLE_MAS_APP_CERTIFICATE   Manual signing app certificate selector/name
+  APPLE_MAS_INSTALLER_CERTIFICATE
+                              Manual signing installer certificate selector/name
+  APPLE_MAS_PROFILE_NAME      Manual signing provisioning profile name or UUID
+  APPLE_MAS_PROFILE_PATH      Optional local provisioning profile to install
   APPLE_ASC_KEY_ID            App Store Connect API key ID
   APPLE_ASC_ISSUER_ID         App Store Connect issuer ID
   APPLE_ASC_API_KEY_PATH      Path to AuthKey_<key-id>.p8
@@ -50,6 +54,13 @@ read_product_name() {
   fi
 }
 
+read_bundle_identifier() {
+  local xcconfig="$1"
+  if [[ -f "$xcconfig" ]]; then
+    awk -F'= ' '/^PRODUCT_BUNDLE_IDENTIFIER = / { print $2; exit }' "$xcconfig"
+  fi
+}
+
 read_build_name() {
   local pubspec="$1"
   awk '/^version:/ { split($2, parts, "+"); print parts[1]; exit }' "$pubspec"
@@ -77,6 +88,9 @@ absolute_path() {
 cleanup() {
   if [[ -n "${TEMP_API_KEY_PATH:-}" && -f "$TEMP_API_KEY_PATH" ]]; then
     rm -f "$TEMP_API_KEY_PATH"
+  fi
+  if [[ -n "${TEMP_PROFILE_PLIST:-}" && -f "$TEMP_PROFILE_PLIST" ]]; then
+    rm -f "$TEMP_PROFILE_PLIST"
   fi
 }
 
@@ -135,6 +149,82 @@ prepare_api_key() {
   fi
 }
 
+decode_provisioning_profile() {
+  local profile_path="$1"
+  local output_path="$2"
+
+  if security cms -D -i "$profile_path" > "$output_path" 2>/dev/null; then
+    return
+  fi
+
+  openssl cms -inform DER -verify -noverify -in "$profile_path" > "$output_path"
+}
+
+install_manual_provisioning_profile() {
+  if [[ "$APPLE_MAS_SIGNING_STYLE" != "manual" || -z "${APPLE_MAS_PROFILE_PATH:-}" ]]; then
+    return
+  fi
+
+  if ! APPLE_MAS_PROFILE_PATH="$(absolute_path "$APPLE_MAS_PROFILE_PATH")"; then
+    echo "APPLE_MAS_PROFILE_PATH must point to an existing directory: $APPLE_MAS_PROFILE_PATH" >&2
+    exit 1
+  fi
+  if [[ ! -f "$APPLE_MAS_PROFILE_PATH" ]]; then
+    echo "APPLE_MAS_PROFILE_PATH must point to an existing provisioning profile: $APPLE_MAS_PROFILE_PATH" >&2
+    exit 1
+  fi
+
+  TEMP_PROFILE_PLIST="$(mktemp)"
+  decode_provisioning_profile "$APPLE_MAS_PROFILE_PATH" "$TEMP_PROFILE_PLIST"
+
+  local profile_uuid
+  profile_uuid="$(plutil -extract UUID raw -o - "$TEMP_PROFILE_PLIST")"
+  if [[ -z "$profile_uuid" ]]; then
+    echo "Could not read UUID from APPLE_MAS_PROFILE_PATH: $APPLE_MAS_PROFILE_PATH" >&2
+    exit 1
+  fi
+
+  local profiles_dir
+  profiles_dir="$HOME/Library/MobileDevice/Provisioning Profiles"
+  mkdir -p "$profiles_dir"
+  cp "$APPLE_MAS_PROFILE_PATH" "$profiles_dir/$profile_uuid.provisionprofile"
+}
+
+prepare_signing() {
+  APPLE_MAS_SIGNING_STYLE="${APPLE_MAS_SIGNING_STYLE:-automatic}"
+
+  case "$APPLE_MAS_SIGNING_STYLE" in
+    automatic|manual)
+      ;;
+    *)
+      echo "APPLE_MAS_SIGNING_STYLE must be automatic or manual." >&2
+      exit 1
+      ;;
+  esac
+
+  if [[ "$APPLE_MAS_SIGNING_STYLE" == "automatic" ]]; then
+    return
+  fi
+
+  if [[ -z "${APPLE_MAS_APP_CERTIFICATE:-}" && -n "${APPLE_MAS_SIGNING_CERTIFICATE:-}" ]]; then
+    APPLE_MAS_APP_CERTIFICATE="$APPLE_MAS_SIGNING_CERTIFICATE"
+  fi
+
+  for name in APPLE_MAS_APP_CERTIFICATE APPLE_MAS_INSTALLER_CERTIFICATE APPLE_MAS_PROFILE_NAME; do
+    if [[ -z "${!name:-}" ]]; then
+      echo "$name is required when APPLE_MAS_SIGNING_STYLE=manual." >&2
+      exit 1
+    fi
+  done
+
+  if [[ -z "$PRODUCT_BUNDLE_IDENTIFIER" ]]; then
+    echo "Could not determine PRODUCT_BUNDLE_IDENTIFIER from $APP_INFO_XCCONFIG." >&2
+    exit 1
+  fi
+
+  install_manual_provisioning_profile
+}
+
 write_export_options() {
   local path="$1"
   local destination="$2"
@@ -151,7 +241,7 @@ write_export_options() {
 	<key>method</key>
 	<string>app-store-connect</string>
 	<key>signingStyle</key>
-	<string>automatic</string>
+	<string>$APPLE_MAS_SIGNING_STYLE</string>
 	<key>stripSwiftSymbols</key>
 	<true/>
 EOF
@@ -163,10 +253,17 @@ EOF
 EOF
   fi
 
-  if [[ -n "${APPLE_MAS_SIGNING_CERTIFICATE:-}" ]]; then
+  if [[ "$APPLE_MAS_SIGNING_STYLE" == "manual" ]]; then
     cat >> "$path" <<EOF
+	<key>installerSigningCertificate</key>
+	<string>$APPLE_MAS_INSTALLER_CERTIFICATE</string>
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>$PRODUCT_BUNDLE_IDENTIFIER</key>
+		<string>$APPLE_MAS_PROFILE_NAME</string>
+	</dict>
 	<key>signingCertificate</key>
-	<string>$APPLE_MAS_SIGNING_CERTIFICATE</string>
+	<string>$APPLE_MAS_APP_CERTIFICATE</string>
 EOF
   fi
 
@@ -189,8 +286,19 @@ archive_app() {
   local build_settings=()
   build_settings+=(
     DEVELOPMENT_TEAM="$APPLE_TEAM_ID"
-    CODE_SIGN_STYLE=Automatic
   )
+
+  if [[ "$APPLE_MAS_SIGNING_STYLE" == "manual" ]]; then
+    build_settings+=(
+      CODE_SIGN_STYLE=Manual
+      CODE_SIGN_IDENTITY="$APPLE_MAS_APP_CERTIFICATE"
+      PROVISIONING_PROFILE_SPECIFIER="$APPLE_MAS_PROFILE_NAME"
+    )
+  else
+    build_settings+=(
+      CODE_SIGN_STYLE=Automatic
+    )
+  fi
 
   rm -rf "$ARCHIVE_PATH"
   xcodebuild archive \
@@ -319,10 +427,13 @@ require_tool xcodebuild
 require_tool codesign
 require_tool find
 require_tool grep
+require_tool openssl
 require_tool plutil
 
 mkdir -p "$ARCHIVE_DIR" "$DIAGNOSTICS_DIR"
 require_team_id
+PRODUCT_BUNDLE_IDENTIFIER="$(read_bundle_identifier "$APP_INFO_XCCONFIG")"
+prepare_signing
 prepare_api_key
 write_export_options "$EXPORT_OPTIONS_PATH" "$EXPORT_DESTINATION"
 plutil -lint "$EXPORT_OPTIONS_PATH" >/dev/null
