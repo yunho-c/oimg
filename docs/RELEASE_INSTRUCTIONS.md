@@ -61,6 +61,21 @@ Recurring release steps. Platform-specific packaging details live below the shar
 
 The macOS release workflow should build, sign, notarize, staple, and upload a DMG.
 
+That DMG is for direct distribution outside the Mac App Store. It is signed with
+Developer ID and notarized, but it is not a Mac App Store upload artifact.
+
+For Mac App Store validation, use the separate archive/export path:
+
+```bash
+just archive-mas
+```
+
+After inspecting the exported build and entitlement diagnostics, upload with:
+
+```bash
+just upload-mas
+```
+
 macOS verification checklist:
 
 - Download the DMG from the draft release.

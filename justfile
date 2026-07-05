@@ -22,6 +22,12 @@ release-dmg-sign:
 release-dmg-notarize:
   ./scripts/macos/release-dmg.sh --notarize
 
+archive-mas:
+  ./scripts/macos/archive-mas.sh
+
+upload-mas:
+  ./scripts/macos/archive-mas.sh --upload
+
 windows-build mode="debug":
     powershell -ExecutionPolicy Bypass -File scripts/windows/build_windows.ps1 -Command build -Mode {{mode}}
 

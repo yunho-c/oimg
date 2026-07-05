@@ -53,7 +53,7 @@ security find-identity -v -p codesigning | grep "Developer ID Application"
 
 ## App Store Connect API Key
 
-Create an App Store Connect API key that can be used for notarization.
+Create an App Store Connect API key that can be used for notarization and Mac App Store archive upload.
 
 1. In App Store Connect, open **Users and Access > Integrations > App Store Connect API**.
 2. Create or select an API key with access suitable for Developer ID notarization.
@@ -71,6 +71,8 @@ Paste the `.p8` contents exactly, including:
 ```
 
 ## Release Workflow
+
+This section covers the direct-download Developer ID DMG workflow. It is separate from the Mac App Store workflow.
 
 The workflow runs for tags named `v*` and can also be retried manually from the GitHub Actions UI.
 
@@ -118,6 +120,47 @@ Before publishing the draft:
 4. Confirm macOS does not show signing or notarization warnings.
 5. Open an image and run a basic optimization.
 6. Publish the GitHub Release when the DMG looks correct.
+
+## Mac App Store Archive
+
+The Developer ID DMG workflow is not a Mac App Store upload path. For App Store Connect, build an Xcode archive and export it with Mac App Store signing:
+
+```bash
+just archive-mas
+```
+
+The script writes outputs under `dist/macos-mas/`:
+
+- `archive/` contains the `.xcarchive`.
+- `export/` contains the exported App Store package or app output.
+- `diagnostics/` contains codesign and entitlement dumps.
+
+To upload through Xcode's App Store Connect export path:
+
+```bash
+just upload-mas
+```
+
+The MAS script uses Xcode automatic signing. Useful environment variables:
+
+| Variable | Purpose |
+| --- | --- |
+| `APPLE_TEAM_ID` | Required Developer team ID passed to Xcode and export options. |
+| `APPLE_MAS_SIGNING_CERTIFICATE` | Optional export signing certificate selector or name; normally leave unset for automatic signing. |
+| `APPLE_ASC_KEY_ID` | App Store Connect API key ID for provisioning/upload auth. |
+| `APPLE_ASC_ISSUER_ID` | App Store Connect issuer ID. |
+| `APPLE_ASC_API_KEY_PATH` | Path to `AuthKey_<key-id>.p8`; relative paths are resolved before calling Xcode. |
+| `APPLE_ASC_API_KEY_P8` | Private key contents; the script writes a temporary key file. |
+
+Recommended first MAS validation:
+
+1. Run `just archive-mas`.
+2. Inspect `dist/macos-mas/diagnostics/archive-entitlements.plist`.
+3. Confirm App Sandbox is present and `get-task-allow` is absent.
+4. Inspect `dist/macos-mas/diagnostics/archive-codesign.txt`.
+5. Confirm the archive is not ad-hoc signed and has the expected Team ID.
+6. Install or run the exported build and repeat the sandbox/Finder Services tests.
+7. Run `just upload-mas` only after the exported build looks correct.
 
 ## Notes
 
