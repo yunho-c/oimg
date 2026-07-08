@@ -1,0 +1,109 @@
+name: Windows WinGet Publish
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Published release tag to submit, for example v1.0.1"
+        required: true
+        type: string
+      submit:
+        description: "Submit a PR to microsoft/winget-pkgs"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  winget:
+    name: Submit WinGet manifest
+    runs-on: windows-2025
+    timeout-minutes: 30
+
+    env:
+      PACKAGE_ID: YunhoCho.OIMG
+
+    steps:
+      - name: Resolve release
+        id: release
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $tag = "${{ inputs.tag }}"
+            $submit = "${{ inputs.submit }}"
+          } else {
+            $tag = "${{ github.event.release.tag_name }}"
+            $submit = "true"
+          }
+
+          if ($tag -notmatch '^v[0-9]+[.][0-9]+[.][0-9]+([-.][0-9A-Za-z.-]+)?$') {
+            throw "Release tag must look like v1.2.3, got: $tag"
+          }
+
+          $version = $tag.Substring(1)
+          $installerName = "OIMG-$version-windows-x64-setup.exe"
+          $installerUrl = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$tag/$installerName"
+
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "installer_name=$installerName" >> $env:GITHUB_OUTPUT
+          "installer_url=$installerUrl" >> $env:GITHUB_OUTPUT
+          "submit=$submit" >> $env:GITHUB_OUTPUT
+
+      - name: Validate required token
+        if: steps.release.outputs.submit == 'true'
+        shell: pwsh
+        env:
+          WINGETCREATE_TOKEN: ${{ secrets.WINGETCREATE_TOKEN }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          if ([string]::IsNullOrWhiteSpace($env:WINGETCREATE_TOKEN)) {
+            throw "Missing required secret: WINGETCREATE_TOKEN"
+          }
+
+      - name: Verify installer asset is public
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $url = "${{ steps.release.outputs.installer_url }}"
+          $response = Invoke-WebRequest -Uri $url -Method Head -MaximumRedirection 5
+          if ($response.StatusCode -lt 200 -or $response.StatusCode -ge 400) {
+            throw "Installer asset is not reachable: $url"
+          }
+
+      - name: Download wingetcreate
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          .\wingetcreate.exe info
+
+      - name: Update WinGet manifest
+        shell: pwsh
+        env:
+          WINGETCREATE_TOKEN: ${{ secrets.WINGETCREATE_TOKEN }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+
+          $args = @(
+            "update",
+            $env:PACKAGE_ID,
+            "--version",
+            "${{ steps.release.outputs.version }}",
+            "--urls",
+            "${{ steps.release.outputs.installer_url }}|x64"
+          )
+
+          if ("${{ steps.release.outputs.submit }}" -eq "true") {
+            $args += @("--token", $env:WINGETCREATE_TOKEN, "--submit")
+          }
+
+          .\wingetcreate.exe @args

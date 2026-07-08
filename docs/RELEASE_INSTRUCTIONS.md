@@ -92,6 +92,7 @@ Windows verification checklist:
 - Uninstall OIMG from Windows Settings and confirm shortcuts are removed.
 - Run a basic optimization.
 - Submit the MSIX to Microsoft Store for signing and distribution.
+- Publish the GitHub Release and confirm the WinGet workflow opens an update PR.
 
 ## Current Platform: Linux Debian
 

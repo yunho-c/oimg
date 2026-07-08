@@ -9,6 +9,7 @@ Add this secret in GitHub under **Settings > Secrets and variables > Actions > R
 | Secret | Purpose |
 | --- | --- |
 | `CI_REPO_TOKEN` | GitHub token with read access to `yunho-c/slimg`, `yunho-c/tjdistler-iqa-fork`, and `yunho-c/irondash`. |
+| `WINGETCREATE_TOKEN` | GitHub token used by `wingetcreate` to open update PRs against `microsoft/winget-pkgs`. |
 
 ## GitHub Token
 
@@ -19,6 +20,8 @@ Create a fine-grained personal access token that can read the sibling repositori
 - `yunho-c/irondash`
 
 Give it read-only repository contents access, then save it as `CI_REPO_TOKEN`.
+
+Create a second token for WinGet submissions and save it as `WINGETCREATE_TOKEN`. It must be able to fork and open pull requests against `microsoft/winget-pkgs`.
 
 ## Build Environment
 
@@ -41,6 +44,28 @@ just windows-installer
 ```
 
 The workflow then uses `dart run msix:create` to package the existing release build for Microsoft Store submission. The MSIX package is intentionally unsigned because Microsoft Store signs packages after submission.
+
+## WinGet Publishing
+
+The `Windows WinGet Publish` workflow runs when a GitHub Release is published. It uses the public Inno Setup installer asset from that release and submits a WinGet manifest update for package ID `YunhoCho.OIMG`.
+
+The installer URL is derived from the tag:
+
+```text
+https://github.com/yunho-c/oimg/releases/download/v<version>/OIMG-<version>-windows-x64-setup.exe
+```
+
+One-time setup:
+
+1. Publish the first Windows release with the setup EXE asset.
+2. Run `wingetcreate new` locally for that setup EXE URL.
+3. Use package ID `YunhoCho.OIMG`.
+4. Use installer type `inno`.
+5. Submit the generated manifest PR and wait for it to merge into `microsoft/winget-pkgs`.
+
+After the package exists in WinGet, future published GitHub Releases should trigger the workflow and open update PRs automatically.
+
+For a manual dry run, dispatch `Windows WinGet Publish` with `submit` set to `false`. To manually open a WinGet PR for an existing published release, dispatch it with `submit` set to `true`.
 
 ## Release Workflow
 
@@ -103,6 +128,7 @@ Before publishing the draft:
 10. Run a basic optimization.
 11. Submit the MSIX to Microsoft Store.
 12. Publish the GitHub Release when the ZIP, installer, and Store package look correct.
+13. Confirm the WinGet workflow opens or updates a PR for `YunhoCho.OIMG`.
 
 ## Microsoft Store
 
