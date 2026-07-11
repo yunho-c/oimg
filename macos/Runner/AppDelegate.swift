@@ -1,5 +1,6 @@
 import Cocoa
 import FlutterMacOS
+import UniformTypeIdentifiers
 
 @main
 class AppDelegate: FlutterAppDelegate {
@@ -225,6 +226,14 @@ class AppDelegate: FlutterAppDelegate {
     panel.allowsMultipleSelection = allowsMultipleSelection
     panel.resolvesAliases = true
     panel.canCreateDirectories = false
+    panel.treatsFilePackagesAsDirectories = false
+    if canChooseFiles && !canChooseDirectories {
+      if #available(macOS 11.0, *) {
+        panel.allowedContentTypes = [.image]
+      } else {
+        panel.allowedFileTypes = ["public.image"]
+      }
+    }
     panel.title = canChooseDirectories ? "Open Folder" : "Open Files"
     panel.message = canChooseDirectories
       ? "Choose a folder to open in OIMG."
