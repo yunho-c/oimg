@@ -3771,7 +3771,9 @@ void main() {
     expect(find.text('v0.1.2'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('title-bar-donate-button')),
-      findsOneWidget,
+      const bool.fromEnvironment('OIMG_MAS_BUILD')
+          ? findsNothing
+          : findsOneWidget,
     );
     expect(
       find.byKey(const ValueKey('title-bar-contributors-button')),

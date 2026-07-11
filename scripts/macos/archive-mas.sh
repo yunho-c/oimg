@@ -277,7 +277,10 @@ EOF
 
 build_flutter_config() {
   echo "==> Preparing Flutter macOS release config"
-  flutter build macos --release --config-only
+  flutter build macos \
+    --release \
+    --config-only \
+    --dart-define=OIMG_MAS_BUILD=true
 }
 
 archive_app() {
