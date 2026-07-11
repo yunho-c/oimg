@@ -1,3 +1,7 @@
+# Secrets
+.envrc
+secrets/
+
 # Miscellaneous
 *.class
 *.log
