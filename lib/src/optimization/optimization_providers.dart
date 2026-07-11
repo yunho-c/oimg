@@ -1671,6 +1671,19 @@ class OptimizationRunController extends Notifier<OptimizationRunState> {
 
     final fileController = ref.read(fileOpenControllerProvider);
     final settings = await ref.read(appSettingsProvider.future);
+    if (settings.storageDestinationMode ==
+        StorageDestinationMode.differentLocation) {
+      final bookmark = settings.differentLocationBookmark;
+      final didStartAccess = await fileController
+          .startAccessingSecurityScopedResource(bookmark);
+      if (bookmark != null && bookmark.isNotEmpty && !didStartAccess) {
+        state = _idleState(
+          items: state.items,
+          globalError: 'Choose the output folder again.',
+        );
+        return;
+      }
+    }
     final plans = files
         .map(
           (file) => buildOptimizationPlan(

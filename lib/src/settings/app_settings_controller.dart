@@ -103,9 +103,18 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
   }
 
   Future<void> setDifferentLocationPath(String? differentLocationPath) async {
+    await setDifferentLocation(path: differentLocationPath, bookmark: null);
+  }
+
+  Future<void> setDifferentLocation({
+    required String? path,
+    required String? bookmark,
+  }) async {
     await _update(
-      (settings) =>
-          settings.copyWith(differentLocationPath: differentLocationPath),
+      (settings) => settings.copyWith(
+        differentLocationPath: path,
+        differentLocationBookmark: bookmark,
+      ),
     );
   }
 

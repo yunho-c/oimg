@@ -3771,7 +3771,9 @@ void main() {
     expect(find.text('v0.1.2'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('title-bar-donate-button')),
-      findsOneWidget,
+      const bool.fromEnvironment('OIMG_MAS_BUILD')
+          ? findsNothing
+          : findsOneWidget,
     );
     expect(
       find.byKey(const ValueKey('title-bar-contributors-button')),
@@ -4874,6 +4876,7 @@ class _FakeFileOpenChannel implements FileOpenChannel {
   final List<String> shownPaths = <String>[];
   int pickFilesCallCount = 0;
   int pickFolderCallCount = 0;
+  String? lastStartedSecurityScopedBookmark;
 
   @override
   Future<void> bind(OpenFilesHandler onOpenFiles) async {
@@ -4894,6 +4897,21 @@ class _FakeFileOpenChannel implements FileOpenChannel {
   Future<List<String>> pickFolder() async {
     pickFolderCallCount += 1;
     return pickFolderResult;
+  }
+
+  @override
+  Future<SecurityScopedFileAccess?> pickFolderForPersistentAccess() async {
+    final paths = await pickFolder();
+    if (paths.isEmpty) {
+      return null;
+    }
+    return SecurityScopedFileAccess(path: paths.first, bookmark: 'bookmark');
+  }
+
+  @override
+  Future<bool> startAccessingSecurityScopedResource(String bookmark) async {
+    lastStartedSecurityScopedBookmark = bookmark;
+    return true;
   }
 
   @override

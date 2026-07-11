@@ -1,5 +1,6 @@
 import Cocoa
 import FlutterMacOS
+import UniformTypeIdentifiers
 
 @main
 class AppDelegate: FlutterAppDelegate {
@@ -46,6 +47,14 @@ class AppDelegate: FlutterAppDelegate {
             allowsMultipleSelection: false
           )
         )
+      } else if call.method == "pickFolderForPersistentAccess" {
+        result(self.presentOpenPanelForPersistentFolderAccess())
+      } else if call.method == "startAccessingSecurityScopedResource" {
+        guard let bookmark = call.arguments as? String else {
+          result(false)
+          return
+        }
+        result(self.startAccessingSecurityScopedResource(bookmark: bookmark))
       } else if call.method == "showInFileManager" {
         if let path = call.arguments as? String {
           self.showInFileManager(path: path)
@@ -139,17 +148,92 @@ class AppDelegate: FlutterAppDelegate {
     }
   }
 
+  private func startAccessingSecurityScopedResource(bookmark: String) -> Bool {
+    guard let data = Data(base64Encoded: bookmark) else {
+      return false
+    }
+
+    var isStale = false
+    do {
+      let url = try URL(
+        resolvingBookmarkData: data,
+        options: [.withSecurityScope],
+        relativeTo: nil,
+        bookmarkDataIsStale: &isStale
+      )
+      guard url.startAccessingSecurityScopedResource() else {
+        return false
+      }
+
+      securityScopedUrlsByPath[url.path] = url
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  private func securityScopedBookmarkString(for url: URL) -> String? {
+    do {
+      let data = try url.bookmarkData(
+        options: [.withSecurityScope],
+        includingResourceValuesForKeys: nil,
+        relativeTo: nil
+      )
+      return data.base64EncodedString()
+    } catch {
+      return nil
+    }
+  }
+
+  private func presentOpenPanelForPersistentFolderAccess() -> [String: String]? {
+    let urls = presentOpenPanelUrls(
+      canChooseFiles: false,
+      canChooseDirectories: true,
+      allowsMultipleSelection: false
+    )
+    guard let url = urls.first else {
+      return nil
+    }
+
+    var result = ["path": url.path]
+    if let bookmark = securityScopedBookmarkString(for: url) {
+      result["bookmark"] = bookmark
+    }
+    return result
+  }
+
   private func presentOpenPanel(
     canChooseFiles: Bool,
     canChooseDirectories: Bool,
     allowsMultipleSelection: Bool
   ) -> [String] {
+    presentOpenPanelUrls(
+      canChooseFiles: canChooseFiles,
+      canChooseDirectories: canChooseDirectories,
+      allowsMultipleSelection: allowsMultipleSelection
+    )
+    .map(\.path)
+  }
+
+  private func presentOpenPanelUrls(
+    canChooseFiles: Bool,
+    canChooseDirectories: Bool,
+    allowsMultipleSelection: Bool
+  ) -> [URL] {
     let panel = NSOpenPanel()
     panel.canChooseFiles = canChooseFiles
     panel.canChooseDirectories = canChooseDirectories
     panel.allowsMultipleSelection = allowsMultipleSelection
     panel.resolvesAliases = true
     panel.canCreateDirectories = false
+    panel.treatsFilePackagesAsDirectories = false
+    if canChooseFiles && !canChooseDirectories {
+      if #available(macOS 11.0, *) {
+        panel.allowedContentTypes = [.image]
+      } else {
+        panel.allowedFileTypes = ["public.image"]
+      }
+    }
     panel.title = canChooseDirectories ? "Open Folder" : "Open Files"
     panel.message = canChooseDirectories
       ? "Choose a folder to open in OIMG."
@@ -160,7 +244,7 @@ class AppDelegate: FlutterAppDelegate {
     }
 
     retainSecurityScopedAccess(for: panel.urls)
-    return panel.urls.filter(\.isFileURL).map(\.path)
+    return panel.urls.filter(\.isFileURL)
   }
 
   private func showInFileManager(path: String) {

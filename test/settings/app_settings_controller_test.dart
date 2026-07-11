@@ -49,7 +49,10 @@ void main() {
       await notifier.setKeepSourceNaming(KeepSourceNaming.renameOriginal);
       await notifier.setKeepSourceOriginalSuffix('_raw');
       await notifier.setKeepSourceOptimizedSuffix('_small');
-      await notifier.setDifferentLocationPath('/tmp/export');
+      await notifier.setDifferentLocation(
+        path: '/tmp/export',
+        bookmark: 'bookmark-data',
+      );
       await notifier.setPreserveFolderStructure(false);
       await notifier.setPreserveOriginalDate(true);
       await notifier.setPreserveExif(true);
@@ -88,6 +91,7 @@ void main() {
           keepSourceOriginalSuffix: '_raw',
           keepSourceOptimizedSuffix: '_small',
           differentLocationPath: '/tmp/export',
+          differentLocationBookmark: 'bookmark-data',
           preserveFolderStructure: false,
           preserveOriginalDate: true,
           preserveExif: true,

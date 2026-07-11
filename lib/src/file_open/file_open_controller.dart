@@ -12,6 +12,13 @@ import 'opened_image_file.dart';
 
 enum ExplorerSelectionType { file, folder }
 
+const _directoryExtensionsToSkipDuringExpansion = <String>{
+  'medialibrary',
+  'musiclibrary',
+  'photolibrary',
+  'photoslibrary',
+};
+
 class ExplorerSelection {
   const ExplorerSelection._({required this.type, required this.path});
 
@@ -133,12 +140,15 @@ class FileOpenController extends ChangeNotifier {
     await openPaths(paths);
   }
 
-  Future<String?> pickStorageFolder() async {
-    final paths = await _channel.pickFolder();
-    if (paths.isEmpty) {
-      return null;
+  Future<SecurityScopedFileAccess?> pickStorageFolder() async {
+    return _channel.pickFolderForPersistentAccess();
+  }
+
+  Future<bool> startAccessingSecurityScopedResource(String? bookmark) async {
+    if (bookmark == null || bookmark.isEmpty) {
+      return false;
     }
-    return paths.first;
+    return _channel.startAccessingSecurityScopedResource(bookmark);
   }
 
   Future<void> showInFileManager(String path) async {
@@ -501,15 +511,8 @@ class FileOpenController extends ChangeNotifier {
     for (final path in paths) {
       final type = FileSystemEntity.typeSync(path, followLinks: false);
       if (type == FileSystemEntityType.directory) {
-        try {
-          await for (final entity in Directory(
-            path,
-          ).list(recursive: true, followLinks: false)) {
-            if (entity is File) {
-              expanded.add(entity.path);
-            }
-          }
-        } on FileSystemException {
+        final didExpand = await _expandDirectory(path, expanded);
+        if (!didExpand) {
           expanded.add(path);
         }
         continue;
@@ -519,5 +522,34 @@ class FileOpenController extends ChangeNotifier {
     }
 
     return expanded.toList(growable: false);
+  }
+
+  Future<bool> _expandDirectory(String path, Set<String> expanded) async {
+    if (_shouldSkipDirectoryDuringExpansion(path)) {
+      return true;
+    }
+
+    try {
+      await for (final entity in Directory(path).list(followLinks: false)) {
+        if (entity is File) {
+          expanded.add(entity.path);
+        } else if (entity is Directory) {
+          await _expandDirectory(entity.path, expanded);
+        }
+      }
+      return true;
+    } on FileSystemException {
+      return false;
+    }
+  }
+
+  static bool _shouldSkipDirectoryDuringExpansion(String path) {
+    final name = p.basename(path);
+    if (name.startsWith('.')) {
+      return true;
+    }
+    return _directoryExtensionsToSkipDuringExpansion.contains(
+      p.extension(name).toLowerCase().replaceFirst('.', ''),
+    );
   }
 }

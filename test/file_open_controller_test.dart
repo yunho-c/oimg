@@ -203,6 +203,47 @@ void main() {
       expect(controller.sessionPaths.toSet(), {imageA.path, imageB.path});
     });
 
+    test('skips hidden folders and protected media library packages', () async {
+      final root = await Directory.systemTemp.createTemp(
+        'oimg-library-skip-test',
+      );
+      addTearDown(() async {
+        await root.delete(recursive: true);
+      });
+
+      final ordinary = File(p.join(root.path, 'ordinary.png'))
+        ..writeAsBytesSync([1, 2, 3]);
+      final hidden = Directory(p.join(root.path, '.private'))..createSync();
+      final photos = Directory(
+        p.join(root.path, 'Photos Library.photoslibrary'),
+      )..createSync();
+      final music = Directory(p.join(root.path, 'Music Library.musiclibrary'))
+        ..createSync();
+      final hiddenImage = File(p.join(hidden.path, 'hidden.png'))
+        ..writeAsBytesSync([1, 2, 3]);
+      final photoLibraryImage = File(p.join(photos.path, 'photo.png'))
+        ..writeAsBytesSync([1, 2, 3]);
+      final musicLibraryArtwork = File(p.join(music.path, 'artwork.jpg'))
+        ..writeAsBytesSync([1, 2, 3]);
+
+      final controller = FileOpenController(
+        channel: _FakeFileOpenChannel(),
+        slimg: _FakeSlimgApi(
+          inspectResults: {
+            ordinary.path: _metadata('png'),
+            hiddenImage.path: _metadata('png'),
+            photoLibraryImage.path: _metadata('png'),
+            musicLibraryArtwork.path: _metadata('jpeg'),
+          },
+        ),
+      );
+
+      await controller.initialize();
+      await controller.openPaths([root.path]);
+
+      expect(controller.sessionPaths, [ordinary.path]);
+    });
+
     test(
       'keeps the source entry when storage keeps the original file',
       () async {
@@ -424,6 +465,20 @@ class _FakeFileOpenChannel implements FileOpenChannel {
 
   @override
   Future<List<String>> pickFolder() async => const <String>[];
+
+  @override
+  Future<SecurityScopedFileAccess?> pickFolderForPersistentAccess() async {
+    final paths = await pickFolder();
+    if (paths.isEmpty) {
+      return null;
+    }
+    return SecurityScopedFileAccess(path: paths.first);
+  }
+
+  @override
+  Future<bool> startAccessingSecurityScopedResource(String bookmark) async {
+    return false;
+  }
 
   @override
   Future<void> showInFileManager(String path) async {
