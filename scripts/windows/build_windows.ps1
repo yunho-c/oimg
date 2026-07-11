@@ -5,6 +5,8 @@ param(
     [ValidateSet("debug", "profile", "release")]
     [string]$Mode = "debug",
 
+    [switch]$Store,
+
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$FlutterArgs = @()
 )
@@ -26,6 +28,11 @@ if (-not (($PSVersionTable.PSEdition -eq "Desktop") -or $IsWindows)) {
 $targetHost = "x86_64-pc-windows-msvc"
 $targetToolchain = "stable-$targetHost"
 $originalHost = Get-RustupDefaultHost
+$effectiveFlutterArgs = @($FlutterArgs)
+
+if ($Store) {
+    $effectiveFlutterArgs += "--dart-define=OIMG_WINDOWS_STORE_BUILD=true"
+}
 
 Write-Host "Ensuring Rust toolchain $targetToolchain is installed..."
 rustup toolchain install $targetToolchain --force-non-host
@@ -37,9 +44,9 @@ try {
     }
 
     if ($Command -eq "run") {
-        & flutter run -d windows "--$Mode" @FlutterArgs
+        & flutter run -d windows "--$Mode" @effectiveFlutterArgs
     } else {
-        & flutter build windows "--$Mode" @FlutterArgs
+        & flutter build windows "--$Mode" @effectiveFlutterArgs
     }
 
     if ($LASTEXITCODE -ne 0) {

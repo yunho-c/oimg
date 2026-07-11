@@ -43,7 +43,14 @@ For local installer packaging after a release build, run:
 just windows-installer
 ```
 
-The workflow then uses `dart run msix:create` to package the existing release build for Microsoft Store submission. The MSIX package is intentionally unsigned because Microsoft Store signs packages after submission.
+The workflow rebuilds the app with the Microsoft Store configuration before using `dart run msix:create` to package it for submission. This keeps internal developer controls out of the MSIX while retaining them in the ZIP and Inno Setup builds. The MSIX package is intentionally unsigned because Microsoft Store signs packages after submission.
+
+For a local Microsoft Store build, run:
+
+```powershell
+just windows-store-build
+dart run msix:create
+```
 
 ## WinGet Publishing
 

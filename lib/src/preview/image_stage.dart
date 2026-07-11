@@ -61,6 +61,7 @@ class _ImageStageState extends ConsumerState<_ImageStage> {
         optimizedDisplay.width == currentFile.metadata.width &&
         optimizedDisplay.height == currentFile.metadata.height;
     final showPreviewPathHeader =
+        !isStoreBuild &&
         appSettings?.developerModeEnabled == true &&
         appSettings?.previewPathHeaderEnabled == true;
 

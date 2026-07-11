@@ -9,6 +9,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:oimg/main.dart';
+import 'package:oimg/src/build/distribution.dart';
 import 'package:oimg/src/file_open/file_open_channel.dart';
 import 'package:oimg/src/file_open/file_open_controller.dart';
 import 'package:oimg/src/file_open/file_open_providers.dart';
@@ -18,6 +19,7 @@ import 'package:oimg/src/rust/types.dart';
 import 'package:oimg/src/settings/app_settings.dart';
 import 'package:oimg/src/settings/app_settings_controller.dart';
 import 'package:oimg/src/settings/app_settings_repository.dart';
+import 'package:oimg/src/settings/developer_diagnostics.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
@@ -3611,12 +3613,21 @@ void main() {
     );
   });
 
-  testWidgets('title bar developer button still opens the developer dialog', (
+  testWidgets('title bar developer controls match build distribution', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(() => DeveloperDiagnostics.setTimingLogsEnabled(false));
 
+    final store = _FakeAppSettingsStore()
+      ..value = AppSettings.defaults
+          .copyWith(
+            developerModeEnabled: true,
+            timingLogsEnabled: true,
+            previewPathHeaderEnabled: true,
+          )
+          .toJsonString();
     final slimg = _FakeSlimgApi(
       inspectResults: {'/tmp/first.png': _metadata('png', 2400)},
     );
@@ -3627,10 +3638,23 @@ void main() {
     );
     await controller.initialize();
 
-    await tester.pumpWidget(_buildApp(controller: controller, slimg: slimg));
+    await tester.pumpWidget(
+      _buildApp(controller: controller, slimg: slimg, store: store),
+    );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('title-bar-developer-button')));
+    final developerButton = find.byKey(
+      const ValueKey('title-bar-developer-button'),
+    );
+    expect(developerButton, isStoreBuild ? findsNothing : findsOneWidget);
+    expect(slimg.lastTimingLogsEnabled, !isStoreBuild);
+    expect(find.text('/tmp'), isStoreBuild ? findsNothing : findsOneWidget);
+
+    if (isStoreBuild) {
+      return;
+    }
+
+    await tester.tap(developerButton);
     await tester.pumpAndSettle();
 
     expect(find.text('Developer'), findsOneWidget);

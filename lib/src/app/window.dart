@@ -25,7 +25,8 @@ bool _shouldShowTitleBarCaptionButtons(AppSettings? settings) {
     return true;
   }
 
-  return Platform.isMacOS &&
+  return !isStoreBuild &&
+      Platform.isMacOS &&
       settings?.developerModeEnabled == true &&
       settings?.macOsCaptionButtonsEnabled == true;
 }

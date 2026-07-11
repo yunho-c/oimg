@@ -1,7 +1,5 @@
 part of 'package:oimg/main.dart';
 
-const _isMacAppStoreBuild = bool.fromEnvironment('OIMG_MAS_BUILD');
-
 IconData _themePreferenceIcon(AppThemePreference preference) {
   return switch (preference) {
     AppThemePreference.system => LucideIcons.monitor,
@@ -171,7 +169,7 @@ class _TitleBarSettingsButton extends ConsumerWidget {
                                 ),
                                 child: const Text('OIMG'),
                               ),
-                              if (!_isMacAppStoreBuild)
+                              if (!isMacAppStoreBuild)
                                 MenuButton(
                                   key: const ValueKey(
                                     'title-bar-donate-button',
