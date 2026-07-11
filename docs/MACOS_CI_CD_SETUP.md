@@ -162,8 +162,8 @@ Manual signing example:
 
 ```bash
 export APPLE_MAS_SIGNING_STYLE=manual
-export APPLE_MAS_APP_CERTIFICATE="3rd Party Mac Developer Application: Yunho Cho (3YWW337ZMW)"
-export APPLE_MAS_INSTALLER_CERTIFICATE="3rd Party Mac Developer Installer: Yunho Cho (3YWW337ZMW)"
+export APPLE_MAS_APP_CERTIFICATE="3rd Party Mac Developer Application: Your Name (ABCDE12345)"
+export APPLE_MAS_INSTALLER_CERTIFICATE="3rd Party Mac Developer Installer: Your Name (ABCDE12345)"
 export APPLE_MAS_PROFILE_NAME="OIMG MAS Profile"
 export APPLE_MAS_PROFILE_PATH="/path/to/OIMG_MAS_Profile.provisionprofile"
 ```
