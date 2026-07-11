@@ -125,7 +125,7 @@ class AppSettings {
     this.differentLocationBookmark,
     this.previewPathHeaderEnabled = false,
     this.homeShaderSpeed = defaultHomeShaderSpeed,
-    this.homeAcrylicPanelEnabled = false,
+    this.homeAcrylicPanelEnabled = true,
     this.bottomStatAnimationMode = BottomStatAnimationMode.ticker,
   });
 
@@ -199,7 +199,7 @@ class AppSettings {
     macOsCaptionButtonsEnabled: false,
     previewPathHeaderEnabled: false,
     homeShaderSpeed: defaultHomeShaderSpeed,
-    homeAcrylicPanelEnabled: false,
+    homeAcrylicPanelEnabled: true,
     bottomStatAnimationMode: BottomStatAnimationMode.ticker,
   );
 

@@ -59,16 +59,16 @@ void main() {
     );
     expect(
       find.byKey(const ValueKey('empty-state-hero-gradient-panel')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(
       find.byKey(const ValueKey('empty-state-hero-acrylic-panel')),
-      findsNothing,
+      findsOneWidget,
     );
     expect(find.byType(DropRegion), findsOneWidget);
   });
 
-  testWidgets('stored acrylic panel preference changes empty state hero', (
+  testWidgets('stored gradient panel preference changes empty state hero', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
@@ -76,7 +76,7 @@ void main() {
 
     final store = _FakeAppSettingsStore()
       ..value = AppSettings.defaults
-          .copyWith(homeAcrylicPanelEnabled: true)
+          .copyWith(homeAcrylicPanelEnabled: false)
           .toJsonString();
     final slimg = _FakeSlimgApi();
     final controller = FileOpenController(
@@ -93,11 +93,11 @@ void main() {
     expect(find.text('Optimize images easily'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('empty-state-hero-acrylic-panel')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(
       find.byKey(const ValueKey('empty-state-hero-gradient-panel')),
-      findsNothing,
+      findsOneWidget,
     );
   });
 
