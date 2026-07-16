@@ -80,7 +80,10 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
   }
 
   void _syncDeveloperSettings(AppSettings settings) {
-    final enabled = settings.developerModeEnabled && settings.timingLogsEnabled;
+    final enabled =
+        !isStoreBuild &&
+        settings.developerModeEnabled &&
+        settings.timingLogsEnabled;
     DeveloperDiagnostics.setTimingLogsEnabled(enabled);
     ref.read(slimgApiProvider).setTimingLogsEnabled(enabled: enabled);
   }
@@ -142,20 +145,22 @@ class _OimgHomePageState extends ConsumerState<OimgHomePage> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _DeveloperButton(
-                      onPressed: () {
-                        unawaited(_openDeveloperDialog());
-                      },
-                    ),
-                    if (controller.hasSession) ...[
+                    if (!isStoreBuild) ...[
+                      _DeveloperButton(
+                        onPressed: () {
+                          unawaited(_openDeveloperDialog());
+                        },
+                      ),
                       const SizedBox(width: 6),
+                    ],
+                    if (controller.hasSession) ...[
                       _TitleBarHomeButton(
                         onPressed: runState.isRunning
                             ? null
                             : controller.clearSession,
                       ),
+                      const SizedBox(width: 6),
                     ],
-                    const SizedBox(width: 6),
                     const _TitleBarSettingsButton(),
                     if (showCaptionButtons) ...[
                       const SizedBox(width: 6),

@@ -202,6 +202,14 @@ jobs:
             -Version "${{ steps.release.outputs.version }}" `
             -OutputDir $env:DIST_DIR
 
+      - name: Build Microsoft Store app
+        shell: pwsh
+        working-directory: oimg
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+          powershell -ExecutionPolicy Bypass -File scripts/windows/build_windows.ps1 -Command build -Mode release -Store
+
       - name: Package Store MSIX
         shell: pwsh
         working-directory: oimg

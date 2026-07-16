@@ -7,6 +7,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:oimg/src/build/distribution.dart';
 import 'package:oimg/src/file_open/file_open_channel.dart';
 import 'package:oimg/src/file_open/file_open_controller.dart';
 import 'package:oimg/src/file_open/file_open_providers.dart';

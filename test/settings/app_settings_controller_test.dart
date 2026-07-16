@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:oimg/src/build/distribution.dart';
 import 'package:oimg/src/settings/app_settings.dart';
 import 'package:oimg/src/settings/app_settings_controller.dart';
 import 'package:oimg/src/settings/app_settings_repository.dart';
+import 'package:oimg/src/settings/developer_diagnostics.dart';
 
 void main() {
   group('AppSettingsController', () {
@@ -19,6 +21,32 @@ void main() {
       final settings = await container.read(appSettingsProvider.future);
 
       expect(settings, AppSettings.defaults);
+    });
+
+    test('store builds keep persisted diagnostics inactive', () async {
+      final storedSettings = AppSettings.defaults.copyWith(
+        developerModeEnabled: true,
+        timingLogsEnabled: true,
+      );
+      final store = _FakeAppSettingsStore()
+        ..value = storedSettings.toJsonString();
+      final container = ProviderContainer(
+        overrides: [
+          appSettingsRepositoryProvider.overrideWithValue(
+            AppSettingsRepository(store: store),
+          ),
+        ],
+      );
+      addTearDown(() {
+        DeveloperDiagnostics.setTimingLogsEnabled(false);
+        container.dispose();
+      });
+
+      final settings = await container.read(appSettingsProvider.future);
+
+      expect(settings.developerModeEnabled, isTrue);
+      expect(settings.timingLogsEnabled, isTrue);
+      expect(DeveloperDiagnostics.timingLogsEnabled, !isStoreBuild);
     });
 
     test('updates and persists settings changes', () async {

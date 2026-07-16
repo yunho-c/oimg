@@ -237,7 +237,7 @@ void main() {
       expect(settings.macOsCaptionButtonsEnabled, isFalse);
       expect(settings.previewPathHeaderEnabled, isFalse);
       expect(settings.homeShaderSpeed, AppSettings.defaultHomeShaderSpeed);
-      expect(settings.homeAcrylicPanelEnabled, isFalse);
+      expect(settings.homeAcrylicPanelEnabled, isTrue);
       expect(settings.bottomStatAnimationMode, BottomStatAnimationMode.ticker);
       expect(settings.effort, AppSettings.defaults.effort);
       expect(settings.pngPaletteMode, AppSettings.defaults.pngPaletteMode);

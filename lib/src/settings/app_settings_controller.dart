@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:oimg/src/build/distribution.dart';
 
 import 'app_settings.dart';
 import 'app_settings_repository.dart';
@@ -310,7 +311,9 @@ class AppSettingsController extends AsyncNotifier<AppSettings> {
 
   void _applyDiagnostics(AppSettings settings) {
     DeveloperDiagnostics.setTimingLogsEnabled(
-      settings.developerModeEnabled && settings.timingLogsEnabled,
+      !isStoreBuild &&
+          settings.developerModeEnabled &&
+          settings.timingLogsEnabled,
     );
   }
 }

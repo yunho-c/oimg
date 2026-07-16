@@ -31,6 +31,9 @@ upload-mas:
 windows-build mode="debug":
     powershell -ExecutionPolicy Bypass -File scripts/windows/build_windows.ps1 -Command build -Mode {{mode}}
 
+windows-store-build mode="release":
+    powershell -ExecutionPolicy Bypass -File scripts/windows/build_windows.ps1 -Command build -Mode {{mode}} -Store
+
 windows-run mode="debug":
     powershell -ExecutionPolicy Bypass -File scripts/windows/build_windows.ps1 -Command run -Mode {{mode}}
 
