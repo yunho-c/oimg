@@ -1,5 +1,9 @@
 # OIMG
 
+[![Latest release](https://img.shields.io/github/v/release/yunho-c/oimg?display_name=tag&sort=semver)](https://github.com/yunho-c/oimg/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/yunho-c/oimg/total)](https://github.com/yunho-c/oimg/releases)
+[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-5c6ac4)](#download)
+
 [OIMG](https://oimg.org) is a desktop application that helps you optimize your images using modern image formats. Save storage with OIMG!
 
 https://github.com/user-attachments/assets/52e5a506-966d-4c02-8125-81023f0ecd5e
@@ -9,6 +13,12 @@ https://github.com/user-attachments/assets/52e5a506-966d-4c02-8125-81023f0ecd5e
 - [Windows](https://oimg.org/download/windows-x64) | `winget install oimg`
 - [macOS](https://oimg.org/download/macos-arm64) | `brew install --cask yunho-c/tap/oimg`
 - [Linux](https://oimg.org/download/linux-x64) | `curl -fsSL https://apt.oimg.org/install.sh | bash`
+
+To support OIMG:
+
+<a href="https://apps.microsoft.com/detail/9ncp0zw3pj3w">
+  <img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Get it from Microsoft" height="52" />
+</a>
 
 ## Why OIMG
 
